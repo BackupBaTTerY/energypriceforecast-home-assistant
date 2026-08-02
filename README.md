@@ -36,6 +36,17 @@ Until the integration is part of the HACS default repository list:
 5. Open **Settings > Devices & services > Add integration** and search for
    **Energy Price Forecast EU**.
 
+## Manual beta installation
+
+1. Copy `custom_components/energypriceforecast` from this repository to
+   `/config/custom_components/energypriceforecast` in Home Assistant.
+2. Restart Home Assistant.
+3. Open **Settings > Devices & services > Add integration** and search for
+   **Energy Price Forecast EU**.
+
+Remove an older YAML package using the same data only after the new entities
+have been checked. Both approaches can run in parallel during the beta test.
+
 ## Horizon
 
 The public access currently provides up to 48 hours. An eligible API key can
@@ -58,4 +69,3 @@ inside the Home Assistant config entry and is redacted from diagnostics.
 - [Setup documentation](https://energypriceforecast.eu/en/home-assistant-electricity-price-co2-forecast/)
 - [Issue tracker](https://github.com/hendriksoppa-droid/energypriceforecast-home-assistant/issues)
 - [Home Assistant community topic](https://community.home-assistant.io/t/free-electricity-price-and-co2-forecast-api-for-home-assistant-automations/1014796)
-

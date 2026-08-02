@@ -1,0 +1,57 @@
+{
+  "title": "Energy Price Forecast EU",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add electricity-price and CO2 forecast",
+        "description": "Choose a market and the forecast horizon. Public access currently provides up to 48 hours; an eligible API key can unlock 120 hours.",
+        "data": {
+          "market": "Market or price zone",
+          "horizon_hours": "Requested horizon",
+          "window_hours": "Best-window duration",
+          "api_key": "API key (optional)"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure forecast",
+        "description": "Leave the API-key field empty to keep the currently stored key.",
+        "data": {
+          "market": "Market or price zone",
+          "horizon_hours": "Requested horizon",
+          "window_hours": "Best-window duration",
+          "api_key": "New API key (optional)"
+        }
+      }
+    },
+    "error": {
+      "already_configured": "This market is already configured.",
+      "cannot_connect": "Could not connect to Energy Price Forecast EU.",
+      "invalid_auth": "The API key was rejected or is not authorized.",
+      "invalid_response": "The API returned an unexpected response."
+    },
+    "abort": {
+      "already_configured": "This market is already configured."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "current_price": {"name": "Current price"},
+      "current_co2": {"name": "Current CO2 intensity"},
+      "cheapest_window_average_price": {"name": "Cheapest window average price"},
+      "cheapest_window_start": {"name": "Cheapest window start"},
+      "cheapest_window_end": {"name": "Cheapest window end"},
+      "greenest_window_average_co2": {"name": "Greenest window average CO2"},
+      "greenest_window_start": {"name": "Greenest window start"},
+      "greenest_window_end": {"name": "Greenest window end"},
+      "combined_window_score": {"name": "Combined window score"},
+      "allowed_horizon": {"name": "Allowed horizon"},
+      "used_horizon": {"name": "Used horizon"},
+      "api_key_state": {"name": "API-key status"},
+      "last_update": {"name": "Last API update"}
+    },
+    "binary_sensor": {
+      "cheapest_window_active": {"name": "Cheapest window active"},
+      "greenest_window_active": {"name": "Greenest window active"}
+    }
+  }
+}

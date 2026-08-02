@@ -1,0 +1,62 @@
+{
+  "title": "Energy Price Forecast EU",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Strompreis- und CO2-Prognose hinzufügen",
+        "description": "Wähle einen Markt und den Prognosehorizont. Der öffentliche Zugang liefert aktuell bis zu 48 Stunden; ein berechtigter API-Key kann 120 Stunden freischalten.",
+        "data": {
+          "market": "Markt oder Preiszone",
+          "horizon_hours": "Gewünschter Horizont",
+          "window_hours": "Dauer des besten Fensters",
+          "api_key": "API-Key (optional)"
+        },
+        "data_description": {
+          "horizon_hours": "Den tatsächlich erlaubten Horizont zeigt die Integration als Diagnose-Sensor an.",
+          "window_hours": "Länge des günstigsten und des grünsten zusammenhängenden Zeitfensters.",
+          "api_key": "Für den öffentlichen Zugang leer lassen. Der Schlüssel wird im Home-Assistant-Konfigurationseintrag gespeichert."
+        }
+      },
+      "reconfigure": {
+        "title": "Prognose neu konfigurieren",
+        "description": "Lass das API-Key-Feld leer, um den aktuell gespeicherten Schlüssel zu behalten.",
+        "data": {
+          "market": "Markt oder Preiszone",
+          "horizon_hours": "Gewünschter Horizont",
+          "window_hours": "Dauer des besten Fensters",
+          "api_key": "Neuer API-Key (optional)"
+        }
+      }
+    },
+    "error": {
+      "already_configured": "Dieser Markt ist bereits eingerichtet.",
+      "cannot_connect": "Energy Price Forecast EU ist gerade nicht erreichbar.",
+      "invalid_auth": "Der API-Key wurde abgelehnt oder ist nicht berechtigt.",
+      "invalid_response": "Die API hat eine unerwartete Antwort geliefert."
+    },
+    "abort": {
+      "already_configured": "Dieser Markt ist bereits eingerichtet."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "current_price": {"name": "Aktueller Strompreis"},
+      "current_co2": {"name": "Aktuelle CO2-Intensität"},
+      "cheapest_window_average_price": {"name": "Durchschnittspreis günstigstes Fenster"},
+      "cheapest_window_start": {"name": "Start günstigstes Fenster"},
+      "cheapest_window_end": {"name": "Ende günstigstes Fenster"},
+      "greenest_window_average_co2": {"name": "Durchschnittliches CO2 grünstes Fenster"},
+      "greenest_window_start": {"name": "Start grünstes Fenster"},
+      "greenest_window_end": {"name": "Ende grünstes Fenster"},
+      "combined_window_score": {"name": "Kombinierter Fenster-Score"},
+      "allowed_horizon": {"name": "Erlaubter Horizont"},
+      "used_horizon": {"name": "Genutzter Horizont"},
+      "api_key_state": {"name": "API-Key-Status"},
+      "last_update": {"name": "Letzte API-Aktualisierung"}
+    },
+    "binary_sensor": {
+      "cheapest_window_active": {"name": "Günstigstes Fenster aktiv"},
+      "greenest_window_active": {"name": "Grünstes Fenster aktiv"}
+    }
+  }
+}

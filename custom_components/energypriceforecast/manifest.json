@@ -2,12 +2,12 @@
   "domain": "energypriceforecast",
   "name": "Energy Price Forecast EU",
   "after_dependencies": ["http"],
-  "codeowners": ["@hendriksoppa-droid"],
+  "codeowners": ["@BackupBaTTerY"],
   "config_flow": true,
   "documentation": "https://energypriceforecast.eu/en/home-assistant-electricity-price-co2-forecast/",
   "integration_type": "service",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/hendriksoppa-droid/energypriceforecast-home-assistant/issues",
+  "issue_tracker": "https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/issues",
   "requirements": [],
   "version": "0.1.0"
 }

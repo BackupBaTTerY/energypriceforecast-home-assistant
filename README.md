@@ -30,7 +30,7 @@ Until the integration is part of the HACS default repository list:
 
 1. Open HACS in Home Assistant.
 2. Open the menu and choose **Custom repositories**.
-3. Add `https://github.com/hendriksoppa-droid/energypriceforecast-home-assistant`
+3. Add `https://github.com/BackupBaTTerY/energypriceforecast-home-assistant`
    as category **Integration**.
 4. Install **Energy Price Forecast EU** and restart Home Assistant.
 5. Open **Settings > Devices & services > Add integration** and search for
@@ -67,5 +67,5 @@ inside the Home Assistant config entry and is redacted from diagnostics.
 ## Support
 
 - [Setup documentation](https://energypriceforecast.eu/en/home-assistant-electricity-price-co2-forecast/)
-- [Issue tracker](https://github.com/hendriksoppa-droid/energypriceforecast-home-assistant/issues)
+- [Issue tracker](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/issues)
 - [Home Assistant community topic](https://community.home-assistant.io/t/free-electricity-price-and-co2-forecast-api-for-home-assistant-automations/1014796)

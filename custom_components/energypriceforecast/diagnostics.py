@@ -8,10 +8,10 @@ from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .const import CONF_API_KEY
+from .const import CONF_API_KEY, CONF_POSTAL_CODE
 from .coordinator import EnergyPriceForecastCoordinator
 
-TO_REDACT = {CONF_API_KEY}
+TO_REDACT = {CONF_API_KEY, CONF_POSTAL_CODE}
 
 
 async def async_get_config_entry_diagnostics(
@@ -22,5 +22,7 @@ async def async_get_config_entry_diagnostics(
     return {
         "config": async_redact_data(dict(entry.data), TO_REDACT),
         "data": coordinator.data,
+        "retail_data": coordinator.retail_data,
+        "cheapest_hours": coordinator.cheapest_hours,
         "last_update_success": coordinator.last_update_success,
     }

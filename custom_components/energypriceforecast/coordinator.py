@@ -79,6 +79,7 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.postal_code = postal_code
         self.cheapest_hours_count = cheapest_hours_count
         self.retail_data: dict[str, Any] | None = None
+        self.price_series: dict[str, Any] | None = None
         self.cheapest_hours: list[dict[str, Any]] | None = None
 
     async def _async_update_data(self) -> dict[str, Any]:
@@ -98,13 +99,19 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             except EnergyPriceForecastApiError as err:
                 _LOGGER.warning("Retail price update failed: %s", err)
 
-        if self.cheapest_hours_count > 0:
-            try:
-                price_series = await self.api.async_get_prices(price_mode="base")
-                self.cheapest_hours = _cheapest_hour_blocks(
-                    price_series["entries"], self.cheapest_hours_count
-                )
-            except EnergyPriceForecastApiError as err:
-                _LOGGER.warning("Cheapest-hours update failed: %s", err)
+        # The raw price series backs both the price-series sensor (for
+        # charting, e.g. with apexcharts-card) and the optional
+        # cheapest-hours feature. Fetched unconditionally: it is the
+        # forecast data this integration exists to expose, not a niche
+        # add-on.
+        try:
+            self.price_series = await self.api.async_get_prices(price_mode="base")
+        except EnergyPriceForecastApiError as err:
+            _LOGGER.warning("Price series update failed: %s", err)
+
+        if self.cheapest_hours_count > 0 and self.price_series:
+            self.cheapest_hours = _cheapest_hour_blocks(
+                self.price_series["entries"], self.cheapest_hours_count
+            )
 
         return summary

@@ -69,6 +69,7 @@
       "used_horizon": {"name": "Genutzter Horizont"},
       "api_key_state": {"name": "API-Key-Status"},
       "last_update": {"name": "Letzte API-Aktualisierung"},
+      "price_series": {"name": "Preisreihe"},
       "retail_current_price": {"name": "Aktueller Endkundenpreis"},
       "cheapest_hours_next_start": {"name": "Nächste günstige Stunde"}
     },

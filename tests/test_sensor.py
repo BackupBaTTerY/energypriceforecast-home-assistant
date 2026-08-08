@@ -35,7 +35,9 @@ SUMMARY_PAYLOAD = {
 }
 
 
-async def _setup_entry(hass, extra_data: dict | None = None) -> MockConfigEntry:
+async def _setup_entry(
+    hass, extra_data: dict | None = None, price_entries: list[dict] | None = None
+) -> MockConfigEntry:
     entry = MockConfigEntry(
         domain=DOMAIN,
         unique_id="DE",
@@ -56,7 +58,9 @@ async def _setup_entry(hass, extra_data: dict | None = None) -> MockConfigEntry:
         "country": "DE",
         "currency": "EUR",
         "unit": "EUR/kWh",
-        "entries": [
+        "entries": price_entries
+        if price_entries is not None
+        else [
             {"start": "2026-08-08T04:00:00Z", "end": "2026-08-08T05:00:00Z", "value": 0.1}
         ],
     }
@@ -99,6 +103,7 @@ async def test_core_sensors_are_created_without_optional_features(hass) -> None:
 
     assert f"{entry.entry_id}_current_price" in unique_ids
     assert f"{entry.entry_id}_cheapest_window_active" in unique_ids
+    assert f"{entry.entry_id}_price_series" in unique_ids
     assert f"{entry.entry_id}_retail_current_price" not in unique_ids
     assert f"{entry.entry_id}_cheapest_hours_next_start" not in unique_ids
     assert f"{entry.entry_id}_is_in_cheapest_hours" not in unique_ids
@@ -127,6 +132,23 @@ async def test_cheapest_window_binary_sensor_is_off(hass) -> None:
     state = _state_for_unique_id(hass, entry, "cheapest_window_active")
 
     assert state.state == "off"
+
+
+async def test_price_series_sensor_splits_today_and_tomorrow(hass, freezer) -> None:
+    """raw_today/raw_tomorrow only include entries matching the local calendar date."""
+    freezer.move_to("2026-08-08T10:00:00+00:00")
+    entries = [
+        {"start": "2026-08-08T11:00:00Z", "end": "2026-08-08T12:00:00Z", "value": 0.11},
+        {"start": "2026-08-08T23:00:00Z", "end": "2026-08-09T00:00:00Z", "value": 0.12},
+        {"start": "2026-08-09T05:00:00Z", "end": "2026-08-09T06:00:00Z", "value": 0.13},
+    ]
+
+    entry = await _setup_entry(hass, price_entries=entries)
+
+    state = _state_for_unique_id(hass, entry, "price_series")
+
+    assert [item["value"] for item in state.attributes["raw_today"]] == [0.11, 0.12]
+    assert [item["value"] for item in state.attributes["raw_tomorrow"]] == [0.13]
 
 
 async def test_optional_entities_created_when_features_enabled(hass) -> None:

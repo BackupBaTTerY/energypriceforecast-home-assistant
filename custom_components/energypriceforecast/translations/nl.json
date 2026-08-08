@@ -69,6 +69,7 @@
       "used_horizon": {"name": "Gebruikte horizon"},
       "api_key_state": {"name": "API-sleutelstatus"},
       "last_update": {"name": "Laatste API-update"},
+      "price_series": {"name": "Prijsreeks"},
       "retail_current_price": {"name": "Huidige consumentenprijs"},
       "cheapest_hours_next_start": {"name": "Volgend goedkoopste uur"}
     },

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -17,6 +17,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.util import dt as dt_util
 
 from .coordinator import EnergyPriceForecastCoordinator
 from .entity import EnergyPriceForecastEntity
@@ -40,11 +41,15 @@ def _timestamp(value: Any) -> datetime | None:
         return None
 
 
-def _current_retail_entry(
-    retail_data: dict[str, Any] | None,
+def _current_entry(
+    series_data: dict[str, Any] | None,
 ) -> dict[str, Any] | None:
-    """Return the price entry covering now, or the earliest one as fallback."""
-    entries = _path(retail_data or {}, "entries") if retail_data else None
+    """Return the price entry covering now, or the earliest one as fallback.
+
+    Works for any {"entries": [...]} payload from the prices endpoint,
+    whether that's the retail series or the base price series.
+    """
+    entries = _path(series_data or {}, "entries") if series_data else None
     if not isinstance(entries, list) or not entries:
         return None
     now = datetime.now(timezone.utc)
@@ -54,6 +59,41 @@ def _current_retail_entry(
         if start is not None and end is not None and start <= now < end:
             return entry
     return entries[0]
+
+
+def _split_today_tomorrow(
+    entries: Any,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Split raw price entries into today's and tomorrow's, in local time.
+
+    Matches the raw_today/raw_tomorrow attribute convention used by the
+    Nordpool integration, so existing apexcharts-card templates work
+    with minimal changes. Only contains the hours actually returned by
+    the API - a rolling window starting at "now" - not the full
+    calendar day; hours of today that have already passed are not
+    included since the API does not look backward from local midnight.
+    """
+    if not isinstance(entries, list):
+        return [], []
+    local_today = dt_util.now().date()
+    local_tomorrow = local_today + timedelta(days=1)
+    today: list[dict[str, Any]] = []
+    tomorrow: list[dict[str, Any]] = []
+    for entry in entries:
+        start = _timestamp(entry.get("start"))
+        if start is None:
+            continue
+        item = {
+            "start": entry.get("start"),
+            "end": entry.get("end"),
+            "value": entry.get("value"),
+        }
+        local_date = dt_util.as_local(start).date()
+        if local_date == local_today:
+            today.append(item)
+        elif local_date == local_tomorrow:
+            tomorrow.append(item)
+    return today, tomorrow
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -184,6 +224,7 @@ async def async_setup_entry(
         EnergyPriceForecastSensor(coordinator, entry, description)
         for description in SENSORS
     ]
+    entities.append(EnergyPriceForecastPriceSeriesSensor(coordinator, entry))
     if coordinator.retail_pricing:
         entities.append(EnergyPriceForecastRetailPriceSensor(coordinator, entry))
     if coordinator.cheapest_hours_count > 0:
@@ -239,12 +280,52 @@ class EnergyPriceForecastRetailPriceSensor(EnergyPriceForecastEntity, SensorEnti
 
     @property
     def native_value(self) -> Any:
-        current = _current_retail_entry(self.coordinator.retail_data)
+        current = _current_entry(self.coordinator.retail_data)
         return current.get("value") if current else None
 
     @property
     def native_unit_of_measurement(self) -> str | None:
         return _path(self.coordinator.retail_data or {}, "unit")
+
+
+class EnergyPriceForecastPriceSeriesSensor(EnergyPriceForecastEntity, SensorEntity):
+    """Raw price forecast series for charting and custom automations.
+
+    Always created (unlike the other optional sensors): forecasting the
+    price series is this integration's core purpose, not a niche
+    add-on. State mirrors the current market price; raw_today/
+    raw_tomorrow attributes carry the full series. Backed by
+    coordinator.price_series rather than the shared summary response.
+    """
+
+    _attr_translation_key = "price_series"
+    _attr_icon = "mdi:chart-line"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 4
+
+    def __init__(
+        self, coordinator: EnergyPriceForecastCoordinator, entry: ConfigEntry
+    ) -> None:
+        super().__init__(coordinator, entry, "price_series")
+
+    @property
+    def available(self) -> bool:
+        return super().available and self.coordinator.price_series is not None
+
+    @property
+    def native_value(self) -> Any:
+        current = _current_entry(self.coordinator.price_series)
+        return current.get("value") if current else None
+
+    @property
+    def native_unit_of_measurement(self) -> str | None:
+        return _path(self.coordinator.price_series or {}, "unit")
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        entries = _path(self.coordinator.price_series or {}, "entries")
+        today, tomorrow = _split_today_tomorrow(entries)
+        return {"raw_today": today, "raw_tomorrow": tomorrow}
 
 
 class EnergyPriceForecastCheapestHoursSensor(EnergyPriceForecastEntity, SensorEntity):

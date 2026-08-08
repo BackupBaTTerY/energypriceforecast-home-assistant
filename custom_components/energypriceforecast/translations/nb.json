@@ -69,6 +69,7 @@
       "used_horizon": {"name": "Brukt horisont"},
       "api_key_state": {"name": "API-nøkkelstatus"},
       "last_update": {"name": "Siste API-oppdatering"},
+      "price_series": {"name": "Prisserie"},
       "retail_current_price": {"name": "Nåværende forbrukerpris"},
       "cheapest_hours_next_start": {"name": "Neste billigste time"}
     },

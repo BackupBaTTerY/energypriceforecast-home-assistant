@@ -69,6 +69,7 @@
       "used_horizon": {"name": "Horizon utilisé"},
       "api_key_state": {"name": "État de la clé API"},
       "last_update": {"name": "Dernière mise à jour API"},
+      "price_series": {"name": "Série de prix"},
       "retail_current_price": {"name": "Prix de détail actuel"},
       "cheapest_hours_next_start": {"name": "Prochaine heure la moins chère"}
     },

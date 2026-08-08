@@ -13,8 +13,10 @@ from .const import (
     CONF_MARKET,
     CONF_POSTAL_CODE,
     CONF_RETAIL_PRICING,
+    CONF_UPDATE_INTERVAL_MINUTES,
     CONF_WINDOW_HOURS,
     DEFAULT_API_URL,
+    DEFAULT_UPDATE_INTERVAL_MINUTES,
     PLATFORMS,
     PRICES_API_URL,
 )
@@ -37,6 +39,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         api,
         retail_pricing=entry.data.get(CONF_RETAIL_PRICING, False),
         postal_code=entry.data.get(CONF_POSTAL_CODE),
+        update_interval_minutes=entry.data.get(
+            CONF_UPDATE_INTERVAL_MINUTES, DEFAULT_UPDATE_INTERVAL_MINUTES
+        ),
     )
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator

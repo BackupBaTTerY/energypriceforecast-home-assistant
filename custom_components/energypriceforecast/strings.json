@@ -11,14 +11,16 @@
           "window_hours": "Best-window duration",
           "api_key": "API key (optional)",
           "retail_pricing": "Enable retail (all-in) pricing",
-          "postal_code": "Postal code"
+          "postal_code": "Postal code",
+          "update_interval_minutes": "Update interval (minutes)"
         },
         "data_description": {
           "horizon_hours": "The API reports the actually permitted horizon as a diagnostic sensor.",
           "window_hours": "Length of the cheapest and greenest continuous window.",
           "api_key": "Leave empty for public access. The key is stored in the Home Assistant config entry.",
           "retail_pricing": "Adds an assumption-based all-in price (grid fee, levies, VAT) in addition to the market price. Only available for some markets; not an exact supplier tariff.",
-          "postal_code": "Required for Germany when retail pricing is enabled, used for the grid-fee lookup. Not used for other markets."
+          "postal_code": "Required for Germany when retail pricing is enabled, used for the grid-fee lookup. Not used for other markets.",
+          "update_interval_minutes": "How often to poll the API. Data resolution is 15 minutes, so shorter intervals rarely add new information."
         }
       },
       "reconfigure": {
@@ -30,7 +32,8 @@
           "window_hours": "Best-window duration",
           "api_key": "New API key (optional)",
           "retail_pricing": "Enable retail (all-in) pricing",
-          "postal_code": "Postal code"
+          "postal_code": "Postal code",
+          "update_interval_minutes": "Update interval (minutes)"
         }
       }
     },

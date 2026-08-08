@@ -11,14 +11,16 @@
           "window_hours": "Dauer des besten Fensters",
           "api_key": "API-Key (optional)",
           "retail_pricing": "Endkundenpreis (Gesamtpreis) aktivieren",
-          "postal_code": "Postleitzahl"
+          "postal_code": "Postleitzahl",
+          "update_interval_minutes": "Aktualisierungsintervall (Minuten)"
         },
         "data_description": {
           "horizon_hours": "Den tatsächlich erlaubten Horizont zeigt die Integration als Diagnose-Sensor an.",
           "window_hours": "Länge des günstigsten und des grünsten zusammenhängenden Zeitfensters.",
           "api_key": "Für den öffentlichen Zugang leer lassen. Der Schlüssel wird im Home-Assistant-Konfigurationseintrag gespeichert.",
           "retail_pricing": "Ergänzt einen annahmenbasierten Gesamtpreis (Netzentgelt, Abgaben, MwSt.) zusätzlich zum Marktpreis. Nur für einige Märkte verfügbar; kein exakter Liefertarif.",
-          "postal_code": "Für Deutschland bei aktiviertem Endkundenpreis erforderlich, wird für die Netzentgelt-Ermittlung genutzt. Für andere Märkte nicht benötigt."
+          "postal_code": "Für Deutschland bei aktiviertem Endkundenpreis erforderlich, wird für die Netzentgelt-Ermittlung genutzt. Für andere Märkte nicht benötigt.",
+          "update_interval_minutes": "Wie oft die API abgefragt wird. Die Datenauflösung liegt bei 15 Minuten, kürzere Intervalle liefern daher selten neue Informationen."
         }
       },
       "reconfigure": {
@@ -30,7 +32,8 @@
           "window_hours": "Dauer des besten Fensters",
           "api_key": "Neuer API-Key (optional)",
           "retail_pricing": "Endkundenpreis (Gesamtpreis) aktivieren",
-          "postal_code": "Postleitzahl"
+          "postal_code": "Postleitzahl",
+          "update_interval_minutes": "Aktualisierungsintervall (Minuten)"
         }
       }
     },

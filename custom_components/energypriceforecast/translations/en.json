@@ -11,7 +11,8 @@
           "window_hours": "Best-window duration",
           "api_key": "API key (optional)",
           "retail_pricing": "Enable retail (all-in) pricing",
-          "postal_code": "Postal code"
+          "postal_code": "Postal code",
+          "update_interval_minutes": "Update interval (minutes)"
         }
       },
       "reconfigure": {
@@ -23,7 +24,8 @@
           "window_hours": "Best-window duration",
           "api_key": "New API key (optional)",
           "retail_pricing": "Enable retail (all-in) pricing",
-          "postal_code": "Postal code"
+          "postal_code": "Postal code",
+          "update_interval_minutes": "Update interval (minutes)"
         }
       }
     },

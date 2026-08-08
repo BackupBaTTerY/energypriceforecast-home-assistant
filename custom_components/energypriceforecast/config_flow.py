@@ -38,12 +38,16 @@ from .const import (
     CONF_MARKET,
     CONF_POSTAL_CODE,
     CONF_RETAIL_PRICING,
+    CONF_UPDATE_INTERVAL_MINUTES,
     CONF_WINDOW_HOURS,
     DEFAULT_API_URL,
     DEFAULT_HORIZON_HOURS,
+    DEFAULT_UPDATE_INTERVAL_MINUTES,
     DEFAULT_WINDOW_HOURS,
     DOMAIN,
     MARKETS,
+    MAX_UPDATE_INTERVAL_MINUTES,
+    MIN_UPDATE_INTERVAL_MINUTES,
     PRICES_API_URL,
     RETAIL_MARKETS,
 )
@@ -96,6 +100,19 @@ def _schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
             vol.Optional(
                 CONF_POSTAL_CODE, default=defaults.get(CONF_POSTAL_CODE, "")
             ): TextSelector(TextSelectorConfig(type=TextSelectorType.TEXT)),
+            vol.Optional(
+                CONF_UPDATE_INTERVAL_MINUTES,
+                default=defaults.get(
+                    CONF_UPDATE_INTERVAL_MINUTES, DEFAULT_UPDATE_INTERVAL_MINUTES
+                ),
+            ): NumberSelector(
+                NumberSelectorConfig(
+                    min=MIN_UPDATE_INTERVAL_MINUTES,
+                    max=MAX_UPDATE_INTERVAL_MINUTES,
+                    step=5,
+                    mode=NumberSelectorMode.BOX,
+                )
+            ),
         }
     )
 
@@ -116,6 +133,9 @@ def _normalize_input(user_input: dict[str, Any]) -> dict[str, Any]:
         normalized[CONF_POSTAL_CODE] = postal_code
     else:
         normalized.pop(CONF_POSTAL_CODE, None)
+    normalized[CONF_UPDATE_INTERVAL_MINUTES] = int(
+        normalized.get(CONF_UPDATE_INTERVAL_MINUTES, DEFAULT_UPDATE_INTERVAL_MINUTES)
+    )
     return normalized
 
 

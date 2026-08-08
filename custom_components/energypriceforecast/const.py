@@ -1,6 +1,5 @@
 """Constants for Energy Price Forecast EU."""
 
-from datetime import timedelta
 from typing import Final
 
 DOMAIN: Final = "energypriceforecast"
@@ -13,7 +12,9 @@ PRICES_API_URL: Final = (
 )
 DEFAULT_HORIZON_HOURS: Final = 48
 DEFAULT_WINDOW_HOURS: Final = 4
-UPDATE_INTERVAL: Final = timedelta(minutes=30)
+DEFAULT_UPDATE_INTERVAL_MINUTES: Final = 30
+MIN_UPDATE_INTERVAL_MINUTES: Final = 15
+MAX_UPDATE_INTERVAL_MINUTES: Final = 120
 
 CONF_MARKET: Final = "market"
 CONF_HORIZON_HOURS: Final = "horizon_hours"
@@ -21,6 +22,7 @@ CONF_WINDOW_HOURS: Final = "window_hours"
 CONF_API_KEY: Final = "api_key"
 CONF_RETAIL_PRICING: Final = "retail_pricing"
 CONF_POSTAL_CODE: Final = "postal_code"
+CONF_UPDATE_INTERVAL_MINUTES: Final = "update_interval_minutes"
 
 PLATFORMS: Final = ["sensor", "binary_sensor"]
 

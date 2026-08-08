@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import timedelta
 from typing import Any
 
 from homeassistant.core import HomeAssistant
@@ -12,7 +13,7 @@ from homeassistant.helpers.update_coordinator import (
 )
 
 from .api import EnergyPriceForecastApi, EnergyPriceForecastApiError
-from .const import NAME, UPDATE_INTERVAL
+from .const import DEFAULT_UPDATE_INTERVAL_MINUTES, NAME
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -26,12 +27,13 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         api: EnergyPriceForecastApi,
         retail_pricing: bool = False,
         postal_code: str | None = None,
+        update_interval_minutes: int = DEFAULT_UPDATE_INTERVAL_MINUTES,
     ) -> None:
         super().__init__(
             hass,
             logger=_LOGGER,
             name=NAME,
-            update_interval=UPDATE_INTERVAL,
+            update_interval=timedelta(minutes=update_interval_minutes),
         )
         self.api = api
         self.retail_pricing = retail_pricing

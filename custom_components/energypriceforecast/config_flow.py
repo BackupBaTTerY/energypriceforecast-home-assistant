@@ -78,7 +78,12 @@ def _schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                 default=defaults.get(CONF_HORIZON_HOURS, DEFAULT_HORIZON_HOURS),
             ): SelectSelector(
                 SelectSelectorConfig(
-                    options=["24", "48", "72", "120"],
+                    options=[
+                        SelectOptionDict(value="24", label="24"),
+                        SelectOptionDict(value="48", label="48"),
+                        SelectOptionDict(value="72", label="72 (API-Key)"),
+                        SelectOptionDict(value="120", label="120 (API-Key)"),
+                    ],
                     mode=SelectSelectorMode.DROPDOWN,
                 )
             ),

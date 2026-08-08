@@ -120,14 +120,14 @@ SENSORS: tuple[EnergyPriceForecastSensorDescription, ...] = (
     EnergyPriceForecastSensorDescription(
         key="greenest_window_start",
         translation_key="greenest_window_start",
-        icon="mdi:clock-start",
+        icon="mdi:leaf-clock",
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=lambda data: _timestamp(_path(data, "flat", "best_co2_window_start")),
     ),
     EnergyPriceForecastSensorDescription(
         key="greenest_window_end",
         translation_key="greenest_window_end",
-        icon="mdi:clock-end",
+        icon="mdi:leaf-clock",
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=lambda data: _timestamp(_path(data, "flat", "best_co2_window_end")),
     ),

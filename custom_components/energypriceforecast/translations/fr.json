@@ -1,0 +1,81 @@
+{
+  "title": "Energy Price Forecast EU",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Ajouter une prévision de prix de l'électricité et de CO2",
+        "description": "Choisissez un marché et l'horizon de prévision. L'accès public fournit actuellement jusqu'à 48 heures ; une clé API éligible peut débloquer 120 heures.",
+        "data": {
+          "market": "Marché ou zone de prix",
+          "horizon_hours": "Horizon demandé",
+          "window_hours": "Durée de la meilleure fenêtre",
+          "api_key": "Clé API (optionnelle)",
+          "retail_pricing": "Activer le prix de détail (tout compris)",
+          "postal_code": "Code postal",
+          "update_interval_minutes": "Intervalle de mise à jour (minutes)",
+          "cheapest_hours_count": "Heures les moins chères à suivre (0 pour désactiver)"
+        },
+        "data_description": {
+          "horizon_hours": "L'API indique l'horizon réellement autorisé via un capteur de diagnostic.",
+          "window_hours": "Durée de la fenêtre continue la moins chère et la plus verte.",
+          "api_key": "Laissez vide pour un accès public. La clé est stockée dans l'entrée de configuration de Home Assistant.",
+          "retail_pricing": "Ajoute un prix tout compris basé sur des hypothèses (frais de réseau, taxes, TVA) en plus du prix du marché. Disponible uniquement pour certains marchés ; ce n'est pas un tarif fournisseur exact.",
+          "postal_code": "Requis pour l'Allemagne lorsque le prix de détail est activé, utilisé pour déterminer les frais de réseau. Non utilisé pour les autres marchés.",
+          "update_interval_minutes": "Fréquence d'interrogation de l'API. La résolution des données est de 15 minutes, des intervalles plus courts apportent donc rarement de nouvelles informations.",
+          "cheapest_hours_count": "Ajoute des entités pour les N heures les moins chères à venir, qui peuvent ne pas être consécutives - utile pour des automatisations comme faire fonctionner un appareil pendant les heures les moins chères de la journée."
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigurer la prévision",
+        "description": "Laissez le champ de la clé API vide pour conserver la clé actuellement enregistrée.",
+        "data": {
+          "market": "Marché ou zone de prix",
+          "horizon_hours": "Horizon demandé",
+          "window_hours": "Durée de la meilleure fenêtre",
+          "api_key": "Nouvelle clé API (optionnelle)",
+          "retail_pricing": "Activer le prix de détail (tout compris)",
+          "postal_code": "Code postal",
+          "update_interval_minutes": "Intervalle de mise à jour (minutes)",
+          "cheapest_hours_count": "Heures les moins chères à suivre (0 pour désactiver)"
+        }
+      }
+    },
+    "error": {
+      "already_configured": "Ce marché est déjà configuré.",
+      "cannot_connect": "Impossible de se connecter à Energy Price Forecast EU.",
+      "invalid_auth": "La clé API a été rejetée ou n'est pas autorisée.",
+      "invalid_response": "L'API a renvoyé une réponse inattendue.",
+      "retail_not_supported": "Le prix de détail n'est pas encore disponible pour ce marché.",
+      "postal_code_required": "Un code postal est requis pour le prix de détail en Allemagne.",
+      "invalid_postal_code": "Saisissez un code postal allemand à 5 chiffres.",
+      "retail_unavailable": "Impossible de vérifier le prix de détail pour ce marché ou ce code postal."
+    },
+    "abort": {
+      "already_configured": "Ce marché est déjà configuré."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "current_price": {"name": "Prix actuel"},
+      "current_co2": {"name": "Intensité CO2 actuelle"},
+      "cheapest_window_average_price": {"name": "Prix moyen de la fenêtre la moins chère"},
+      "cheapest_window_start": {"name": "Début de la fenêtre la moins chère"},
+      "cheapest_window_end": {"name": "Fin de la fenêtre la moins chère"},
+      "greenest_window_average_co2": {"name": "CO2 moyen de la fenêtre la plus verte"},
+      "greenest_window_start": {"name": "Début de la fenêtre la plus verte"},
+      "greenest_window_end": {"name": "Fin de la fenêtre la plus verte"},
+      "combined_window_score": {"name": "Score de fenêtre combiné"},
+      "allowed_horizon": {"name": "Horizon autorisé"},
+      "used_horizon": {"name": "Horizon utilisé"},
+      "api_key_state": {"name": "État de la clé API"},
+      "last_update": {"name": "Dernière mise à jour API"},
+      "retail_current_price": {"name": "Prix de détail actuel"},
+      "cheapest_hours_next_start": {"name": "Prochaine heure la moins chère"}
+    },
+    "binary_sensor": {
+      "cheapest_window_active": {"name": "Fenêtre la moins chère active"},
+      "greenest_window_active": {"name": "Fenêtre la plus verte active"},
+      "is_in_cheapest_hours": {"name": "Heures les moins chères actives"}
+    }
+  }
+}

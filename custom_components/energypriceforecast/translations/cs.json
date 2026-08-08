@@ -1,0 +1,81 @@
+{
+  "title": "Energy Price Forecast EU",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Přidat předpověď ceny elektřiny a CO2",
+        "description": "Vyberte trh a horizont předpovědi. Veřejný přístup aktuálně poskytuje až 48 hodin; oprávněný API klíč může odemknout 120 hodin.",
+        "data": {
+          "market": "Trh nebo cenová zóna",
+          "horizon_hours": "Požadovaný horizont",
+          "window_hours": "Délka nejlepšího okna",
+          "api_key": "API klíč (volitelný)",
+          "retail_pricing": "Povolit maloobchodní (kompletní) cenu",
+          "postal_code": "PSČ",
+          "update_interval_minutes": "Interval aktualizace (minuty)",
+          "cheapest_hours_count": "Sledovat nejlevnější hodiny (0 pro vypnutí)"
+        },
+        "data_description": {
+          "horizon_hours": "API hlásí skutečně povolený horizont jako diagnostický senzor.",
+          "window_hours": "Délka nejlevnějšího a nejzelenějšího souvislého časového okna.",
+          "api_key": "Ponechte prázdné pro veřejný přístup. Klíč se ukládá do konfiguračního záznamu Home Assistant.",
+          "retail_pricing": "Přidává odhadovanou kompletní cenu (poplatek za síť, poplatky, DPH) navíc k tržní ceně. Dostupné jen pro některé trhy; nejde o přesný tarif dodavatele.",
+          "postal_code": "Vyžadováno pro Německo, pokud je povolena maloobchodní cena, používá se pro vyhledání poplatku za síť. Pro ostatní trhy se nepoužívá.",
+          "update_interval_minutes": "Jak často se API dotazuje. Rozlišení dat je 15 minut, kratší intervaly proto zřídka přinášejí nové informace.",
+          "cheapest_hours_count": "Přidává entity pro N nejlevnějších nadcházejících hodin, které nemusí na sebe navazovat - užitečné pro automatizace jako spuštění spotřebiče během nejlevnějších hodin dne."
+        }
+      },
+      "reconfigure": {
+        "title": "Znovu nakonfigurovat předpověď",
+        "description": "Ponechte pole API klíče prázdné, chcete-li zachovat aktuálně uložený klíč.",
+        "data": {
+          "market": "Trh nebo cenová zóna",
+          "horizon_hours": "Požadovaný horizont",
+          "window_hours": "Délka nejlepšího okna",
+          "api_key": "Nový API klíč (volitelný)",
+          "retail_pricing": "Povolit maloobchodní (kompletní) cenu",
+          "postal_code": "PSČ",
+          "update_interval_minutes": "Interval aktualizace (minuty)",
+          "cheapest_hours_count": "Sledovat nejlevnější hodiny (0 pro vypnutí)"
+        }
+      }
+    },
+    "error": {
+      "already_configured": "Tento trh je již nakonfigurován.",
+      "cannot_connect": "Nepodařilo se připojit k Energy Price Forecast EU.",
+      "invalid_auth": "API klíč byl odmítnut nebo není autorizován.",
+      "invalid_response": "API vrátilo neočekávanou odpověď.",
+      "retail_not_supported": "Maloobchodní ceny pro tento trh zatím nejsou k dispozici.",
+      "postal_code_required": "Pro maloobchodní ceny v Německu je vyžadováno PSČ.",
+      "invalid_postal_code": "Zadejte 5místné německé PSČ.",
+      "retail_unavailable": "Nepodařilo se ověřit maloobchodní cenu pro tento trh nebo PSČ."
+    },
+    "abort": {
+      "already_configured": "Tento trh je již nakonfigurován."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "current_price": {"name": "Aktuální cena"},
+      "current_co2": {"name": "Aktuální intenzita CO2"},
+      "cheapest_window_average_price": {"name": "Průměrná cena nejlevnějšího okna"},
+      "cheapest_window_start": {"name": "Začátek nejlevnějšího okna"},
+      "cheapest_window_end": {"name": "Konec nejlevnějšího okna"},
+      "greenest_window_average_co2": {"name": "Průměrné CO2 nejzelenějšího okna"},
+      "greenest_window_start": {"name": "Začátek nejzelenějšího okna"},
+      "greenest_window_end": {"name": "Konec nejzelenějšího okna"},
+      "combined_window_score": {"name": "Kombinované skóre okna"},
+      "allowed_horizon": {"name": "Povolený horizont"},
+      "used_horizon": {"name": "Využitý horizont"},
+      "api_key_state": {"name": "Stav API klíče"},
+      "last_update": {"name": "Poslední aktualizace API"},
+      "retail_current_price": {"name": "Aktuální maloobchodní cena"},
+      "cheapest_hours_next_start": {"name": "Další nejlevnější hodina"}
+    },
+    "binary_sensor": {
+      "cheapest_window_active": {"name": "Nejlevnější okno aktivní"},
+      "greenest_window_active": {"name": "Nejzelenější okno aktivní"},
+      "is_in_cheapest_hours": {"name": "Nejlevnější hodiny aktivní"}
+    }
+  }
+}

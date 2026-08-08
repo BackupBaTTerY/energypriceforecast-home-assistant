@@ -1,0 +1,81 @@
+{
+  "title": "Energy Price Forecast EU",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Elektriciteitsprijs- en CO2-prognose toevoegen",
+        "description": "Kies een markt en de prognosehorizon. Publieke toegang biedt momenteel tot 48 uur; een gerechtigde API-sleutel kan 120 uur ontgrendelen.",
+        "data": {
+          "market": "Markt of prijszone",
+          "horizon_hours": "Gewenste horizon",
+          "window_hours": "Duur van het beste tijdvak",
+          "api_key": "API-sleutel (optioneel)",
+          "retail_pricing": "Consumentenprijs (alles-in) inschakelen",
+          "postal_code": "Postcode",
+          "update_interval_minutes": "Bijwerkinterval (minuten)",
+          "cheapest_hours_count": "Goedkoopste uren volgen (0 om uit te schakelen)"
+        },
+        "data_description": {
+          "horizon_hours": "De API meldt de daadwerkelijk toegestane horizon als een diagnostische sensor.",
+          "window_hours": "Lengte van het goedkoopste en groenste aaneengesloten tijdvak.",
+          "api_key": "Laat leeg voor publieke toegang. De sleutel wordt opgeslagen in het Home Assistant-configuratie-item.",
+          "retail_pricing": "Voegt een op aannames gebaseerde alles-in prijs toe (netkosten, heffingen, btw) naast de marktprijs. Alleen beschikbaar voor sommige markten; geen exact leveringstarief.",
+          "postal_code": "Vereist voor Duitsland wanneer consumentenprijzen zijn ingeschakeld, gebruikt voor het opzoeken van netkosten. Niet gebruikt voor andere markten.",
+          "update_interval_minutes": "Hoe vaak de API wordt bevraagd. De gegevensresolutie is 15 minuten, dus kortere intervallen leveren zelden nieuwe informatie op.",
+          "cheapest_hours_count": "Voegt entiteiten toe voor de N goedkoopste komende uren, die niet aaneengesloten hoeven te zijn - handig voor automatiseringen zoals een apparaat laten draaien tijdens de goedkoopste uren van de dag."
+        }
+      },
+      "reconfigure": {
+        "title": "Prognose opnieuw configureren",
+        "description": "Laat het API-sleutelveld leeg om de huidige opgeslagen sleutel te behouden.",
+        "data": {
+          "market": "Markt of prijszone",
+          "horizon_hours": "Gewenste horizon",
+          "window_hours": "Duur van het beste tijdvak",
+          "api_key": "Nieuwe API-sleutel (optioneel)",
+          "retail_pricing": "Consumentenprijs (alles-in) inschakelen",
+          "postal_code": "Postcode",
+          "update_interval_minutes": "Bijwerkinterval (minuten)",
+          "cheapest_hours_count": "Goedkoopste uren volgen (0 om uit te schakelen)"
+        }
+      }
+    },
+    "error": {
+      "already_configured": "Deze markt is al geconfigureerd.",
+      "cannot_connect": "Kan geen verbinding maken met Energy Price Forecast EU.",
+      "invalid_auth": "De API-sleutel is geweigerd of niet geautoriseerd.",
+      "invalid_response": "De API heeft een onverwacht antwoord gegeven.",
+      "retail_not_supported": "Consumentenprijzen zijn nog niet beschikbaar voor deze markt.",
+      "postal_code_required": "Voor consumentenprijzen in Duitsland is een postcode vereist.",
+      "invalid_postal_code": "Voer een 5-cijferige Duitse postcode in.",
+      "retail_unavailable": "Kon de consumentenprijs voor deze markt of postcode niet verifiëren."
+    },
+    "abort": {
+      "already_configured": "Deze markt is al geconfigureerd."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "current_price": {"name": "Huidige prijs"},
+      "current_co2": {"name": "Huidige CO2-intensiteit"},
+      "cheapest_window_average_price": {"name": "Gemiddelde prijs goedkoopste tijdvak"},
+      "cheapest_window_start": {"name": "Start goedkoopste tijdvak"},
+      "cheapest_window_end": {"name": "Einde goedkoopste tijdvak"},
+      "greenest_window_average_co2": {"name": "Gemiddelde CO2 groenste tijdvak"},
+      "greenest_window_start": {"name": "Start groenste tijdvak"},
+      "greenest_window_end": {"name": "Einde groenste tijdvak"},
+      "combined_window_score": {"name": "Gecombineerde tijdvak-score"},
+      "allowed_horizon": {"name": "Toegestane horizon"},
+      "used_horizon": {"name": "Gebruikte horizon"},
+      "api_key_state": {"name": "API-sleutelstatus"},
+      "last_update": {"name": "Laatste API-update"},
+      "retail_current_price": {"name": "Huidige consumentenprijs"},
+      "cheapest_hours_next_start": {"name": "Volgend goedkoopste uur"}
+    },
+    "binary_sensor": {
+      "cheapest_window_active": {"name": "Goedkoopste tijdvak actief"},
+      "greenest_window_active": {"name": "Groenste tijdvak actief"},
+      "is_in_cheapest_hours": {"name": "Goedkoopste uren actief"}
+    }
+  }
+}

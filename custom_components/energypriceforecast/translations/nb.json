@@ -1,0 +1,81 @@
+{
+  "title": "Energy Price Forecast EU",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Legg til strømpris- og CO2-prognose",
+        "description": "Velg et marked og prognosehorisonten. Offentlig tilgang gir for øyeblikket opptil 48 timer; en kvalifisert API-nøkkel kan låse opp 120 timer.",
+        "data": {
+          "market": "Marked eller prissone",
+          "horizon_hours": "Ønsket horisont",
+          "window_hours": "Varighet på beste tidsvindu",
+          "api_key": "API-nøkkel (valgfritt)",
+          "retail_pricing": "Aktiver forbrukerpris (alt inkludert)",
+          "postal_code": "Postnummer",
+          "update_interval_minutes": "Oppdateringsintervall (minutter)",
+          "cheapest_hours_count": "Billigste timer å spore (0 for å deaktivere)"
+        },
+        "data_description": {
+          "horizon_hours": "API-et rapporterer den faktisk tillatte horisonten som en diagnostikksensor.",
+          "window_hours": "Lengden på det billigste og grønneste sammenhengende tidsvinduet.",
+          "api_key": "La stå tomt for offentlig tilgang. Nøkkelen lagres i Home Assistants konfigurasjonsoppføring.",
+          "retail_pricing": "Legger til en antagelsesbasert alt-inkludert-pris (nettleie, avgifter, mva.) i tillegg til markedsprisen. Kun tilgjengelig for enkelte markeder; ikke en eksakt leverandørtariff.",
+          "postal_code": "Kreves for Tyskland når forbrukerpris er aktivert, brukes til oppslag av nettleie. Brukes ikke for andre markeder.",
+          "update_interval_minutes": "Hvor ofte API-et spørres. Dataoppløsningen er 15 minutter, så kortere intervaller gir sjelden ny informasjon.",
+          "cheapest_hours_count": "Legger til entiteter for de N billigste kommende timene, som ikke trenger å henge sammen - nyttig for automatiseringer som å kjøre et apparat i de billigste timene på dagen."
+        }
+      },
+      "reconfigure": {
+        "title": "Konfigurer prognose på nytt",
+        "description": "La API-nøkkelfeltet stå tomt for å beholde den lagrede nøkkelen.",
+        "data": {
+          "market": "Marked eller prissone",
+          "horizon_hours": "Ønsket horisont",
+          "window_hours": "Varighet på beste tidsvindu",
+          "api_key": "Ny API-nøkkel (valgfritt)",
+          "retail_pricing": "Aktiver forbrukerpris (alt inkludert)",
+          "postal_code": "Postnummer",
+          "update_interval_minutes": "Oppdateringsintervall (minutter)",
+          "cheapest_hours_count": "Billigste timer å spore (0 for å deaktivere)"
+        }
+      }
+    },
+    "error": {
+      "already_configured": "Dette markedet er allerede konfigurert.",
+      "cannot_connect": "Kunne ikke koble til Energy Price Forecast EU.",
+      "invalid_auth": "API-nøkkelen ble avvist eller er ikke autorisert.",
+      "invalid_response": "API-et returnerte et uventet svar.",
+      "retail_not_supported": "Forbrukerpriser er ikke tilgjengelig for dette markedet ennå.",
+      "postal_code_required": "Et postnummer kreves for forbrukerpriser i Tyskland.",
+      "invalid_postal_code": "Oppgi et 5-sifret tysk postnummer.",
+      "retail_unavailable": "Kunne ikke bekrefte forbrukerprisen for dette markedet eller postnummeret."
+    },
+    "abort": {
+      "already_configured": "Dette markedet er allerede konfigurert."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "current_price": {"name": "Nåværende pris"},
+      "current_co2": {"name": "Nåværende CO2-intensitet"},
+      "cheapest_window_average_price": {"name": "Gjennomsnittspris billigste tidsvindu"},
+      "cheapest_window_start": {"name": "Start på billigste tidsvindu"},
+      "cheapest_window_end": {"name": "Slutt på billigste tidsvindu"},
+      "greenest_window_average_co2": {"name": "Gjennomsnittlig CO2 grønneste tidsvindu"},
+      "greenest_window_start": {"name": "Start på grønneste tidsvindu"},
+      "greenest_window_end": {"name": "Slutt på grønneste tidsvindu"},
+      "combined_window_score": {"name": "Kombinert tidsvindu-score"},
+      "allowed_horizon": {"name": "Tillatt horisont"},
+      "used_horizon": {"name": "Brukt horisont"},
+      "api_key_state": {"name": "API-nøkkelstatus"},
+      "last_update": {"name": "Siste API-oppdatering"},
+      "retail_current_price": {"name": "Nåværende forbrukerpris"},
+      "cheapest_hours_next_start": {"name": "Neste billigste time"}
+    },
+    "binary_sensor": {
+      "cheapest_window_active": {"name": "Billigste tidsvindu aktivt"},
+      "greenest_window_active": {"name": "Grønneste tidsvindu aktivt"},
+      "is_in_cheapest_hours": {"name": "Billigste timer aktive"}
+    }
+  }
+}

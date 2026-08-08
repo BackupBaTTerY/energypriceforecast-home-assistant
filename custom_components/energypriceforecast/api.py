@@ -23,6 +23,22 @@ class EnergyPriceForecastInvalidResponse(EnergyPriceForecastApiError):
     """The API response did not match the expected contract."""
 
 
+# The public API never returns HTTP 401/403 for a rejected key: it responds
+# with 200 and reports the outcome in meta.api_key_state instead. States other
+# than "valid" mean the supplied key was not accepted.
+REJECTED_API_KEY_STATES = frozenset(
+    {
+        "invalid",
+        "invalid_format",
+        "revoked",
+        "inactive",
+        "expired",
+        "lookup_failed",
+        "rate_limited",
+    }
+)
+
+
 class EnergyPriceForecastApi:
     """Small asynchronous API client using Home Assistant's shared session."""
 
@@ -92,4 +108,10 @@ class EnergyPriceForecastApi:
             raise EnergyPriceForecastInvalidResponse("The flat summary is missing.")
         if not isinstance(payload.get("meta"), dict):
             raise EnergyPriceForecastInvalidResponse("The access metadata is missing.")
+        if self._api_key:
+            api_key_state = payload["meta"].get("api_key_state")
+            if api_key_state in REJECTED_API_KEY_STATES:
+                raise EnergyPriceForecastAuthError(
+                    f"The API key was not accepted (state: {api_key_state})."
+                )
         return payload

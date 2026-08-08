@@ -7,8 +7,6 @@ The integration combines published day-ahead prices with forecast values for
 the remaining horizon. It exposes ready-to-use entities for automations without
 requiring YAML or JSON templates.
 
-> Beta: entity names and details may still change before version 1.0.
-
 ## Features
 
 - UI-based setup through Home Assistant's integration flow
@@ -16,7 +14,13 @@ requiring YAML or JSON templates.
 - Cheapest price window and greenest CO2 window
 - Binary sensors indicating whether a best window is active now
 - Combined price/CO2 window score
-- Access and horizon diagnostics
+- Raw price-series sensor with `raw_today` / `raw_tomorrow` attributes
+  (compatible with `apexcharts-card` and custom templates)
+- Optional "cheapest N hours" tracking - the N cheapest upcoming hours, which
+  may be non-contiguous, unlike the single best continuous window above
+- Optional assumption-based all-in retail price for supported markets
+- Configurable poll interval (15-120 minutes)
+- Access and horizon diagnostics, with API key and postal code redacted
 - Multiple market entries, for example DK1 and DK2
 - Optional API key support
 
@@ -36,7 +40,7 @@ Until the integration is part of the HACS default repository list:
 5. Open **Settings > Devices & services > Add integration** and search for
    **Energy Price Forecast EU**.
 
-## Manual beta installation
+## Manual installation
 
 1. Copy `custom_components/energypriceforecast` from this repository to
    `/config/custom_components/energypriceforecast` in Home Assistant.
@@ -44,8 +48,8 @@ Until the integration is part of the HACS default repository list:
 3. Open **Settings > Devices & services > Add integration** and search for
    **Energy Price Forecast EU**.
 
-Remove an older YAML package using the same data only after the new entities
-have been checked. Both approaches can run in parallel during the beta test.
+An older YAML package using the same API remains fully supported and can run
+in parallel - remove it only after the new entities have been checked.
 
 ## Horizon
 
@@ -55,8 +59,9 @@ the actually permitted horizon, so automations can detect the effective range.
 
 ## Data updates
 
-All entities of one market share one API request every 30 minutes. The
-integration does not create one request per entity.
+All entities of one market share one API request per poll (default every 30
+minutes, configurable from 15 to 120 minutes). The integration does not
+create one request per entity.
 
 ## Privacy
 

@@ -23,6 +23,9 @@ CONF_API_KEY: Final = "api_key"
 CONF_RETAIL_PRICING: Final = "retail_pricing"
 CONF_POSTAL_CODE: Final = "postal_code"
 CONF_UPDATE_INTERVAL_MINUTES: Final = "update_interval_minutes"
+CONF_CHEAPEST_HOURS_COUNT: Final = "cheapest_hours_count"
+DEFAULT_CHEAPEST_HOURS_COUNT: Final = 0
+MAX_CHEAPEST_HOURS_COUNT: Final = 12
 
 PLATFORMS: Final = ["sensor", "binary_sensor"]
 

@@ -34,6 +34,7 @@ from .api import (
 )
 from .const import (
     CONF_API_KEY,
+    CONF_CHEAPEST_HOURS_COUNT,
     CONF_HORIZON_HOURS,
     CONF_MARKET,
     CONF_POSTAL_CODE,
@@ -41,11 +42,13 @@ from .const import (
     CONF_UPDATE_INTERVAL_MINUTES,
     CONF_WINDOW_HOURS,
     DEFAULT_API_URL,
+    DEFAULT_CHEAPEST_HOURS_COUNT,
     DEFAULT_HORIZON_HOURS,
     DEFAULT_UPDATE_INTERVAL_MINUTES,
     DEFAULT_WINDOW_HOURS,
     DOMAIN,
     MARKETS,
+    MAX_CHEAPEST_HOURS_COUNT,
     MAX_UPDATE_INTERVAL_MINUTES,
     MIN_UPDATE_INTERVAL_MINUTES,
     PRICES_API_URL,
@@ -113,6 +116,19 @@ def _schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                     mode=NumberSelectorMode.BOX,
                 )
             ),
+            vol.Optional(
+                CONF_CHEAPEST_HOURS_COUNT,
+                default=defaults.get(
+                    CONF_CHEAPEST_HOURS_COUNT, DEFAULT_CHEAPEST_HOURS_COUNT
+                ),
+            ): NumberSelector(
+                NumberSelectorConfig(
+                    min=0,
+                    max=MAX_CHEAPEST_HOURS_COUNT,
+                    step=1,
+                    mode=NumberSelectorMode.BOX,
+                )
+            ),
         }
     )
 
@@ -135,6 +151,9 @@ def _normalize_input(user_input: dict[str, Any]) -> dict[str, Any]:
         normalized.pop(CONF_POSTAL_CODE, None)
     normalized[CONF_UPDATE_INTERVAL_MINUTES] = int(
         normalized.get(CONF_UPDATE_INTERVAL_MINUTES, DEFAULT_UPDATE_INTERVAL_MINUTES)
+    )
+    normalized[CONF_CHEAPEST_HOURS_COUNT] = int(
+        normalized.get(CONF_CHEAPEST_HOURS_COUNT, DEFAULT_CHEAPEST_HOURS_COUNT)
     )
     return normalized
 
@@ -171,7 +190,9 @@ async def _validate_input(hass: HomeAssistant, data: dict[str, Any]) -> None:
     await api.async_get_summary()
     if data[CONF_RETAIL_PRICING]:
         try:
-            await api.async_get_retail_prices(data.get(CONF_POSTAL_CODE))
+            await api.async_get_prices(
+                price_mode="retail", postal_code=data.get(CONF_POSTAL_CODE)
+            )
         except (
             EnergyPriceForecastConnectionError,
             EnergyPriceForecastInvalidResponse,

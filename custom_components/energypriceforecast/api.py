@@ -124,17 +124,17 @@ class EnergyPriceForecastApi:
         self._raise_if_key_rejected(payload["meta"].get("api_key_state"))
         return payload
 
-    async def async_get_retail_prices(
-        self, postal_code: str | None = None
+    async def async_get_prices(
+        self, price_mode: str = "base", postal_code: str | None = None
     ) -> dict[str, Any]:
-        """Fetch and validate an assumption-based retail price series."""
+        """Fetch and validate a raw price series (base market or retail)."""
         if not self._prices_url:
             raise EnergyPriceForecastInvalidResponse("No prices endpoint configured.")
 
         params = {
             "country": self._market.lower(),
             "hours": str(self._horizon_hours),
-            "price_mode": "retail",
+            "price_mode": price_mode,
         }
         if postal_code:
             params["plz"] = postal_code

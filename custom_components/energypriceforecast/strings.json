@@ -12,7 +12,8 @@
           "api_key": "API key (optional)",
           "retail_pricing": "Enable retail (all-in) pricing",
           "postal_code": "Postal code",
-          "update_interval_minutes": "Update interval (minutes)"
+          "update_interval_minutes": "Update interval (minutes)",
+          "cheapest_hours_count": "Cheapest hours to track (0 to disable)"
         },
         "data_description": {
           "horizon_hours": "The API reports the actually permitted horizon as a diagnostic sensor.",
@@ -20,7 +21,8 @@
           "api_key": "Leave empty for public access. The key is stored in the Home Assistant config entry.",
           "retail_pricing": "Adds an assumption-based all-in price (grid fee, levies, VAT) in addition to the market price. Only available for some markets; not an exact supplier tariff.",
           "postal_code": "Required for Germany when retail pricing is enabled, used for the grid-fee lookup. Not used for other markets.",
-          "update_interval_minutes": "How often to poll the API. Data resolution is 15 minutes, so shorter intervals rarely add new information."
+          "update_interval_minutes": "How often to poll the API. Data resolution is 15 minutes, so shorter intervals rarely add new information.",
+          "cheapest_hours_count": "Adds entities for the N cheapest upcoming hours, which may be non-contiguous - useful for automations like running an appliance during the cheapest hours of the day."
         }
       },
       "reconfigure": {
@@ -33,7 +35,8 @@
           "api_key": "New API key (optional)",
           "retail_pricing": "Enable retail (all-in) pricing",
           "postal_code": "Postal code",
-          "update_interval_minutes": "Update interval (minutes)"
+          "update_interval_minutes": "Update interval (minutes)",
+          "cheapest_hours_count": "Cheapest hours to track (0 to disable)"
         }
       }
     },
@@ -66,11 +69,13 @@
       "used_horizon": {"name": "Used horizon"},
       "api_key_state": {"name": "API-key status"},
       "last_update": {"name": "Last API update"},
-      "retail_current_price": {"name": "Current retail price"}
+      "retail_current_price": {"name": "Current retail price"},
+      "cheapest_hours_next_start": {"name": "Next cheapest hour"}
     },
     "binary_sensor": {
       "cheapest_window_active": {"name": "Cheapest window active"},
-      "greenest_window_active": {"name": "Greenest window active"}
+      "greenest_window_active": {"name": "Greenest window active"},
+      "is_in_cheapest_hours": {"name": "Cheapest hours active"}
     }
   }
 }

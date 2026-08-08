@@ -12,7 +12,8 @@
           "api_key": "API-Key (optional)",
           "retail_pricing": "Endkundenpreis (Gesamtpreis) aktivieren",
           "postal_code": "Postleitzahl",
-          "update_interval_minutes": "Aktualisierungsintervall (Minuten)"
+          "update_interval_minutes": "Aktualisierungsintervall (Minuten)",
+          "cheapest_hours_count": "Günstigste Stunden verfolgen (0 zum Deaktivieren)"
         },
         "data_description": {
           "horizon_hours": "Den tatsächlich erlaubten Horizont zeigt die Integration als Diagnose-Sensor an.",
@@ -20,7 +21,8 @@
           "api_key": "Für den öffentlichen Zugang leer lassen. Der Schlüssel wird im Home-Assistant-Konfigurationseintrag gespeichert.",
           "retail_pricing": "Ergänzt einen annahmenbasierten Gesamtpreis (Netzentgelt, Abgaben, MwSt.) zusätzlich zum Marktpreis. Nur für einige Märkte verfügbar; kein exakter Liefertarif.",
           "postal_code": "Für Deutschland bei aktiviertem Endkundenpreis erforderlich, wird für die Netzentgelt-Ermittlung genutzt. Für andere Märkte nicht benötigt.",
-          "update_interval_minutes": "Wie oft die API abgefragt wird. Die Datenauflösung liegt bei 15 Minuten, kürzere Intervalle liefern daher selten neue Informationen."
+          "update_interval_minutes": "Wie oft die API abgefragt wird. Die Datenauflösung liegt bei 15 Minuten, kürzere Intervalle liefern daher selten neue Informationen.",
+          "cheapest_hours_count": "Ergänzt Entitäten für die N günstigsten kommenden Stunden, die nicht zusammenhängen müssen – nützlich für Automatisierungen wie 'Gerät während der günstigsten Stunden des Tages laufen lassen'."
         }
       },
       "reconfigure": {
@@ -33,7 +35,8 @@
           "api_key": "Neuer API-Key (optional)",
           "retail_pricing": "Endkundenpreis (Gesamtpreis) aktivieren",
           "postal_code": "Postleitzahl",
-          "update_interval_minutes": "Aktualisierungsintervall (Minuten)"
+          "update_interval_minutes": "Aktualisierungsintervall (Minuten)",
+          "cheapest_hours_count": "Günstigste Stunden verfolgen (0 zum Deaktivieren)"
         }
       }
     },
@@ -66,11 +69,13 @@
       "used_horizon": {"name": "Genutzter Horizont"},
       "api_key_state": {"name": "API-Key-Status"},
       "last_update": {"name": "Letzte API-Aktualisierung"},
-      "retail_current_price": {"name": "Aktueller Endkundenpreis"}
+      "retail_current_price": {"name": "Aktueller Endkundenpreis"},
+      "cheapest_hours_next_start": {"name": "Nächste günstige Stunde"}
     },
     "binary_sensor": {
       "cheapest_window_active": {"name": "Günstigstes Fenster aktiv"},
-      "greenest_window_active": {"name": "Grünstes Fenster aktiv"}
+      "greenest_window_active": {"name": "Grünstes Fenster aktiv"},
+      "is_in_cheapest_hours": {"name": "Günstigste Stunden aktiv"}
     }
   }
 }

@@ -186,6 +186,8 @@ async def async_setup_entry(
     ]
     if coordinator.retail_pricing:
         entities.append(EnergyPriceForecastRetailPriceSensor(coordinator, entry))
+    if coordinator.cheapest_hours_count > 0:
+        entities.append(EnergyPriceForecastCheapestHoursSensor(coordinator, entry))
     async_add_entities(entities)
 
 
@@ -243,3 +245,44 @@ class EnergyPriceForecastRetailPriceSensor(EnergyPriceForecastEntity, SensorEnti
     @property
     def native_unit_of_measurement(self) -> str | None:
         return _path(self.coordinator.retail_data or {}, "unit")
+
+
+class EnergyPriceForecastCheapestHoursSensor(EnergyPriceForecastEntity, SensorEntity):
+    """Start of the next of the N cheapest upcoming hours.
+
+    The hours may be non-contiguous, unlike the API's single best
+    continuous window. Only created when a positive hour count was
+    configured. Backed by coordinator.cheapest_hours.
+    """
+
+    _attr_translation_key = "cheapest_hours_next_start"
+    _attr_icon = "mdi:sort-clock-ascending"
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+
+    def __init__(
+        self, coordinator: EnergyPriceForecastCoordinator, entry: ConfigEntry
+    ) -> None:
+        super().__init__(coordinator, entry, "cheapest_hours_next_start")
+
+    @property
+    def available(self) -> bool:
+        return super().available and bool(self.coordinator.cheapest_hours)
+
+    @property
+    def native_value(self) -> Any:
+        hours = self.coordinator.cheapest_hours
+        return hours[0]["start"] if hours else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        hours = self.coordinator.cheapest_hours or []
+        return {
+            "hours": [
+                {
+                    "start": hour["start"].isoformat(),
+                    "end": hour["end"].isoformat(),
+                    "average_value": round(hour["average_value"], 4),
+                }
+                for hour in hours
+            ],
+        }

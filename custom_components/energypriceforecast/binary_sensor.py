@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any
 
 from homeassistant.components.binary_sensor import (
@@ -52,10 +53,13 @@ async def async_setup_entry(
 ) -> None:
     """Set up binary sensors from one config entry."""
     coordinator: EnergyPriceForecastCoordinator = entry.runtime_data
-    async_add_entities(
+    entities: list[BinarySensorEntity] = [
         EnergyPriceForecastBinarySensor(coordinator, entry, description)
         for description in BINARY_SENSORS
-    )
+    ]
+    if coordinator.cheapest_hours_count > 0:
+        entities.append(EnergyPriceForecastCheapestHoursBinarySensor(coordinator, entry))
+    async_add_entities(entities)
 
 
 class EnergyPriceForecastBinarySensor(EnergyPriceForecastEntity, BinarySensorEntity):
@@ -75,3 +79,33 @@ class EnergyPriceForecastBinarySensor(EnergyPriceForecastEntity, BinarySensorEnt
     @property
     def is_on(self) -> bool:
         return self.entity_description.value_fn(self.coordinator.data)
+
+
+class EnergyPriceForecastCheapestHoursBinarySensor(
+    EnergyPriceForecastEntity, BinarySensorEntity
+):
+    """On while now falls inside one of the N cheapest upcoming hours.
+
+    Only created when a positive hour count was configured. Backed by
+    coordinator.cheapest_hours rather than the shared summary response.
+    """
+
+    _attr_translation_key = "is_in_cheapest_hours"
+    _attr_icon = "mdi:sort-clock-ascending"
+
+    def __init__(
+        self, coordinator: EnergyPriceForecastCoordinator, entry: ConfigEntry
+    ) -> None:
+        super().__init__(coordinator, entry, "is_in_cheapest_hours")
+
+    @property
+    def available(self) -> bool:
+        return super().available and self.coordinator.cheapest_hours is not None
+
+    @property
+    def is_on(self) -> bool:
+        now = datetime.now(timezone.utc)
+        return any(
+            hour["start"] <= now < hour["end"]
+            for hour in self.coordinator.cheapest_hours or []
+        )

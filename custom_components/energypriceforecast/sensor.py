@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -38,6 +38,22 @@ def _timestamp(value: Any) -> datetime | None:
         return datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError:
         return None
+
+
+def _current_retail_entry(
+    retail_data: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """Return the price entry covering now, or the earliest one as fallback."""
+    entries = _path(retail_data or {}, "entries") if retail_data else None
+    if not isinstance(entries, list) or not entries:
+        return None
+    now = datetime.now(timezone.utc)
+    for entry in entries:
+        start = _timestamp(entry.get("start"))
+        end = _timestamp(entry.get("end"))
+        if start is not None and end is not None and start <= now < end:
+            return entry
+    return entries[0]
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -164,10 +180,13 @@ async def async_setup_entry(
 ) -> None:
     """Set up sensors from one config entry."""
     coordinator: EnergyPriceForecastCoordinator = entry.runtime_data
-    async_add_entities(
+    entities: list[SensorEntity] = [
         EnergyPriceForecastSensor(coordinator, entry, description)
         for description in SENSORS
-    )
+    ]
+    if coordinator.retail_pricing:
+        entities.append(EnergyPriceForecastRetailPriceSensor(coordinator, entry))
+    async_add_entities(entities)
 
 
 class EnergyPriceForecastSensor(EnergyPriceForecastEntity, SensorEntity):
@@ -193,3 +212,34 @@ class EnergyPriceForecastSensor(EnergyPriceForecastEntity, SensorEntity):
         if self.entity_description.unit_fn is not None:
             return self.entity_description.unit_fn(self.coordinator.data)
         return self.entity_description.native_unit_of_measurement
+
+
+class EnergyPriceForecastRetailPriceSensor(EnergyPriceForecastEntity, SensorEntity):
+    """Current assumption-based retail (all-in) electricity price.
+
+    Only created when retail pricing was enabled during setup. Backed by
+    coordinator.retail_data rather than the shared summary response.
+    """
+
+    _attr_translation_key = "retail_current_price"
+    _attr_icon = "mdi:cash-multiple"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 4
+
+    def __init__(
+        self, coordinator: EnergyPriceForecastCoordinator, entry: ConfigEntry
+    ) -> None:
+        super().__init__(coordinator, entry, "retail_current_price")
+
+    @property
+    def available(self) -> bool:
+        return super().available and self.coordinator.retail_data is not None
+
+    @property
+    def native_value(self) -> Any:
+        current = _current_retail_entry(self.coordinator.retail_data)
+        return current.get("value") if current else None
+
+    @property
+    def native_unit_of_measurement(self) -> str | None:
+        return _path(self.coordinator.retail_data or {}, "unit")

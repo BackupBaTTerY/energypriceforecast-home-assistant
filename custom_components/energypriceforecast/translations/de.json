@@ -9,12 +9,16 @@
           "market": "Markt oder Preiszone",
           "horizon_hours": "Gewünschter Horizont",
           "window_hours": "Dauer des besten Fensters",
-          "api_key": "API-Key (optional)"
+          "api_key": "API-Key (optional)",
+          "retail_pricing": "Endkundenpreis (Gesamtpreis) aktivieren",
+          "postal_code": "Postleitzahl"
         },
         "data_description": {
           "horizon_hours": "Den tatsächlich erlaubten Horizont zeigt die Integration als Diagnose-Sensor an.",
           "window_hours": "Länge des günstigsten und des grünsten zusammenhängenden Zeitfensters.",
-          "api_key": "Für den öffentlichen Zugang leer lassen. Der Schlüssel wird im Home-Assistant-Konfigurationseintrag gespeichert."
+          "api_key": "Für den öffentlichen Zugang leer lassen. Der Schlüssel wird im Home-Assistant-Konfigurationseintrag gespeichert.",
+          "retail_pricing": "Ergänzt einen annahmenbasierten Gesamtpreis (Netzentgelt, Abgaben, MwSt.) zusätzlich zum Marktpreis. Nur für einige Märkte verfügbar; kein exakter Liefertarif.",
+          "postal_code": "Für Deutschland bei aktiviertem Endkundenpreis erforderlich, wird für die Netzentgelt-Ermittlung genutzt. Für andere Märkte nicht benötigt."
         }
       },
       "reconfigure": {
@@ -24,7 +28,9 @@
           "market": "Markt oder Preiszone",
           "horizon_hours": "Gewünschter Horizont",
           "window_hours": "Dauer des besten Fensters",
-          "api_key": "Neuer API-Key (optional)"
+          "api_key": "Neuer API-Key (optional)",
+          "retail_pricing": "Endkundenpreis (Gesamtpreis) aktivieren",
+          "postal_code": "Postleitzahl"
         }
       }
     },
@@ -32,7 +38,11 @@
       "already_configured": "Dieser Markt ist bereits eingerichtet.",
       "cannot_connect": "Energy Price Forecast EU ist gerade nicht erreichbar.",
       "invalid_auth": "Der API-Key wurde abgelehnt oder ist nicht berechtigt.",
-      "invalid_response": "Die API hat eine unerwartete Antwort geliefert."
+      "invalid_response": "Die API hat eine unerwartete Antwort geliefert.",
+      "retail_not_supported": "Endkundenpreise sind für diesen Markt noch nicht verfügbar.",
+      "postal_code_required": "Für Endkundenpreise in Deutschland ist eine Postleitzahl erforderlich.",
+      "invalid_postal_code": "Bitte eine 5-stellige deutsche Postleitzahl eingeben.",
+      "retail_unavailable": "Endkundenpreise für diesen Markt bzw. diese Postleitzahl konnten nicht geprüft werden."
     },
     "abort": {
       "already_configured": "Dieser Markt ist bereits eingerichtet."
@@ -52,7 +62,8 @@
       "allowed_horizon": {"name": "Erlaubter Horizont"},
       "used_horizon": {"name": "Genutzter Horizont"},
       "api_key_state": {"name": "API-Key-Status"},
-      "last_update": {"name": "Letzte API-Aktualisierung"}
+      "last_update": {"name": "Letzte API-Aktualisierung"},
+      "retail_current_price": {"name": "Aktueller Endkundenpreis"}
     },
     "binary_sensor": {
       "cheapest_window_active": {"name": "Günstigstes Fenster aktiv"},

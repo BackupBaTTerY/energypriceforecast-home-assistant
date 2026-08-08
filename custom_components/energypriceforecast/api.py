@@ -23,6 +23,10 @@ class EnergyPriceForecastInvalidResponse(EnergyPriceForecastApiError):
     """The API response did not match the expected contract."""
 
 
+class EnergyPriceForecastRetailUnavailable(EnergyPriceForecastApiError):
+    """Retail pricing could not be verified for this market/postal code."""
+
+
 # The public API never returns HTTP 401/403 for a rejected key: it responds
 # with 200 and reports the outcome in meta.api_key_state instead. States other
 # than "valid" mean the supplied key was not accepted.
@@ -50,16 +54,20 @@ class EnergyPriceForecastApi:
         horizon_hours: int,
         window_hours: int,
         api_key: str | None = None,
+        prices_url: str | None = None,
     ) -> None:
         self._session = session
         self._base_url = base_url
+        self._prices_url = prices_url
         self._market = market
         self._horizon_hours = horizon_hours
         self._window_hours = window_hours
         self._api_key = (api_key or "").strip()
 
-    async def async_get_summary(self) -> dict[str, Any]:
-        """Fetch and validate one automation summary."""
+    async def _async_request(
+        self, url: str, params: dict[str, str]
+    ) -> dict[str, Any]:
+        """Call one endpoint and return its parsed JSON body."""
         headers = {
             "Accept": "application/json",
             "User-Agent": "EnergyPriceForecast-HomeAssistant/0.1.0",
@@ -67,18 +75,9 @@ class EnergyPriceForecastApi:
         if self._api_key:
             headers["Authorization"] = f"Bearer {self._api_key}"
 
-        params = {
-            "country": self._market.lower(),
-            "hours": str(self._horizon_hours),
-            "summary_hours": str(self._horizon_hours),
-            "window_hours": str(self._window_hours),
-            "include_series": "false",
-            "prefer_live_day_ahead": "true",
-        }
-
         try:
             async with self._session.get(
-                self._base_url,
+                url,
                 params=params,
                 headers=headers,
                 timeout=30,
@@ -100,6 +99,20 @@ class EnergyPriceForecastApi:
 
         if not isinstance(payload, dict):
             raise EnergyPriceForecastInvalidResponse("The response is not an object.")
+        return payload
+
+    async def async_get_summary(self) -> dict[str, Any]:
+        """Fetch and validate one automation summary."""
+        params = {
+            "country": self._market.lower(),
+            "hours": str(self._horizon_hours),
+            "summary_hours": str(self._horizon_hours),
+            "window_hours": str(self._window_hours),
+            "include_series": "false",
+            "prefer_live_day_ahead": "true",
+        }
+        payload = await self._async_request(self._base_url, params)
+
         if payload.get("format") != "home-assistant-summary":
             raise EnergyPriceForecastInvalidResponse("Unexpected response format.")
         if str(payload.get("country", "")).upper() != self._market.upper():
@@ -108,10 +121,35 @@ class EnergyPriceForecastApi:
             raise EnergyPriceForecastInvalidResponse("The flat summary is missing.")
         if not isinstance(payload.get("meta"), dict):
             raise EnergyPriceForecastInvalidResponse("The access metadata is missing.")
-        if self._api_key:
-            api_key_state = payload["meta"].get("api_key_state")
-            if api_key_state in REJECTED_API_KEY_STATES:
-                raise EnergyPriceForecastAuthError(
-                    f"The API key was not accepted (state: {api_key_state})."
-                )
+        self._raise_if_key_rejected(payload["meta"].get("api_key_state"))
         return payload
+
+    async def async_get_retail_prices(
+        self, postal_code: str | None = None
+    ) -> dict[str, Any]:
+        """Fetch and validate an assumption-based retail price series."""
+        if not self._prices_url:
+            raise EnergyPriceForecastInvalidResponse("No prices endpoint configured.")
+
+        params = {
+            "country": self._market.lower(),
+            "hours": str(self._horizon_hours),
+            "price_mode": "retail",
+        }
+        if postal_code:
+            params["plz"] = postal_code
+        payload = await self._async_request(self._prices_url, params)
+
+        if payload.get("format") != "home-assistant-prices":
+            raise EnergyPriceForecastInvalidResponse("Unexpected response format.")
+        if str(payload.get("country", "")).upper() != self._market.upper():
+            raise EnergyPriceForecastInvalidResponse("Unexpected market in response.")
+        if not isinstance(payload.get("entries"), list):
+            raise EnergyPriceForecastInvalidResponse("The price entries are missing.")
+        return payload
+
+    def _raise_if_key_rejected(self, api_key_state: Any) -> None:
+        if self._api_key and api_key_state in REJECTED_API_KEY_STATES:
+            raise EnergyPriceForecastAuthError(
+                f"The API key was not accepted (state: {api_key_state})."
+            )

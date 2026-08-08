@@ -8,6 +8,9 @@ NAME: Final = "Energy Price Forecast EU"
 DEFAULT_API_URL: Final = (
     "https://api.energypriceforecast.eu/api/v1/home-assistant/summary"
 )
+PRICES_API_URL: Final = (
+    "https://api.energypriceforecast.eu/api/v1/home-assistant/prices"
+)
 DEFAULT_HORIZON_HOURS: Final = 48
 DEFAULT_WINDOW_HOURS: Final = 4
 UPDATE_INTERVAL: Final = timedelta(minutes=30)
@@ -16,8 +19,17 @@ CONF_MARKET: Final = "market"
 CONF_HORIZON_HOURS: Final = "horizon_hours"
 CONF_WINDOW_HOURS: Final = "window_hours"
 CONF_API_KEY: Final = "api_key"
+CONF_RETAIL_PRICING: Final = "retail_pricing"
+CONF_POSTAL_CODE: Final = "postal_code"
 
 PLATFORMS: Final = ["sensor", "binary_sensor"]
+
+# Markets where the API can compute an assumption-based retail (all-in)
+# price. Germany additionally requires a postal code for the grid-fee
+# lookup; the other markets use country-wide default assumptions.
+RETAIL_MARKETS: Final[frozenset[str]] = frozenset(
+    {"DE", "NL", "DK1", "DK2", "AT", "NO1", "NO2", "NO3", "NO4", "NO5"}
+)
 
 MARKETS: Final[dict[str, str]] = {
     "AT": "Austria",

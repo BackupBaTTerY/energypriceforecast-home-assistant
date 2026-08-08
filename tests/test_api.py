@@ -12,6 +12,7 @@ from custom_components.energypriceforecast.api import (
     REJECTED_API_KEY_STATES,
     EnergyPriceForecastApi,
     EnergyPriceForecastAuthError,
+    EnergyPriceForecastInvalidResponse,
 )
 
 
@@ -91,3 +92,56 @@ async def test_rejected_key_raises_auth_error(state: str) -> None:
     )
     with pytest.raises(EnergyPriceForecastAuthError):
         await api.async_get_summary()
+
+
+def _retail_payload(entries: object = None) -> dict:
+    return {
+        "format": "home-assistant-prices",
+        "country": "DE",
+        "currency": "EUR",
+        "unit": "EUR/kWh",
+        "entries": [{"start": "2026-08-08T03:00:00Z", "end": "2026-08-08T04:00:00Z", "value": 0.31}]
+        if entries is None
+        else entries,
+    }
+
+
+async def test_retail_prices_success() -> None:
+    """A well-formed retail response is returned as-is."""
+    api = EnergyPriceForecastApi(
+        session=_FakeSession(_retail_payload()),
+        base_url="https://example.invalid/summary",
+        prices_url="https://example.invalid/prices",
+        market="DE",
+        horizon_hours=48,
+        window_hours=4,
+    )
+    payload = await api.async_get_retail_prices(postal_code="10115")
+    assert payload["entries"][0]["value"] == 0.31
+
+
+async def test_retail_prices_without_configured_url_raises() -> None:
+    """Calling the retail endpoint without a configured URL is a bug, not a network error."""
+    api = EnergyPriceForecastApi(
+        session=_FakeSession(_retail_payload()),
+        base_url="https://example.invalid/summary",
+        market="DE",
+        horizon_hours=48,
+        window_hours=4,
+    )
+    with pytest.raises(EnergyPriceForecastInvalidResponse):
+        await api.async_get_retail_prices()
+
+
+async def test_retail_prices_missing_entries_raises() -> None:
+    """A response without an entries list does not match the price-series contract."""
+    api = EnergyPriceForecastApi(
+        session=_FakeSession(_retail_payload(entries="not-a-list")),
+        base_url="https://example.invalid/summary",
+        prices_url="https://example.invalid/prices",
+        market="DE",
+        horizon_hours=48,
+        window_hours=4,
+    )
+    with pytest.raises(EnergyPriceForecastInvalidResponse):
+        await api.async_get_retail_prices(postal_code="10115")

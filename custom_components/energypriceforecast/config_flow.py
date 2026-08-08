@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import voluptuous as vol
@@ -11,6 +12,7 @@ from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
+    BooleanSelector,
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
@@ -28,18 +30,25 @@ from .api import (
     EnergyPriceForecastAuthError,
     EnergyPriceForecastConnectionError,
     EnergyPriceForecastInvalidResponse,
+    EnergyPriceForecastRetailUnavailable,
 )
 from .const import (
     CONF_API_KEY,
     CONF_HORIZON_HOURS,
     CONF_MARKET,
+    CONF_POSTAL_CODE,
+    CONF_RETAIL_PRICING,
     CONF_WINDOW_HOURS,
     DEFAULT_API_URL,
     DEFAULT_HORIZON_HOURS,
     DEFAULT_WINDOW_HOURS,
     DOMAIN,
     MARKETS,
+    PRICES_API_URL,
+    RETAIL_MARKETS,
 )
+
+_POSTAL_CODE_RE = re.compile(r"^[0-9]{5}$")
 
 
 def _schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
@@ -80,6 +89,13 @@ def _schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
             vol.Optional(CONF_API_KEY, default=""): TextSelector(
                 TextSelectorConfig(type=TextSelectorType.PASSWORD)
             ),
+            vol.Optional(
+                CONF_RETAIL_PRICING,
+                default=defaults.get(CONF_RETAIL_PRICING, False),
+            ): BooleanSelector(),
+            vol.Optional(
+                CONF_POSTAL_CODE, default=defaults.get(CONF_POSTAL_CODE, "")
+            ): TextSelector(TextSelectorConfig(type=TextSelectorType.TEXT)),
         }
     )
 
@@ -94,19 +110,53 @@ def _normalize_input(user_input: dict[str, Any]) -> dict[str, Any]:
         normalized[CONF_API_KEY] = api_key
     else:
         normalized.pop(CONF_API_KEY, None)
+    normalized[CONF_RETAIL_PRICING] = bool(normalized.get(CONF_RETAIL_PRICING, False))
+    postal_code = str(normalized.get(CONF_POSTAL_CODE, "")).strip()
+    if postal_code:
+        normalized[CONF_POSTAL_CODE] = postal_code
+    else:
+        normalized.pop(CONF_POSTAL_CODE, None)
     return normalized
+
+
+def _validate_retail_selection(data: dict[str, Any]) -> str | None:
+    """Check the retail-pricing selection without calling the API.
+
+    Returns an error code for ``errors["base"]``, or None if the selection
+    is consistent.
+    """
+    if not data[CONF_RETAIL_PRICING]:
+        return None
+    if data[CONF_MARKET] not in RETAIL_MARKETS:
+        return "retail_not_supported"
+    postal_code = data.get(CONF_POSTAL_CODE)
+    if data[CONF_MARKET] == "DE":
+        if not postal_code:
+            return "postal_code_required"
+        if not _POSTAL_CODE_RE.match(postal_code):
+            return "invalid_postal_code"
+    return None
 
 
 async def _validate_input(hass: HomeAssistant, data: dict[str, Any]) -> None:
     api = EnergyPriceForecastApi(
         session=async_get_clientsession(hass),
         base_url=DEFAULT_API_URL,
+        prices_url=PRICES_API_URL,
         market=data[CONF_MARKET],
         horizon_hours=data[CONF_HORIZON_HOURS],
         window_hours=data[CONF_WINDOW_HOURS],
         api_key=data.get(CONF_API_KEY),
     )
     await api.async_get_summary()
+    if data[CONF_RETAIL_PRICING]:
+        try:
+            await api.async_get_retail_prices(data.get(CONF_POSTAL_CODE))
+        except (
+            EnergyPriceForecastConnectionError,
+            EnergyPriceForecastInvalidResponse,
+        ) as err:
+            raise EnergyPriceForecastRetailUnavailable(str(err)) from err
 
 
 class EnergyPriceForecastConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -123,19 +173,25 @@ class EnergyPriceForecastConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             normalized = _normalize_input(user_input)
             await self.async_set_unique_id(normalized[CONF_MARKET])
             self._abort_if_unique_id_configured()
-            try:
-                await _validate_input(self.hass, normalized)
-            except EnergyPriceForecastAuthError:
-                errors["base"] = "invalid_auth"
-            except EnergyPriceForecastConnectionError:
-                errors["base"] = "cannot_connect"
-            except EnergyPriceForecastInvalidResponse:
-                errors["base"] = "invalid_response"
+            retail_error = _validate_retail_selection(normalized)
+            if retail_error is not None:
+                errors["base"] = retail_error
             else:
-                return self.async_create_entry(
-                    title=f"Energy Price Forecast EU ({normalized[CONF_MARKET]})",
-                    data=normalized,
-                )
+                try:
+                    await _validate_input(self.hass, normalized)
+                except EnergyPriceForecastAuthError:
+                    errors["base"] = "invalid_auth"
+                except EnergyPriceForecastRetailUnavailable:
+                    errors["base"] = "retail_unavailable"
+                except EnergyPriceForecastConnectionError:
+                    errors["base"] = "cannot_connect"
+                except EnergyPriceForecastInvalidResponse:
+                    errors["base"] = "invalid_response"
+                else:
+                    return self.async_create_entry(
+                        title=f"Energy Price Forecast EU ({normalized[CONF_MARKET]})",
+                        data=normalized,
+                    )
 
         return self.async_show_form(
             step_id="user",
@@ -167,20 +223,26 @@ class EnergyPriceForecastConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if duplicate is not None:
                 errors["base"] = "already_configured"
             else:
-                try:
-                    await _validate_input(self.hass, normalized)
-                except EnergyPriceForecastAuthError:
-                    errors["base"] = "invalid_auth"
-                except EnergyPriceForecastConnectionError:
-                    errors["base"] = "cannot_connect"
-                except EnergyPriceForecastInvalidResponse:
-                    errors["base"] = "invalid_response"
+                retail_error = _validate_retail_selection(normalized)
+                if retail_error is not None:
+                    errors["base"] = retail_error
                 else:
-                    return self.async_update_reload_and_abort(
-                        entry,
-                        unique_id=normalized[CONF_MARKET],
-                        data=normalized,
-                    )
+                    try:
+                        await _validate_input(self.hass, normalized)
+                    except EnergyPriceForecastAuthError:
+                        errors["base"] = "invalid_auth"
+                    except EnergyPriceForecastRetailUnavailable:
+                        errors["base"] = "retail_unavailable"
+                    except EnergyPriceForecastConnectionError:
+                        errors["base"] = "cannot_connect"
+                    except EnergyPriceForecastInvalidResponse:
+                        errors["base"] = "invalid_response"
+                    else:
+                        return self.async_update_reload_and_abort(
+                            entry,
+                            unique_id=normalized[CONF_MARKET],
+                            data=normalized,
+                        )
             defaults.update(user_input)
 
         return self.async_show_form(

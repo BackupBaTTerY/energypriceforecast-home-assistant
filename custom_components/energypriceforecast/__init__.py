@@ -11,9 +11,12 @@ from .const import (
     CONF_API_KEY,
     CONF_HORIZON_HOURS,
     CONF_MARKET,
+    CONF_POSTAL_CODE,
+    CONF_RETAIL_PRICING,
     CONF_WINDOW_HOURS,
     DEFAULT_API_URL,
     PLATFORMS,
+    PRICES_API_URL,
 )
 from .coordinator import EnergyPriceForecastCoordinator
 
@@ -23,12 +26,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     api = EnergyPriceForecastApi(
         session=async_get_clientsession(hass),
         base_url=DEFAULT_API_URL,
+        prices_url=PRICES_API_URL,
         market=entry.data[CONF_MARKET],
         horizon_hours=entry.data[CONF_HORIZON_HOURS],
         window_hours=entry.data[CONF_WINDOW_HOURS],
         api_key=entry.data.get(CONF_API_KEY),
     )
-    coordinator = EnergyPriceForecastCoordinator(hass, api)
+    coordinator = EnergyPriceForecastCoordinator(
+        hass,
+        api,
+        retail_pricing=entry.data.get(CONF_RETAIL_PRICING, False),
+        postal_code=entry.data.get(CONF_POSTAL_CODE),
+    )
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

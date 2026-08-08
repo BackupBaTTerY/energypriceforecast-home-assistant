@@ -9,7 +9,9 @@
           "market": "Market or price zone",
           "horizon_hours": "Requested horizon",
           "window_hours": "Best-window duration",
-          "api_key": "API key (optional)"
+          "api_key": "API key (optional)",
+          "retail_pricing": "Enable retail (all-in) pricing",
+          "postal_code": "Postal code"
         }
       },
       "reconfigure": {
@@ -19,7 +21,9 @@
           "market": "Market or price zone",
           "horizon_hours": "Requested horizon",
           "window_hours": "Best-window duration",
-          "api_key": "New API key (optional)"
+          "api_key": "New API key (optional)",
+          "retail_pricing": "Enable retail (all-in) pricing",
+          "postal_code": "Postal code"
         }
       }
     },
@@ -27,7 +31,11 @@
       "already_configured": "This market is already configured.",
       "cannot_connect": "Could not connect to Energy Price Forecast EU.",
       "invalid_auth": "The API key was rejected or is not authorized.",
-      "invalid_response": "The API returned an unexpected response."
+      "invalid_response": "The API returned an unexpected response.",
+      "retail_not_supported": "Retail pricing is not available for this market yet.",
+      "postal_code_required": "A postal code is required for retail pricing in Germany.",
+      "invalid_postal_code": "Enter a 5-digit German postal code.",
+      "retail_unavailable": "Could not verify retail pricing for this market or postal code."
     },
     "abort": {
       "already_configured": "This market is already configured."
@@ -47,7 +55,8 @@
       "allowed_horizon": {"name": "Allowed horizon"},
       "used_horizon": {"name": "Used horizon"},
       "api_key_state": {"name": "API-key status"},
-      "last_update": {"name": "Last API update"}
+      "last_update": {"name": "Last API update"},
+      "retail_current_price": {"name": "Current retail price"}
     },
     "binary_sensor": {
       "cheapest_window_active": {"name": "Cheapest window active"},

@@ -136,6 +136,9 @@ async def test_cheapest_window_binary_sensor_is_off(hass) -> None:
 
 async def test_price_series_sensor_splits_today_and_tomorrow(hass, freezer) -> None:
     """raw_today/raw_tomorrow only include entries matching the local calendar date."""
+    # The test hass instance does not default to UTC, so the "local calendar
+    # date" being tested here would otherwise depend on that default.
+    await hass.config.async_set_time_zone("UTC")
     freezer.move_to("2026-08-08T10:00:00+00:00")
     entries = [
         {"start": "2026-08-08T11:00:00Z", "end": "2026-08-08T12:00:00Z", "value": 0.11},

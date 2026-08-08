@@ -63,6 +63,41 @@ All entities of one market share one API request per poll (default every 30
 minutes, configurable from 15 to 120 minutes). The integration does not
 create one request per entity.
 
+## Build a price chart with AI
+
+The integration creates a sensor whose name ends in `_price_series`, carrying
+`raw_today` / `raw_tomorrow` attributes - a list of price time slots, made for
+charting with the community card
+[apexcharts-card](https://github.com/RomRider/apexcharts-card) (installed
+separately via HACS). Paste the prompt below into your AI assistant of choice
+to get a ready-to-use Lovelace card for your actual entity_id.
+
+<details>
+<summary>Show the copyable prompt</summary>
+
+```
+Help me build a Home Assistant Lovelace card that charts electricity prices from the Energy Price Forecast EU integration using the apexcharts-card custom card.
+
+The integration creates a sensor whose entity_id ends in "_price_series" (the exact name depends on my chosen market, for example sensor.energy_price_forecast_eu_de_price_forecast_series). Its state is the current price; its attributes raw_today and raw_tomorrow are each a list of objects shaped like {"start": ISO8601 timestamp, "end": ISO8601 timestamp, "value": number}. The value's unit matches the market's currency (for example EUR/kWh).
+
+My actual entity_id is: <PASTE YOUR ENTITY ID HERE - find it under Settings > Devices & Services > Energy Price Forecast EU, or Developer Tools > States, filtering for "price_series">
+
+Before writing YAML, ask me:
+1. Do I already have HACS and the apexcharts-card custom card installed? If not, tell me to install apexcharts-card via HACS first (category: Frontend/Plugin).
+2. Should the chart show today only, or today and tomorrow together?
+3. Do I also want the cheapest-hours window highlighted, if I enabled that feature? (binary_sensor ...is_in_cheapest_hours / sensor ...cheapest_hours_next_start)
+4. Do I want a bar chart per hour or a line/area chart?
+
+Rules for your result:
+- Use only the raw_today / raw_tomorrow attributes I described. Do not invent other attributes or a different data shape.
+- Use apexcharts-card's data_generator to turn the attribute list into a chart series - do not assume the card accepts the attribute directly as a series.
+- Produce a complete, correctly indented YAML block for a manual Lovelace card (type: custom:apexcharts-card).
+- Tell me exactly where to paste it (Dashboard > Edit > Add card > Manual).
+- If information is missing, ask - do not guess my entity_id or market.
+```
+
+</details>
+
 ## Privacy
 
 The integration sends the selected market, horizon and window duration to the

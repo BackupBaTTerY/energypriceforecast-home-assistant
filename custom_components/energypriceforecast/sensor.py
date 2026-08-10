@@ -262,6 +262,9 @@ class EnergyPriceForecastRetailPriceSensor(EnergyPriceForecastEntity, SensorEnti
 
     Only created when retail pricing was enabled during setup. Backed by
     coordinator.retail_data rather than the shared summary response.
+    State mirrors the current retail price; raw_today/raw_tomorrow
+    attributes carry the full retail series, same shape as
+    EnergyPriceForecastPriceSeriesSensor but with retail values.
     """
 
     _attr_translation_key = "retail_current_price"
@@ -286,6 +289,12 @@ class EnergyPriceForecastRetailPriceSensor(EnergyPriceForecastEntity, SensorEnti
     @property
     def native_unit_of_measurement(self) -> str | None:
         return _path(self.coordinator.retail_data or {}, "unit")
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        entries = _path(self.coordinator.retail_data or {}, "entries")
+        today, tomorrow = _split_today_tomorrow(entries)
+        return {"raw_today": today, "raw_tomorrow": tomorrow}
 
 
 class EnergyPriceForecastPriceSeriesSensor(EnergyPriceForecastEntity, SensorEntity):

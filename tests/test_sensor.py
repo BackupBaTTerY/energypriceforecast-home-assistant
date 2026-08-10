@@ -154,6 +154,27 @@ async def test_price_series_sensor_splits_today_and_tomorrow(hass, freezer) -> N
     assert [item["value"] for item in state.attributes["raw_tomorrow"]] == [0.13]
 
 
+async def test_retail_price_sensor_includes_raw_series(hass, freezer) -> None:
+    """retail_current_price also exposes raw_today/raw_tomorrow, like price_series."""
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-08T10:00:00+00:00")
+    entries = [
+        {"start": "2026-08-08T11:00:00Z", "end": "2026-08-08T12:00:00Z", "value": 0.31},
+        {"start": "2026-08-09T05:00:00Z", "end": "2026-08-09T06:00:00Z", "value": 0.33},
+    ]
+
+    entry = await _setup_entry(
+        hass,
+        extra_data={"retail_pricing": True, "postal_code": "10115"},
+        price_entries=entries,
+    )
+
+    state = _state_for_unique_id(hass, entry, "retail_current_price")
+
+    assert [item["value"] for item in state.attributes["raw_today"]] == [0.31]
+    assert [item["value"] for item in state.attributes["raw_tomorrow"]] == [0.33]
+
+
 async def test_optional_entities_created_when_features_enabled(hass) -> None:
     """retail_current_price and cheapest-hours entities appear once enabled."""
     entry = await _setup_entry(

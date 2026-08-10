@@ -36,7 +36,10 @@ SUMMARY_PAYLOAD = {
 
 
 async def _setup_entry(
-    hass, extra_data: dict | None = None, price_entries: list[dict] | None = None
+    hass,
+    extra_data: dict | None = None,
+    price_entries: list[dict] | None = None,
+    retail_summary_payload: dict | None = None,
 ) -> MockConfigEntry:
     entry = MockConfigEntry(
         domain=DOMAIN,
@@ -64,11 +67,17 @@ async def _setup_entry(
             {"start": "2026-08-08T04:00:00Z", "end": "2026-08-08T05:00:00Z", "value": 0.1}
         ],
     }
+
+    async def _summary_side_effect(price_mode="base", postal_code=None):
+        if price_mode == "retail":
+            return retail_summary_payload or SUMMARY_PAYLOAD
+        return SUMMARY_PAYLOAD
+
     with (
         patch(
             "custom_components.energypriceforecast.api.EnergyPriceForecastApi"
             ".async_get_summary",
-            new=AsyncMock(return_value=SUMMARY_PAYLOAD),
+            new=AsyncMock(side_effect=_summary_side_effect),
         ),
         patch(
             "custom_components.energypriceforecast.api.EnergyPriceForecastApi"
@@ -107,6 +116,10 @@ async def test_core_sensors_are_created_without_optional_features(hass) -> None:
     assert f"{entry.entry_id}_retail_current_price" not in unique_ids
     assert f"{entry.entry_id}_cheapest_hours_next_start" not in unique_ids
     assert f"{entry.entry_id}_is_in_cheapest_hours" not in unique_ids
+    assert f"{entry.entry_id}_retail_cheapest_window_average_price" not in unique_ids
+    assert f"{entry.entry_id}_retail_cheapest_window_start" not in unique_ids
+    assert f"{entry.entry_id}_retail_cheapest_window_end" not in unique_ids
+    assert f"{entry.entry_id}_retail_cheapest_window_active" not in unique_ids
 
 
 async def test_current_price_sensor_reflects_summary_value(hass) -> None:
@@ -227,3 +240,39 @@ async def test_optional_entities_created_when_features_enabled(hass) -> None:
     assert f"{entry.entry_id}_retail_current_price" in unique_ids
     assert f"{entry.entry_id}_cheapest_hours_next_start" in unique_ids
     assert f"{entry.entry_id}_is_in_cheapest_hours" in unique_ids
+    assert f"{entry.entry_id}_retail_cheapest_window_average_price" in unique_ids
+    assert f"{entry.entry_id}_retail_cheapest_window_start" in unique_ids
+    assert f"{entry.entry_id}_retail_cheapest_window_end" in unique_ids
+    assert f"{entry.entry_id}_retail_cheapest_window_active" in unique_ids
+
+
+async def test_retail_window_sensors_use_retail_summary(hass) -> None:
+    """retail_cheapest_window_* reads the retail-mode summary, not the base one."""
+    retail_summary = {
+        **SUMMARY_PAYLOAD,
+        "flat": {
+            **SUMMARY_PAYLOAD["flat"],
+            "best_price_window_avg_price": 0.42,
+            "best_price_window_start": "2026-08-08T05:00:00Z",
+            "best_price_window_end": "2026-08-08T09:00:00Z",
+            "is_cheapest_window_now": True,
+        },
+    }
+
+    entry = await _setup_entry(
+        hass,
+        extra_data={"retail_pricing": True, "postal_code": "10115"},
+        retail_summary_payload=retail_summary,
+    )
+
+    retail_price_state = _state_for_unique_id(
+        hass, entry, "retail_cheapest_window_average_price"
+    )
+    assert retail_price_state.state == "0.42"
+
+    # the base (spot) window sensor must stay on the base summary, unaffected
+    base_price_state = _state_for_unique_id(hass, entry, "cheapest_window_average_price")
+    assert base_price_state.state == "0.15"
+
+    binary_state = _state_for_unique_id(hass, entry, "retail_cheapest_window_active")
+    assert binary_state.state == "on"

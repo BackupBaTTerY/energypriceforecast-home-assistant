@@ -71,12 +71,16 @@
       "last_update": {"name": "Last API update"},
       "price_series": {"name": "Price forecast series"},
       "retail_current_price": {"name": "Current retail price"},
-      "cheapest_hours_next_start": {"name": "Next cheapest hour"}
+      "cheapest_hours_next_start": {"name": "Next cheapest hour"},
+      "retail_cheapest_window_average_price": {"name": "Cheapest window average retail price"},
+      "retail_cheapest_window_start": {"name": "Cheapest window start (retail)"},
+      "retail_cheapest_window_end": {"name": "Cheapest window end (retail)"}
     },
     "binary_sensor": {
       "cheapest_window_active": {"name": "Cheapest window active"},
       "greenest_window_active": {"name": "Greenest window active"},
-      "is_in_cheapest_hours": {"name": "Cheapest hours active"}
+      "is_in_cheapest_hours": {"name": "Cheapest hours active"},
+      "retail_cheapest_window_active": {"name": "Cheapest window active (retail)"}
     }
   }
 }

@@ -57,6 +57,8 @@ async def async_setup_entry(
         EnergyPriceForecastBinarySensor(coordinator, entry, description)
         for description in BINARY_SENSORS
     ]
+    if coordinator.retail_pricing:
+        entities.append(EnergyPriceForecastRetailWindowBinarySensor(coordinator, entry))
     if coordinator.cheapest_hours_count > 0:
         entities.append(EnergyPriceForecastCheapestHoursBinarySensor(coordinator, entry))
     async_add_entities(entities)
@@ -79,6 +81,41 @@ class EnergyPriceForecastBinarySensor(EnergyPriceForecastEntity, BinarySensorEnt
     @property
     def is_on(self) -> bool:
         return self.entity_description.value_fn(self.coordinator.data)
+
+
+class EnergyPriceForecastRetailWindowBinarySensor(
+    EnergyPriceForecastEntity, BinarySensorEntity
+):
+    """On while now falls inside the cheapest window, in retail terms.
+
+    Only created when retail pricing was enabled. Backed by
+    coordinator.retail_summary rather than the shared (spot-price)
+    summary response, so this can differ from the base
+    cheapest_window_active sensor if retail components shift which
+    window is actually cheapest.
+    """
+
+    _attr_translation_key = "retail_cheapest_window_active"
+    _attr_icon = "mdi:cash-clock"
+
+    def __init__(
+        self, coordinator: EnergyPriceForecastCoordinator, entry: ConfigEntry
+    ) -> None:
+        super().__init__(coordinator, entry, "retail_cheapest_window_active")
+
+    @property
+    def available(self) -> bool:
+        return super().available and self.coordinator.retail_summary is not None
+
+    @property
+    def is_on(self) -> bool:
+        if self.coordinator.retail_summary is None:
+            return False
+        return bool(
+            self.coordinator.retail_summary.get("flat", {}).get(
+                "is_cheapest_window_now", False
+            )
+        )
 
 
 class EnergyPriceForecastCheapestHoursBinarySensor(

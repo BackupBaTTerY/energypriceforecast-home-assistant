@@ -71,12 +71,16 @@
       "last_update": {"name": "Dernière mise à jour API"},
       "price_series": {"name": "Série de prix"},
       "retail_current_price": {"name": "Prix de détail actuel"},
-      "cheapest_hours_next_start": {"name": "Prochaine heure la moins chère"}
+      "cheapest_hours_next_start": {"name": "Prochaine heure la moins chère"},
+      "retail_cheapest_window_average_price": {"name": "Prix moyen de la fenêtre la moins chère (détail)"},
+      "retail_cheapest_window_start": {"name": "Début de la fenêtre la moins chère (détail)"},
+      "retail_cheapest_window_end": {"name": "Fin de la fenêtre la moins chère (détail)"}
     },
     "binary_sensor": {
       "cheapest_window_active": {"name": "Fenêtre la moins chère active"},
       "greenest_window_active": {"name": "Fenêtre la plus verte active"},
-      "is_in_cheapest_hours": {"name": "Heures les moins chères actives"}
+      "is_in_cheapest_hours": {"name": "Heures les moins chères actives"},
+      "retail_cheapest_window_active": {"name": "Fenêtre la moins chère active (détail)"}
     }
   }
 }

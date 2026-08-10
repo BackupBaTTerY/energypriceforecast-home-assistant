@@ -71,12 +71,16 @@
       "last_update": {"name": "Poslední aktualizace API"},
       "price_series": {"name": "Cenová řada"},
       "retail_current_price": {"name": "Aktuální maloobchodní cena"},
-      "cheapest_hours_next_start": {"name": "Další nejlevnější hodina"}
+      "cheapest_hours_next_start": {"name": "Další nejlevnější hodina"},
+      "retail_cheapest_window_average_price": {"name": "Průměrná cena nejlevnějšího okna (maloobchodní)"},
+      "retail_cheapest_window_start": {"name": "Začátek nejlevnějšího okna (maloobchodní)"},
+      "retail_cheapest_window_end": {"name": "Konec nejlevnějšího okna (maloobchodní)"}
     },
     "binary_sensor": {
       "cheapest_window_active": {"name": "Nejlevnější okno aktivní"},
       "greenest_window_active": {"name": "Nejzelenější okno aktivní"},
-      "is_in_cheapest_hours": {"name": "Nejlevnější hodiny aktivní"}
+      "is_in_cheapest_hours": {"name": "Nejlevnější hodiny aktivní"},
+      "retail_cheapest_window_active": {"name": "Nejlevnější okno aktivní (maloobchodní)"}
     }
   }
 }

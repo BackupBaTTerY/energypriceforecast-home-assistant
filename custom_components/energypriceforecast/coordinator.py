@@ -79,6 +79,7 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.postal_code = postal_code
         self.cheapest_hours_count = cheapest_hours_count
         self.retail_data: dict[str, Any] | None = None
+        self.retail_summary: dict[str, Any] | None = None
         self.price_series: dict[str, Any] | None = None
         self.cheapest_hours: list[dict[str, Any]] | None = None
 
@@ -98,6 +99,12 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 )
             except EnergyPriceForecastApiError as err:
                 _LOGGER.warning("Retail price update failed: %s", err)
+            try:
+                self.retail_summary = await self.api.async_get_summary(
+                    price_mode="retail", postal_code=self.postal_code
+                )
+            except EnergyPriceForecastApiError as err:
+                _LOGGER.warning("Retail summary update failed: %s", err)
 
         # The raw price series backs both the price-series sensor (for
         # charting, e.g. with apexcharts-card) and the optional

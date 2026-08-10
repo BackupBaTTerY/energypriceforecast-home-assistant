@@ -101,7 +101,9 @@ class EnergyPriceForecastApi:
             raise EnergyPriceForecastInvalidResponse("The response is not an object.")
         return payload
 
-    async def async_get_summary(self) -> dict[str, Any]:
+    async def async_get_summary(
+        self, price_mode: str = "base", postal_code: str | None = None
+    ) -> dict[str, Any]:
         """Fetch and validate one automation summary."""
         params = {
             "country": self._market.lower(),
@@ -110,7 +112,10 @@ class EnergyPriceForecastApi:
             "window_hours": str(self._window_hours),
             "include_series": "false",
             "prefer_live_day_ahead": "true",
+            "price_mode": price_mode,
         }
+        if postal_code:
+            params["plz"] = postal_code
         payload = await self._async_request(self._base_url, params)
 
         if payload.get("format") != "home-assistant-summary":

@@ -233,6 +233,35 @@ SENSORS: tuple[EnergyPriceForecastSensorDescription, ...] = (
 )
 
 
+RETAIL_WINDOW_SENSORS: tuple[EnergyPriceForecastSensorDescription, ...] = (
+    EnergyPriceForecastSensorDescription(
+        key="retail_cheapest_window_average_price",
+        translation_key="retail_cheapest_window_average_price",
+        icon="mdi:cash-clock",
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=4,
+        value_fn=lambda data: _path(data, "flat", "best_price_window_avg_price"),
+        unit_fn=lambda data: _path(data, "flat", "current_price_unit"),
+    ),
+    EnergyPriceForecastSensorDescription(
+        key="retail_cheapest_window_start",
+        translation_key="retail_cheapest_window_start",
+        icon="mdi:clock-start",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        value_fn=lambda data: _timestamp(
+            _path(data, "flat", "best_price_window_start")
+        ),
+    ),
+    EnergyPriceForecastSensorDescription(
+        key="retail_cheapest_window_end",
+        translation_key="retail_cheapest_window_end",
+        icon="mdi:clock-end",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        value_fn=lambda data: _timestamp(_path(data, "flat", "best_price_window_end")),
+    ),
+)
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -247,6 +276,10 @@ async def async_setup_entry(
     entities.append(EnergyPriceForecastPriceSeriesSensor(coordinator, entry))
     if coordinator.retail_pricing:
         entities.append(EnergyPriceForecastRetailPriceSensor(coordinator, entry))
+        entities.extend(
+            EnergyPriceForecastRetailWindowSensor(coordinator, entry, description)
+            for description in RETAIL_WINDOW_SENSORS
+        )
     if coordinator.cheapest_hours_count > 0:
         entities.append(EnergyPriceForecastCheapestHoursSensor(coordinator, entry))
     async_add_entities(entities)
@@ -274,6 +307,48 @@ class EnergyPriceForecastSensor(EnergyPriceForecastEntity, SensorEntity):
     def native_unit_of_measurement(self) -> str | None:
         if self.entity_description.unit_fn is not None:
             return self.entity_description.unit_fn(self.coordinator.data)
+        return self.entity_description.native_unit_of_measurement
+
+
+class EnergyPriceForecastRetailWindowSensor(EnergyPriceForecastEntity, SensorEntity):
+    """One cheapest-window value read from the retail-mode summary.
+
+    Only created when retail pricing was enabled. The base window
+    sensors (EnergyPriceForecastSensor with the SENSORS descriptions)
+    always reflect spot prices, because coordinator.data is always a
+    base-mode summary - this mirrors those, but backed by
+    coordinator.retail_summary, so "cheapest window" reflects what the
+    window actually costs on the configured retail tariff, not the
+    underlying spot price.
+    """
+
+    entity_description: EnergyPriceForecastSensorDescription
+
+    def __init__(
+        self,
+        coordinator: EnergyPriceForecastCoordinator,
+        entry: ConfigEntry,
+        description: EnergyPriceForecastSensorDescription,
+    ) -> None:
+        super().__init__(coordinator, entry, description.key)
+        self.entity_description = description
+
+    @property
+    def available(self) -> bool:
+        return super().available and self.coordinator.retail_summary is not None
+
+    @property
+    def native_value(self) -> Any:
+        if self.coordinator.retail_summary is None:
+            return None
+        return self.entity_description.value_fn(self.coordinator.retail_summary)
+
+    @property
+    def native_unit_of_measurement(self) -> str | None:
+        if self.coordinator.retail_summary is None:
+            return self.entity_description.native_unit_of_measurement
+        if self.entity_description.unit_fn is not None:
+            return self.entity_description.unit_fn(self.coordinator.retail_summary)
         return self.entity_description.native_unit_of_measurement
 
 

@@ -71,12 +71,16 @@
       "last_update": {"name": "Siste API-oppdatering"},
       "price_series": {"name": "Prisserie"},
       "retail_current_price": {"name": "Nåværende forbrukerpris"},
-      "cheapest_hours_next_start": {"name": "Neste billigste time"}
+      "cheapest_hours_next_start": {"name": "Neste billigste time"},
+      "retail_cheapest_window_average_price": {"name": "Gjennomsnittspris billigste tidsvindu (forbrukerpris)"},
+      "retail_cheapest_window_start": {"name": "Start på billigste tidsvindu (forbrukerpris)"},
+      "retail_cheapest_window_end": {"name": "Slutt på billigste tidsvindu (forbrukerpris)"}
     },
     "binary_sensor": {
       "cheapest_window_active": {"name": "Billigste tidsvindu aktivt"},
       "greenest_window_active": {"name": "Grønneste tidsvindu aktivt"},
-      "is_in_cheapest_hours": {"name": "Billigste timer aktive"}
+      "is_in_cheapest_hours": {"name": "Billigste timer aktive"},
+      "retail_cheapest_window_active": {"name": "Billigste tidsvindu aktivt (forbrukerpris)"}
     }
   }
 }

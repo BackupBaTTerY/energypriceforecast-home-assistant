@@ -71,8 +71,11 @@ time slots, made for charting with the community card
 separately via HACS): the always-on sensor ending in `_price_series`
 (day-ahead/spot price) and, if you enabled retail pricing during setup, the
 sensor ending in `_retail_current_price` (assumption-based all-in price).
-Paste the prompt below into your AI assistant of choice to get a ready-to-use
-Lovelace card for your actual entity_id.
+Both also carry a third attribute, `raw_forecast`: the entries beyond the
+published day-ahead window - the actual ML/weather-based forecast, richer
+with a longer configured horizon. Paste the prompt below into your AI
+assistant of choice to get a ready-to-use Lovelace card for your actual
+entity_id.
 
 <details>
 <summary>Show the copyable prompt</summary>
@@ -80,20 +83,22 @@ Lovelace card for your actual entity_id.
 ```
 Help me build a Home Assistant Lovelace card that charts electricity prices from the Energy Price Forecast EU integration using the apexcharts-card custom card.
 
-The integration creates a sensor whose entity_id ends in "_price_series" (day-ahead/spot price, the exact name depends on my chosen market, for example sensor.energy_price_forecast_eu_de_price_forecast_series) and, if I enabled retail pricing, a second sensor ending in "_retail_current_price" (assumption-based all-in price) with the same attribute shape. Each sensor's state is its current price; its attributes raw_today and raw_tomorrow are each a list of objects shaped like {"start": ISO8601 timestamp, "end": ISO8601 timestamp, "value": number}. The value's unit matches the market's currency (for example EUR/kWh).
+The integration creates a sensor whose entity_id ends in "_price_series" (day-ahead/spot price, the exact name depends on my chosen market, for example sensor.energy_price_forecast_eu_de_price_forecast_series) and, if I enabled retail pricing, a second sensor ending in "_retail_current_price" (assumption-based all-in price) with the same attribute shape. Each sensor's state is its current price; its attributes raw_today, raw_tomorrow and raw_forecast are each a list of objects shaped like {"start": ISO8601 timestamp, "end": ISO8601 timestamp, "value": number}. raw_today/raw_tomorrow only ever cover the published day-ahead window (known prices, never estimated); raw_forecast holds only the entries beyond that window - the actual ML/weather-based forecast. The value's unit matches the market's currency (for example EUR/kWh).
 
 My actual entity_id is: <PASTE YOUR ENTITY ID HERE - find it under Settings > Devices & Services > Energy Price Forecast EU, or Developer Tools > States, filtering for "price_series" or "retail_current_price">
 
 Before writing YAML, ask me:
 1. Do I already have HACS and the apexcharts-card custom card installed? If not, tell me to install apexcharts-card via HACS first (category: Frontend/Plugin).
 2. Do I want to chart the spot/day-ahead price (_price_series) or my retail all-in price (_retail_current_price), if I have that enabled?
-3. Should the chart show today only, or today and tomorrow together?
+3. Should the chart show today only, today and tomorrow together, or the known prices plus the forecast (raw_today + raw_tomorrow + raw_forecast) as two visually distinct series (e.g. solid vs dashed, different colors)?
 4. Do I also want the cheapest-hours window highlighted, if I enabled that feature? (binary_sensor ...is_in_cheapest_hours / sensor ...cheapest_hours_next_start)
 5. Do I want a bar chart per hour or a line/area chart?
 
 Rules for your result:
-- Use only the raw_today / raw_tomorrow attributes I described. Do not invent other attributes or a different data shape.
+- Use only the raw_today / raw_tomorrow / raw_forecast attributes I described. Do not invent other attributes or a different data shape.
 - Use apexcharts-card's data_generator to turn the attribute list into a chart series - do not assume the card accepts the attribute directly as a series.
+- If I asked for known prices and forecast as separate series, use two series against the same entity (one summing raw_today+raw_tomorrow, one for raw_forecast), each with its own data_generator, and set extend_to: false on both - otherwise apexcharts-card visually extends the last value to the edge of the graph, which is misleading here.
+- Quote any string value (title, name, tooltip format) that itself contains a colon, like "Known: forecast" or "dd.MM. HH:mm" - an unquoted colon inside a YAML value breaks parsing.
 - Produce a complete, correctly indented YAML block for a manual Lovelace card (type: custom:apexcharts-card).
 - Tell me exactly where to paste it (Dashboard > Edit > Add card > Manual).
 - If information is missing, ask - do not guess my entity_id or market.

@@ -65,12 +65,14 @@ create one request per entity.
 
 ## Build a price chart with AI
 
-The integration creates a sensor whose name ends in `_price_series`, carrying
-`raw_today` / `raw_tomorrow` attributes - a list of price time slots, made for
-charting with the community card
+Two sensors carry `raw_today` / `raw_tomorrow` attributes - a list of price
+time slots, made for charting with the community card
 [apexcharts-card](https://github.com/RomRider/apexcharts-card) (installed
-separately via HACS). Paste the prompt below into your AI assistant of choice
-to get a ready-to-use Lovelace card for your actual entity_id.
+separately via HACS): the always-on sensor ending in `_price_series`
+(day-ahead/spot price) and, if you enabled retail pricing during setup, the
+sensor ending in `_retail_current_price` (assumption-based all-in price).
+Paste the prompt below into your AI assistant of choice to get a ready-to-use
+Lovelace card for your actual entity_id.
 
 <details>
 <summary>Show the copyable prompt</summary>
@@ -78,15 +80,16 @@ to get a ready-to-use Lovelace card for your actual entity_id.
 ```
 Help me build a Home Assistant Lovelace card that charts electricity prices from the Energy Price Forecast EU integration using the apexcharts-card custom card.
 
-The integration creates a sensor whose entity_id ends in "_price_series" (the exact name depends on my chosen market, for example sensor.energy_price_forecast_eu_de_price_forecast_series). Its state is the current price; its attributes raw_today and raw_tomorrow are each a list of objects shaped like {"start": ISO8601 timestamp, "end": ISO8601 timestamp, "value": number}. The value's unit matches the market's currency (for example EUR/kWh).
+The integration creates a sensor whose entity_id ends in "_price_series" (day-ahead/spot price, the exact name depends on my chosen market, for example sensor.energy_price_forecast_eu_de_price_forecast_series) and, if I enabled retail pricing, a second sensor ending in "_retail_current_price" (assumption-based all-in price) with the same attribute shape. Each sensor's state is its current price; its attributes raw_today and raw_tomorrow are each a list of objects shaped like {"start": ISO8601 timestamp, "end": ISO8601 timestamp, "value": number}. The value's unit matches the market's currency (for example EUR/kWh).
 
-My actual entity_id is: <PASTE YOUR ENTITY ID HERE - find it under Settings > Devices & Services > Energy Price Forecast EU, or Developer Tools > States, filtering for "price_series">
+My actual entity_id is: <PASTE YOUR ENTITY ID HERE - find it under Settings > Devices & Services > Energy Price Forecast EU, or Developer Tools > States, filtering for "price_series" or "retail_current_price">
 
 Before writing YAML, ask me:
 1. Do I already have HACS and the apexcharts-card custom card installed? If not, tell me to install apexcharts-card via HACS first (category: Frontend/Plugin).
-2. Should the chart show today only, or today and tomorrow together?
-3. Do I also want the cheapest-hours window highlighted, if I enabled that feature? (binary_sensor ...is_in_cheapest_hours / sensor ...cheapest_hours_next_start)
-4. Do I want a bar chart per hour or a line/area chart?
+2. Do I want to chart the spot/day-ahead price (_price_series) or my retail all-in price (_retail_current_price), if I have that enabled?
+3. Should the chart show today only, or today and tomorrow together?
+4. Do I also want the cheapest-hours window highlighted, if I enabled that feature? (binary_sensor ...is_in_cheapest_hours / sensor ...cheapest_hours_next_start)
+5. Do I want a bar chart per hour or a line/area chart?
 
 Rules for your result:
 - Use only the raw_today / raw_tomorrow attributes I described. Do not invent other attributes or a different data shape.

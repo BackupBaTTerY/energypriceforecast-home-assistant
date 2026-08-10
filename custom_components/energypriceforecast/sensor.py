@@ -96,6 +96,26 @@ def _split_today_tomorrow(
     return today, tomorrow
 
 
+def _forecast_only(entries: Any) -> list[dict[str, Any]]:
+    """Return only the entries beyond the published day-ahead window.
+
+    The API marks each entry with source "day_ahead" or "forecast".
+    raw_today/raw_tomorrow only ever cover the published day-ahead
+    window (like Nordpool's convention), so they can never show the
+    ML/weather-based forecast that starts once day-ahead coverage
+    ends - typically from the day after tomorrow, with a longer
+    horizon config or API key. This attribute exists to make that
+    forecast portion chartable on its own.
+    """
+    if not isinstance(entries, list):
+        return []
+    return [
+        {"start": entry.get("start"), "end": entry.get("end"), "value": entry.get("value")}
+        for entry in entries
+        if entry.get("source") == "forecast"
+    ]
+
+
 @dataclass(frozen=True, kw_only=True)
 class EnergyPriceForecastSensorDescription(SensorEntityDescription):
     """Describe how a value is read from the summary."""
@@ -265,6 +285,8 @@ class EnergyPriceForecastRetailPriceSensor(EnergyPriceForecastEntity, SensorEnti
     State mirrors the current retail price; raw_today/raw_tomorrow
     attributes carry the full retail series, same shape as
     EnergyPriceForecastPriceSeriesSensor but with retail values.
+    raw_forecast carries the entries beyond published day-ahead
+    coverage, i.e. the actual ML/weather-based forecast.
     """
 
     _attr_translation_key = "retail_current_price"
@@ -294,7 +316,11 @@ class EnergyPriceForecastRetailPriceSensor(EnergyPriceForecastEntity, SensorEnti
     def extra_state_attributes(self) -> dict[str, Any]:
         entries = _path(self.coordinator.retail_data or {}, "entries")
         today, tomorrow = _split_today_tomorrow(entries)
-        return {"raw_today": today, "raw_tomorrow": tomorrow}
+        return {
+            "raw_today": today,
+            "raw_tomorrow": tomorrow,
+            "raw_forecast": _forecast_only(entries),
+        }
 
 
 class EnergyPriceForecastPriceSeriesSensor(EnergyPriceForecastEntity, SensorEntity):
@@ -303,8 +329,11 @@ class EnergyPriceForecastPriceSeriesSensor(EnergyPriceForecastEntity, SensorEnti
     Always created (unlike the other optional sensors): forecasting the
     price series is this integration's core purpose, not a niche
     add-on. State mirrors the current market price; raw_today/
-    raw_tomorrow attributes carry the full series. Backed by
-    coordinator.price_series rather than the shared summary response.
+    raw_tomorrow attributes carry the full series, and raw_forecast
+    carries the entries beyond published day-ahead coverage - the
+    actual ML/weather-based forecast, richer with a longer configured
+    horizon. Backed by coordinator.price_series rather than the shared
+    summary response.
     """
 
     _attr_translation_key = "price_series"
@@ -334,7 +363,11 @@ class EnergyPriceForecastPriceSeriesSensor(EnergyPriceForecastEntity, SensorEnti
     def extra_state_attributes(self) -> dict[str, Any]:
         entries = _path(self.coordinator.price_series or {}, "entries")
         today, tomorrow = _split_today_tomorrow(entries)
-        return {"raw_today": today, "raw_tomorrow": tomorrow}
+        return {
+            "raw_today": today,
+            "raw_tomorrow": tomorrow,
+            "raw_forecast": _forecast_only(entries),
+        }
 
 
 class EnergyPriceForecastCheapestHoursSensor(EnergyPriceForecastEntity, SensorEntity):

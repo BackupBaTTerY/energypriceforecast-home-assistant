@@ -154,6 +154,40 @@ async def test_price_series_sensor_splits_today_and_tomorrow(hass, freezer) -> N
     assert [item["value"] for item in state.attributes["raw_tomorrow"]] == [0.13]
 
 
+async def test_price_series_sensor_exposes_forecast_only_entries(hass, freezer) -> None:
+    """raw_forecast contains only entries whose source is "forecast", any date."""
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-08T10:00:00+00:00")
+    entries = [
+        {
+            "start": "2026-08-08T11:00:00Z",
+            "end": "2026-08-08T12:00:00Z",
+            "value": 0.11,
+            "source": "day_ahead",
+        },
+        {
+            "start": "2026-08-09T05:00:00Z",
+            "end": "2026-08-09T06:00:00Z",
+            "value": 0.13,
+            "source": "day_ahead",
+        },
+        {
+            "start": "2026-08-10T05:00:00Z",
+            "end": "2026-08-10T06:00:00Z",
+            "value": 0.15,
+            "source": "forecast",
+        },
+    ]
+
+    entry = await _setup_entry(hass, price_entries=entries)
+
+    state = _state_for_unique_id(hass, entry, "price_series")
+
+    assert [item["value"] for item in state.attributes["raw_forecast"]] == [0.15]
+    # forecast entries beyond tomorrow must not leak into raw_today/raw_tomorrow
+    assert [item["value"] for item in state.attributes["raw_tomorrow"]] == [0.13]
+
+
 async def test_retail_price_sensor_includes_raw_series(hass, freezer) -> None:
     """retail_current_price also exposes raw_today/raw_tomorrow, like price_series."""
     await hass.config.async_set_time_zone("UTC")

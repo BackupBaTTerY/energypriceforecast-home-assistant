@@ -22,7 +22,7 @@
           "retail_pricing": "Přidává odhadovanou kompletní cenu (poplatek za síť, poplatky, DPH) navíc k tržní ceně. Dostupné jen pro některé trhy; nejde o přesný tarif dodavatele.",
           "postal_code": "Vyžadováno pro Německo, pokud je povolena maloobchodní cena, používá se pro vyhledání poplatku za síť. Pro ostatní trhy se nepoužívá.",
           "update_interval_minutes": "Jak často se API dotazuje. Rozlišení dat je 15 minut, kratší intervaly proto zřídka přinášejí nové informace.",
-          "cheapest_hours_count": "Přidává entity pro N nejlevnějších nadcházejících hodin, které nemusí na sebe navazovat - užitečné pro automatizace jako spuštění spotřebiče během nejlevnějších hodin dne."
+          "cheapest_hours_count": "Přidává entity pro N nejlevnějších hodin každého jednotlivého kalendářního dne (ne celkem za celý horizont), které nemusí na sebe navazovat - užitečné pro automatizace jako každodenní spuštění spotřebiče během nejlevnějších hodin."
         }
       },
       "reconfigure": {

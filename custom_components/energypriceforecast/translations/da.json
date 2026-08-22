@@ -22,7 +22,7 @@
           "retail_pricing": "Tilføjer en antagelsesbaseret alt-inkl.-pris (netafgift, afgifter, moms) ud over markedsprisen. Kun tilgængelig for nogle markeder; ikke en præcis leverandørtarif.",
           "postal_code": "Påkrævet for Tyskland, når detailpris er aktiveret, bruges til opslag af netafgift. Bruges ikke til andre markeder.",
           "update_interval_minutes": "Hvor ofte API'en forespørges. Dataopløsningen er 15 minutter, så kortere intervaller giver sjældent ny information.",
-          "cheapest_hours_count": "Tilføjer entiteter for de N billigste kommende timer, som ikke behøver at være sammenhængende - nyttigt til automatiseringer som at køre et apparat i de billigste timer på dagen."
+          "cheapest_hours_count": "Tilføjer entiteter for de N billigste timer på hver enkelt kalenderdag (ikke i alt for hele horisonten), som ikke behøver at være sammenhængende - nyttigt til automatiseringer som at køre et apparat hver dag i de billigste timer."
         }
       },
       "reconfigure": {

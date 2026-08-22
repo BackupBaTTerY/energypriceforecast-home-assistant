@@ -22,7 +22,7 @@
           "retail_pricing": "Voegt een op aannames gebaseerde alles-in prijs toe (netkosten, heffingen, btw) naast de marktprijs. Alleen beschikbaar voor sommige markten; geen exact leveringstarief.",
           "postal_code": "Vereist voor Duitsland wanneer consumentenprijzen zijn ingeschakeld, gebruikt voor het opzoeken van netkosten. Niet gebruikt voor andere markten.",
           "update_interval_minutes": "Hoe vaak de API wordt bevraagd. De gegevensresolutie is 15 minuten, dus kortere intervallen leveren zelden nieuwe informatie op.",
-          "cheapest_hours_count": "Voegt entiteiten toe voor de N goedkoopste komende uren, die niet aaneengesloten hoeven te zijn - handig voor automatiseringen zoals een apparaat laten draaien tijdens de goedkoopste uren van de dag."
+          "cheapest_hours_count": "Voegt entiteiten toe voor de N goedkoopste uren van elke afzonderlijke kalenderdag (niet in totaal over de hele horizon), die niet aaneengesloten hoeven te zijn - handig voor automatiseringen zoals een apparaat elke dag tijdens de goedkoopste uren laten draaien."
         }
       },
       "reconfigure": {

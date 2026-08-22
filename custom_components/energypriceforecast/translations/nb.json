@@ -22,7 +22,7 @@
           "retail_pricing": "Legger til en antagelsesbasert alt-inkludert-pris (nettleie, avgifter, mva.) i tillegg til markedsprisen. Kun tilgjengelig for enkelte markeder; ikke en eksakt leverandørtariff.",
           "postal_code": "Kreves for Tyskland når forbrukerpris er aktivert, brukes til oppslag av nettleie. Brukes ikke for andre markeder.",
           "update_interval_minutes": "Hvor ofte API-et spørres. Dataoppløsningen er 15 minutter, så kortere intervaller gir sjelden ny informasjon.",
-          "cheapest_hours_count": "Legger til entiteter for de N billigste kommende timene, som ikke trenger å henge sammen - nyttig for automatiseringer som å kjøre et apparat i de billigste timene på dagen."
+          "cheapest_hours_count": "Legger til entiteter for de N billigste timene hver enkelt kalenderdag (ikke totalt over hele horisonten), som ikke trenger å henge sammen - nyttig for automatiseringer som å kjøre et apparat hver dag i de billigste timene."
         }
       },
       "reconfigure": {

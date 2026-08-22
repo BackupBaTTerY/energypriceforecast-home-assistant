@@ -22,7 +22,7 @@
           "retail_pricing": "Ajoute un prix tout compris basé sur des hypothèses (frais de réseau, taxes, TVA) en plus du prix du marché. Disponible uniquement pour certains marchés ; ce n'est pas un tarif fournisseur exact.",
           "postal_code": "Requis pour l'Allemagne lorsque le prix de détail est activé, utilisé pour déterminer les frais de réseau. Non utilisé pour les autres marchés.",
           "update_interval_minutes": "Fréquence d'interrogation de l'API. La résolution des données est de 15 minutes, des intervalles plus courts apportent donc rarement de nouvelles informations.",
-          "cheapest_hours_count": "Ajoute des entités pour les N heures les moins chères à venir, qui peuvent ne pas être consécutives - utile pour des automatisations comme faire fonctionner un appareil pendant les heures les moins chères de la journée."
+          "cheapest_hours_count": "Ajoute des entités pour les N heures les moins chères de chaque jour calendaire (et non au total sur tout l'horizon), qui peuvent ne pas être consécutives - utile pour des automatisations comme faire fonctionner un appareil chaque jour pendant les heures les moins chères."
         }
       },
       "reconfigure": {

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from homeassistant.core import HomeAssistant
@@ -11,6 +11,7 @@ from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
     UpdateFailed,
 )
+from homeassistant.util import dt as dt_util
 
 from .api import EnergyPriceForecastApi, EnergyPriceForecastApiError
 from .const import DEFAULT_UPDATE_INTERVAL_MINUTES, NAME
@@ -21,12 +22,18 @@ _LOGGER = logging.getLogger(__name__)
 def _cheapest_hour_blocks(
     entries: list[dict[str, Any]], count: int
 ) -> list[dict[str, Any]]:
-    """Group price entries into calendar hours and pick the cheapest ones.
+    """Group price entries into calendar hours, then pick the count
+    cheapest hours within each local calendar day separately.
 
-    Selected hours may be non-contiguous (e.g. hour 2, 5 and 9 of the
-    horizon) - unlike the API's summary endpoint, which only finds the
-    single best *contiguous* window. Hours that have already fully
-    passed are excluded.
+    Selected hours may be non-contiguous within a day (e.g. hour 2 and 5
+    of today) - unlike the API's summary endpoint, which only finds the
+    single best *contiguous* window. Picking independently per calendar
+    day, rather than across the whole configured horizon at once, is
+    what makes a recurring automation ("run the washing machine during
+    the N cheapest hours") actually recur every day: a shared N-hour
+    budget across the whole horizon could otherwise land entirely on
+    the cheaper of two days, leaving the other day with none at all.
+    Hours that have already fully passed are excluded.
     """
     now_hour = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
     buckets: dict[datetime, list[float]] = {}
@@ -52,7 +59,17 @@ def _cheapest_hour_blocks(
         }
         for start, values in buckets.items()
     ]
-    cheapest = sorted(hours, key=lambda hour: hour["average_value"])[:count]
+
+    by_local_day: dict[date, list[dict[str, Any]]] = {}
+    for hour in hours:
+        local_day = dt_util.as_local(hour["start"]).date()
+        by_local_day.setdefault(local_day, []).append(hour)
+
+    cheapest: list[dict[str, Any]] = []
+    for day_hours in by_local_day.values():
+        cheapest.extend(
+            sorted(day_hours, key=lambda hour: hour["average_value"])[:count]
+        )
     return sorted(cheapest, key=lambda hour: hour["start"])
 
 

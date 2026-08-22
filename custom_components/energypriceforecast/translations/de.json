@@ -22,7 +22,7 @@
           "retail_pricing": "Ergänzt einen annahmenbasierten Gesamtpreis (Netzentgelt, Abgaben, MwSt.) zusätzlich zum Marktpreis. Nur für einige Märkte verfügbar; kein exakter Liefertarif.",
           "postal_code": "Für Deutschland bei aktiviertem Endkundenpreis erforderlich, wird für die Netzentgelt-Ermittlung genutzt. Für andere Märkte nicht benötigt.",
           "update_interval_minutes": "Wie oft die API abgefragt wird. Die Datenauflösung liegt bei 15 Minuten, kürzere Intervalle liefern daher selten neue Informationen.",
-          "cheapest_hours_count": "Ergänzt Entitäten für die N günstigsten kommenden Stunden, die nicht zusammenhängen müssen – nützlich für Automatisierungen wie 'Gerät während der günstigsten Stunden des Tages laufen lassen'."
+          "cheapest_hours_count": "Ergänzt Entitäten für die N günstigsten Stunden jedes einzelnen Kalendertags (nicht insgesamt über den ganzen Horizont), die nicht zusammenhängen müssen – nützlich für Automatisierungen wie 'Gerät jeden Tag während der günstigsten Stunden laufen lassen'."
         }
       },
       "reconfigure": {

@@ -75,7 +75,7 @@ def _schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
             ),
             vol.Required(
                 CONF_HORIZON_HOURS,
-                default=defaults.get(CONF_HORIZON_HOURS, DEFAULT_HORIZON_HOURS),
+                default=str(defaults.get(CONF_HORIZON_HOURS, DEFAULT_HORIZON_HOURS)),
             ): SelectSelector(
                 SelectSelectorConfig(
                     options=[

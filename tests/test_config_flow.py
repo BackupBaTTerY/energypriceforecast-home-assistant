@@ -10,6 +10,7 @@ from custom_components.energypriceforecast.api import (
     EnergyPriceForecastRetailUnavailable,
 )
 from custom_components.energypriceforecast.config_flow import (
+    _schema,
     _validate_retail_selection,
 )
 from custom_components.energypriceforecast.const import (
@@ -179,6 +180,23 @@ async def test_user_flow_aborts_on_duplicate_market(hass) -> None:
 
     assert result["type"] is data_entry_flow.FlowResultType.ABORT
     assert result["reason"] == "already_configured"
+
+
+def test_schema_default_horizon_survives_validation_when_stored_as_int() -> None:
+    """A previously-stored int horizon_hours must not crash schema validation.
+
+    _normalize_input() stores horizon_hours as an int, and reconfigure
+    seeds _schema()'s defaults straight from the stored config entry -
+    but horizon_hours is a SelectSelector whose options are strings.
+    voluptuous substitutes and validates a Required field's default
+    whenever the key is missing from the input, so an int default there
+    used to fail SelectSelector's strict internal str check.
+    """
+    schema = _schema({"horizon_hours": 48})
+
+    validated = schema({})
+
+    assert validated["horizon_hours"] == "48"
 
 
 @pytest.mark.parametrize(

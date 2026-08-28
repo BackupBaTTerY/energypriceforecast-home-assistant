@@ -61,6 +61,8 @@ async def async_setup_entry(
         entities.append(EnergyPriceForecastRetailWindowBinarySensor(coordinator, entry))
     if coordinator.cheapest_hours_count > 0:
         entities.append(EnergyPriceForecastCheapestHoursBinarySensor(coordinator, entry))
+    if coordinator.weekend_hours_count > 0:
+        entities.append(EnergyPriceForecastWeekendHoursBinarySensor(coordinator, entry))
     async_add_entities(entities)
 
 
@@ -145,4 +147,35 @@ class EnergyPriceForecastCheapestHoursBinarySensor(
         return any(
             hour["start"] <= now < hour["end"]
             for hour in self.coordinator.cheapest_hours or []
+        )
+
+
+class EnergyPriceForecastWeekendHoursBinarySensor(
+    EnergyPriceForecastEntity, BinarySensorEntity
+):
+    """On while now falls inside one of this weekend's N cheapest hours.
+
+    Only created when a positive weekend hour count was configured.
+    Backed by coordinator.weekend_hours, the independently-locked
+    Saturday-to-Monday plan (see planning.fixed_weekend_window).
+    """
+
+    _attr_translation_key = "is_in_weekend_hours"
+    _attr_icon = "mdi:calendar-weekend"
+
+    def __init__(
+        self, coordinator: EnergyPriceForecastCoordinator, entry: ConfigEntry
+    ) -> None:
+        super().__init__(coordinator, entry, "is_in_weekend_hours")
+
+    @property
+    def available(self) -> bool:
+        return super().available and self.coordinator.weekend_hours is not None
+
+    @property
+    def is_on(self) -> bool:
+        now = datetime.now(timezone.utc)
+        return any(
+            hour["start"] <= now < hour["end"]
+            for hour in self.coordinator.weekend_hours or []
         )

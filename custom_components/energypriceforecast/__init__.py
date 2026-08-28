@@ -10,15 +10,21 @@ from .api import EnergyPriceForecastApi
 from .const import (
     CONF_API_KEY,
     CONF_CHEAPEST_HOURS_COUNT,
+    CONF_CHEAPEST_HOURS_START_HOUR,
+    CONF_CHEAPEST_HOURS_WINDOW_HOURS,
     CONF_HORIZON_HOURS,
     CONF_MARKET,
     CONF_POSTAL_CODE,
     CONF_RETAIL_PRICING,
     CONF_UPDATE_INTERVAL_MINUTES,
+    CONF_WEEKEND_HOURS_COUNT,
     CONF_WINDOW_HOURS,
     DEFAULT_API_URL,
     DEFAULT_CHEAPEST_HOURS_COUNT,
+    DEFAULT_CHEAPEST_HOURS_START_HOUR,
+    DEFAULT_CHEAPEST_HOURS_WINDOW_HOURS,
     DEFAULT_UPDATE_INTERVAL_MINUTES,
+    DEFAULT_WEEKEND_HOURS_COUNT,
     PLATFORMS,
     PRICES_API_URL,
 )
@@ -39,6 +45,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator = EnergyPriceForecastCoordinator(
         hass,
         api,
+        entry_id=entry.entry_id,
         retail_pricing=entry.data.get(CONF_RETAIL_PRICING, False),
         postal_code=entry.data.get(CONF_POSTAL_CODE),
         update_interval_minutes=entry.data.get(
@@ -46,6 +53,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         ),
         cheapest_hours_count=entry.data.get(
             CONF_CHEAPEST_HOURS_COUNT, DEFAULT_CHEAPEST_HOURS_COUNT
+        ),
+        cheapest_hours_window_hours=entry.data.get(
+            CONF_CHEAPEST_HOURS_WINDOW_HOURS, DEFAULT_CHEAPEST_HOURS_WINDOW_HOURS
+        ),
+        cheapest_hours_start_hour=entry.data.get(
+            CONF_CHEAPEST_HOURS_START_HOUR, DEFAULT_CHEAPEST_HOURS_START_HOUR
+        ),
+        weekend_hours_count=entry.data.get(
+            CONF_WEEKEND_HOURS_COUNT, DEFAULT_WEEKEND_HOURS_COUNT
         ),
     )
     await coordinator.async_config_entry_first_refresh()

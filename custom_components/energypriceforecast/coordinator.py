@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Any
 
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
     UpdateFailed,
@@ -14,63 +15,17 @@ from homeassistant.helpers.update_coordinator import (
 from homeassistant.util import dt as dt_util
 
 from .api import EnergyPriceForecastApi, EnergyPriceForecastApiError
-from .const import DEFAULT_UPDATE_INTERVAL_MINUTES, NAME
+from .const import DEFAULT_UPDATE_INTERVAL_MINUTES, DOMAIN, NAME
+from .planning import (
+    fixed_repeating_window,
+    fixed_weekend_window,
+    select_cheapest_hours,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
-
-def _cheapest_hour_blocks(
-    entries: list[dict[str, Any]], count: int
-) -> list[dict[str, Any]]:
-    """Group price entries into calendar hours, then pick the count
-    cheapest hours within each local calendar day separately.
-
-    Selected hours may be non-contiguous within a day (e.g. hour 2 and 5
-    of today) - unlike the API's summary endpoint, which only finds the
-    single best *contiguous* window. Picking independently per calendar
-    day, rather than across the whole configured horizon at once, is
-    what makes a recurring automation ("run the washing machine during
-    the N cheapest hours") actually recur every day: a shared N-hour
-    budget across the whole horizon could otherwise land entirely on
-    the cheaper of two days, leaving the other day with none at all.
-    Hours that have already fully passed are excluded.
-    """
-    now_hour = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
-    buckets: dict[datetime, list[float]] = {}
-    for entry in entries:
-        start_raw = entry.get("start")
-        value = entry.get("value")
-        if not isinstance(start_raw, str) or not isinstance(value, (int, float)):
-            continue
-        try:
-            start = datetime.fromisoformat(start_raw.replace("Z", "+00:00"))
-        except ValueError:
-            continue
-        hour_start = start.replace(minute=0, second=0, microsecond=0)
-        if hour_start < now_hour:
-            continue
-        buckets.setdefault(hour_start, []).append(float(value))
-
-    hours = [
-        {
-            "start": start,
-            "end": start + timedelta(hours=1),
-            "average_value": sum(values) / len(values),
-        }
-        for start, values in buckets.items()
-    ]
-
-    by_local_day: dict[date, list[dict[str, Any]]] = {}
-    for hour in hours:
-        local_day = dt_util.as_local(hour["start"]).date()
-        by_local_day.setdefault(local_day, []).append(hour)
-
-    cheapest: list[dict[str, Any]] = []
-    for day_hours in by_local_day.values():
-        cheapest.extend(
-            sorted(day_hours, key=lambda hour: hour["average_value"])[:count]
-        )
-    return sorted(cheapest, key=lambda hour: hour["start"])
+_PLAN_STORAGE_VERSION = 1
+_MAX_CACHED_PLANS = 50
 
 
 class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
@@ -80,10 +35,14 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self,
         hass: HomeAssistant,
         api: EnergyPriceForecastApi,
+        entry_id: str,
         retail_pricing: bool = False,
         postal_code: str | None = None,
         update_interval_minutes: int = DEFAULT_UPDATE_INTERVAL_MINUTES,
         cheapest_hours_count: int = 0,
+        cheapest_hours_window_hours: int = 24,
+        cheapest_hours_start_hour: int = 0,
+        weekend_hours_count: int = 0,
     ) -> None:
         super().__init__(
             hass,
@@ -95,10 +54,72 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.retail_pricing = retail_pricing
         self.postal_code = postal_code
         self.cheapest_hours_count = cheapest_hours_count
+        self.cheapest_hours_window_hours = cheapest_hours_window_hours
+        self.cheapest_hours_start_hour = cheapest_hours_start_hour
+        self.weekend_hours_count = weekend_hours_count
         self.retail_data: dict[str, Any] | None = None
         self.retail_summary: dict[str, Any] | None = None
         self.price_series: dict[str, Any] | None = None
         self.cheapest_hours: list[dict[str, Any]] | None = None
+        self.weekend_hours: list[dict[str, Any]] | None = None
+        self._plan_store = Store[dict[str, Any]](
+            hass, _PLAN_STORAGE_VERSION, f"{DOMAIN}_{entry_id}_plans"
+        )
+        self._plan_cache: dict[str, list[dict[str, Any]]] | None = None
+
+    async def _async_load_plan_cache(self) -> dict[str, list[dict[str, Any]]]:
+        if self._plan_cache is None:
+            stored = await self._plan_store.async_load()
+            self._plan_cache = stored if isinstance(stored, dict) else {}
+        return self._plan_cache
+
+    async def _async_get_plan(
+        self,
+        plan_key: str,
+        window_start: datetime,
+        window_end: datetime,
+        count: int,
+        entries: list[dict[str, Any]],
+        available_from: datetime,
+    ) -> list[dict[str, Any]] | None:
+        """Return the plan for one block, computing and locking it once.
+
+        Every subsequent call for the same block (same plan_key and window
+        start) returns the exact hours picked the first time, even if the
+        forecast has since changed - see planning.py for why that matters.
+        """
+        cache = await self._async_load_plan_cache()
+        cache_key = f"{plan_key}|{window_start.isoformat()}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return [
+                {
+                    "start": datetime.fromisoformat(hour["start"]),
+                    "end": datetime.fromisoformat(hour["end"]),
+                    "average_value": hour["average_value"],
+                }
+                for hour in cached
+            ]
+
+        plan = select_cheapest_hours(
+            entries, count, window_start, window_end, available_from
+        )
+        if plan is None:
+            return None
+
+        cache[cache_key] = [
+            {
+                "start": hour["start"].isoformat(),
+                "end": hour["end"].isoformat(),
+                "average_value": hour["average_value"],
+            }
+            for hour in plan
+        ]
+        if len(cache) > _MAX_CACHED_PLANS:
+            for stale_key in list(cache)[: len(cache) - _MAX_CACHED_PLANS]:
+                del cache[stale_key]
+        await self._plan_store.async_save(cache)
+        return plan
 
     async def _async_update_data(self) -> dict[str, Any]:
         try:
@@ -124,18 +145,44 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 _LOGGER.warning("Retail summary update failed: %s", err)
 
         # The raw price series backs both the price-series sensor (for
-        # charting, e.g. with apexcharts-card) and the optional
-        # cheapest-hours feature. Fetched unconditionally: it is the
-        # forecast data this integration exists to expose, not a niche
-        # add-on.
+        # charting, e.g. with apexcharts-card) and the cheapest-hours
+        # plans. Fetched unconditionally: it is the forecast data this
+        # integration exists to expose, not a niche add-on.
         try:
             self.price_series = await self.api.async_get_prices(price_mode="base")
         except EnergyPriceForecastApiError as err:
             _LOGGER.warning("Price series update failed: %s", err)
 
+        now = dt_util.utcnow()
+
         if self.cheapest_hours_count > 0 and self.price_series:
-            self.cheapest_hours = _cheapest_hour_blocks(
-                self.price_series["entries"], self.cheapest_hours_count
+            window_start, window_end = fixed_repeating_window(
+                now, self.cheapest_hours_start_hour, self.cheapest_hours_window_hours
+            )
+            self.cheapest_hours = await self._async_get_plan(
+                f"block|{self.cheapest_hours_count}|"
+                f"{self.cheapest_hours_window_hours}|{self.cheapest_hours_start_hour}",
+                window_start,
+                window_end,
+                self.cheapest_hours_count,
+                self.price_series["entries"],
+                # Past hours of the current block need no coverage - only
+                # gaps from now onward would make the plan unreliable.
+                max(window_start, now),
+            )
+
+        if self.weekend_hours_count > 0 and self.price_series:
+            window_start, window_end = fixed_weekend_window(now)
+            self.weekend_hours = await self._async_get_plan(
+                f"weekend|{self.weekend_hours_count}",
+                window_start,
+                window_end,
+                self.weekend_hours_count,
+                self.price_series["entries"],
+                # The weekend plan requires the *entire* Sat-Mon window to
+                # be covered before it locks in, even hours before "now" -
+                # so a plan built after a late reload is never partial.
+                window_start,
             )
 
         return summary

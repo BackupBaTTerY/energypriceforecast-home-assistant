@@ -11,9 +11,12 @@ from custom_components.energypriceforecast.api import (
 )
 from custom_components.energypriceforecast.config_flow import (
     _schema,
+    _validate_cheapest_hours_selection,
     _validate_retail_selection,
 )
 from custom_components.energypriceforecast.const import (
+    CONF_CHEAPEST_HOURS_COUNT,
+    CONF_CHEAPEST_HOURS_WINDOW_HOURS,
     CONF_MARKET,
     CONF_POSTAL_CODE,
     CONF_RETAIL_PRICING,
@@ -213,3 +216,71 @@ def test_schema_default_horizon_survives_validation_when_stored_as_int() -> None
 def test_validate_retail_selection(data, expected_error) -> None:
     """The synchronous pre-check matches each documented rule."""
     assert _validate_retail_selection(data) == expected_error
+
+
+@pytest.mark.parametrize(
+    ("count", "window_hours", "expected_error"),
+    [
+        (0, 24, None),
+        (12, 24, None),
+        (24, 24, None),
+        (25, 24, "cheapest_hours_exceeds_window"),
+        (48, 24, "cheapest_hours_exceeds_window"),
+    ],
+)
+def test_validate_cheapest_hours_selection(count, window_hours, expected_error) -> None:
+    """N (count) must never exceed X (the block length)."""
+    data = {
+        CONF_CHEAPEST_HOURS_COUNT: count,
+        CONF_CHEAPEST_HOURS_WINDOW_HOURS: window_hours,
+    }
+    assert _validate_cheapest_hours_selection(data) == expected_error
+
+
+async def test_user_flow_rejects_cheapest_hours_count_above_window(hass) -> None:
+    """Picking more cheapest hours than the block is long fails before any API call."""
+    with patch(
+        "custom_components.energypriceforecast.config_flow._validate_input",
+        new=AsyncMock(return_value=None),
+    ) as mock_validate:
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {
+                **BASE_USER_INPUT,
+                "cheapest_hours_count": 30,
+                "cheapest_hours_window_hours": 24,
+            },
+        )
+
+    assert result["type"] is data_entry_flow.FlowResultType.FORM
+    assert result["errors"]["base"] == "cheapest_hours_exceeds_window"
+    mock_validate.assert_not_called()
+
+
+async def test_user_flow_accepts_weekend_and_block_settings(hass) -> None:
+    """The new block/weekend fields normalize to ints and get stored."""
+    with patch(
+        "custom_components.energypriceforecast.config_flow._validate_input",
+        new=AsyncMock(return_value=None),
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {
+                **BASE_USER_INPUT,
+                "cheapest_hours_count": 24,
+                "cheapest_hours_window_hours": 48,
+                "cheapest_hours_start_hour": 6,
+                "weekend_hours_count": 8,
+            },
+        )
+
+    assert result["type"] is data_entry_flow.FlowResultType.CREATE_ENTRY
+    assert result["data"]["cheapest_hours_window_hours"] == 48
+    assert result["data"]["cheapest_hours_start_hour"] == 6
+    assert result["data"]["weekend_hours_count"] == 8

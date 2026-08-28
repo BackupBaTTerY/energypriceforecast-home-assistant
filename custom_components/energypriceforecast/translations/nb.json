@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Legg til strømpris- og CO2-prognose",
-        "description": "Velg et marked og prognosehorisonten. Offentlig tilgang gir for øyeblikket opptil 48 timer; en kvalifisert API-nøkkel kan låse opp 120 timer.",
+        "description": "Velg et marked og prognosehorisonten. Offentlig tilgang gir for øyeblikket opptil 48 timer; en kvalifisert API-nøkkel kan låse opp til 168 timer.",
         "data": {
           "market": "Marked eller prissone",
           "horizon_hours": "Ønsket horisont",
@@ -13,7 +13,10 @@
           "retail_pricing": "Aktiver forbrukerpris (alt inkludert)",
           "postal_code": "Postnummer",
           "update_interval_minutes": "Oppdateringsintervall (minutter)",
-          "cheapest_hours_count": "Billigste timer å spore (0 for å deaktivere)"
+          "cheapest_hours_count": "Billigste timer per blokk (0 for å deaktivere)",
+          "cheapest_hours_window_hours": "Blokklengde (timer)",
+          "cheapest_hours_start_hour": "Blokkens starttime (lokal tid)",
+          "weekend_hours_count": "Billigste timer for helgeplanen (0 for å deaktivere)"
         },
         "data_description": {
           "horizon_hours": "API-et rapporterer den faktisk tillatte horisonten som en diagnostikksensor.",
@@ -22,7 +25,10 @@
           "retail_pricing": "Legger til en antagelsesbasert alt-inkludert-pris (nettleie, avgifter, mva.) i tillegg til markedsprisen. Kun tilgjengelig for enkelte markeder; ikke en eksakt leverandørtariff.",
           "postal_code": "Kreves for Tyskland når forbrukerpris er aktivert, brukes til oppslag av nettleie. Brukes ikke for andre markeder.",
           "update_interval_minutes": "Hvor ofte API-et spørres. Dataoppløsningen er 15 minutter, så kortere intervaller gir sjelden ny informasjon.",
-          "cheapest_hours_count": "Legger til entiteter for de N billigste timene hver enkelt kalenderdag (ikke totalt over hele horisonten), som ikke trenger å henge sammen - nyttig for automatiseringer som å kjøre et apparat hver dag i de billigste timene."
+          "cheapest_hours_count": "Tiden deles opp i faste, sammenhengende blokker (angis nedenfor), og i hver blokk velges så mange enkelttimer - eventuelt ikke sammenhengende - som de billigste. Bra for en varmepumpe: f.eks. velger 12 av 24 timer de tolv billigste timene hver kalenderdag. Når en blokks plan først er valgt, blir den aldri stokket om igjen, selv om prognosen senere endrer seg. Må aldri være større enn blokklengden, og ingen plan publiseres i det hele tatt hvis prognosen ennå ikke dekker hele blokken.",
+          "cheapest_hours_window_hours": "Hvor lang hver gjentakende blokk er. 24 gjentas daglig; 48 velger timer fra en fast toDagersblokk (f.eks. mandag 00:00 til onsdag 00:00, deretter onsdag til fredag osv.). En lengre blokk gir flere timer å velge mellom - vanligvis mer besparelse, men en mindre jevnt fordelt driftstid.",
+          "cheapest_hours_start_hour": "Lokal time på døgnet (0-23) der hver blokk starter. 0 betyr at blokker starter ved midnatt; med en 24-timers blokk er dette rett og slett starten på hver kalenderdag.",
+          "weekend_hours_count": "En egen plan for en fast blokk fra lørdag 00:00 til mandag 00:00, uavhengig av blokken over - nyttig for en ladeboks som kun skal bruke helgefleksibilitet. Velges og låses på samme måte, men krever at hele helgen er dekket av prognosen (også allerede passerte timer) før den låses, slik at en plan laget etter en sen omstart aldri er delvis."
         }
       },
       "reconfigure": {
@@ -36,7 +42,10 @@
           "retail_pricing": "Aktiver forbrukerpris (alt inkludert)",
           "postal_code": "Postnummer",
           "update_interval_minutes": "Oppdateringsintervall (minutter)",
-          "cheapest_hours_count": "Billigste timer å spore (0 for å deaktivere)"
+          "cheapest_hours_count": "Billigste timer per blokk (0 for å deaktivere)",
+          "cheapest_hours_window_hours": "Blokklengde (timer)",
+          "cheapest_hours_start_hour": "Blokkens starttime (lokal tid)",
+          "weekend_hours_count": "Billigste timer for helgeplanen (0 for å deaktivere)"
         }
       }
     },
@@ -48,7 +57,8 @@
       "retail_not_supported": "Forbrukerpriser er ikke tilgjengelig for dette markedet ennå.",
       "postal_code_required": "Et postnummer kreves for forbrukerpriser i Tyskland.",
       "invalid_postal_code": "Oppgi et 5-sifret tysk postnummer.",
-      "retail_unavailable": "Kunne ikke bekrefte forbrukerprisen for dette markedet eller postnummeret."
+      "retail_unavailable": "Kunne ikke bekrefte forbrukerprisen for dette markedet eller postnummeret.",
+      "cheapest_hours_exceeds_window": "Billigste timer per blokk kan ikke være større enn blokklengden."
     },
     "abort": {
       "already_configured": "Dette markedet er allerede konfigurert."
@@ -72,6 +82,7 @@
       "price_series": {"name": "Prisserie"},
       "retail_current_price": {"name": "Nåværende forbrukerpris"},
       "cheapest_hours_next_start": {"name": "Neste billigste time"},
+      "weekend_hours_next_start": {"name": "Neste billigste helgetime"},
       "retail_cheapest_window_average_price": {"name": "Gjennomsnittspris billigste tidsvindu (forbrukerpris)"},
       "retail_cheapest_window_start": {"name": "Start på billigste tidsvindu (forbrukerpris)"},
       "retail_cheapest_window_end": {"name": "Slutt på billigste tidsvindu (forbrukerpris)"}
@@ -80,6 +91,7 @@
       "cheapest_window_active": {"name": "Billigste tidsvindu aktivt"},
       "greenest_window_active": {"name": "Grønneste tidsvindu aktivt"},
       "is_in_cheapest_hours": {"name": "Billigste timer aktive"},
+      "is_in_weekend_hours": {"name": "Billigste helgetimer aktive"},
       "retail_cheapest_window_active": {"name": "Billigste tidsvindu aktivt (forbrukerpris)"}
     }
   }

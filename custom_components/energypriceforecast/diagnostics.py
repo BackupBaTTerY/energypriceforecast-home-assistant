@@ -24,5 +24,6 @@ async def async_get_config_entry_diagnostics(
         "data": coordinator.data,
         "retail_data": coordinator.retail_data,
         "cheapest_hours": coordinator.cheapest_hours,
+        "weekend_hours": coordinator.weekend_hours,
         "last_update_success": coordinator.last_update_success,
     }

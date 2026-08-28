@@ -282,6 +282,8 @@ async def async_setup_entry(
         )
     if coordinator.cheapest_hours_count > 0:
         entities.append(EnergyPriceForecastCheapestHoursSensor(coordinator, entry))
+    if coordinator.weekend_hours_count > 0:
+        entities.append(EnergyPriceForecastWeekendHoursSensor(coordinator, entry))
     async_add_entities(entities)
 
 
@@ -474,6 +476,49 @@ class EnergyPriceForecastCheapestHoursSensor(EnergyPriceForecastEntity, SensorEn
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         hours = self.coordinator.cheapest_hours or []
+        return {
+            "hours": [
+                {
+                    "start": hour["start"].isoformat(),
+                    "end": hour["end"].isoformat(),
+                    "average_value": round(hour["average_value"], 4),
+                }
+                for hour in hours
+            ],
+        }
+
+
+class EnergyPriceForecastWeekendHoursSensor(EnergyPriceForecastEntity, SensorEntity):
+    """Start of the next of the N cheapest hours in this weekend's plan.
+
+    A separate, independently-locked plan for the fixed Saturday 00:00 -
+    Monday 00:00 block (see planning.fixed_weekend_window), for loads
+    that are specifically flexible on weekends, e.g. EV charging. Only
+    created when a positive weekend hour count was configured. Backed by
+    coordinator.weekend_hours.
+    """
+
+    _attr_translation_key = "weekend_hours_next_start"
+    _attr_icon = "mdi:calendar-weekend"
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+
+    def __init__(
+        self, coordinator: EnergyPriceForecastCoordinator, entry: ConfigEntry
+    ) -> None:
+        super().__init__(coordinator, entry, "weekend_hours_next_start")
+
+    @property
+    def available(self) -> bool:
+        return super().available and bool(self.coordinator.weekend_hours)
+
+    @property
+    def native_value(self) -> Any:
+        hours = self.coordinator.weekend_hours
+        return hours[0]["start"] if hours else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        hours = self.coordinator.weekend_hours or []
         return {
             "hours": [
                 {

@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Ajouter une prévision de prix de l'électricité et de CO2",
-        "description": "Choisissez un marché et l'horizon de prévision. L'accès public fournit actuellement jusqu'à 48 heures ; une clé API éligible peut débloquer 120 heures.",
+        "description": "Choisissez un marché et l'horizon de prévision. L'accès public fournit actuellement jusqu'à 48 heures ; une clé API éligible peut débloquer jusqu'à 168 heures.",
         "data": {
           "market": "Marché ou zone de prix",
           "horizon_hours": "Horizon demandé",
@@ -13,7 +13,10 @@
           "retail_pricing": "Activer le prix de détail (tout compris)",
           "postal_code": "Code postal",
           "update_interval_minutes": "Intervalle de mise à jour (minutes)",
-          "cheapest_hours_count": "Heures les moins chères à suivre (0 pour désactiver)"
+          "cheapest_hours_count": "Heures les moins chères par bloc (0 pour désactiver)",
+          "cheapest_hours_window_hours": "Longueur du bloc (heures)",
+          "cheapest_hours_start_hour": "Heure de début du bloc (heure locale)",
+          "weekend_hours_count": "Heures les moins chères pour le plan week-end (0 pour désactiver)"
         },
         "data_description": {
           "horizon_hours": "L'API indique l'horizon réellement autorisé via un capteur de diagnostic.",
@@ -22,7 +25,10 @@
           "retail_pricing": "Ajoute un prix tout compris basé sur des hypothèses (frais de réseau, taxes, TVA) en plus du prix du marché. Disponible uniquement pour certains marchés ; ce n'est pas un tarif fournisseur exact.",
           "postal_code": "Requis pour l'Allemagne lorsque le prix de détail est activé, utilisé pour déterminer les frais de réseau. Non utilisé pour les autres marchés.",
           "update_interval_minutes": "Fréquence d'interrogation de l'API. La résolution des données est de 15 minutes, des intervalles plus courts apportent donc rarement de nouvelles informations.",
-          "cheapest_hours_count": "Ajoute des entités pour les N heures les moins chères de chaque jour calendaire (et non au total sur tout l'horizon), qui peuvent ne pas être consécutives - utile pour des automatisations comme faire fonctionner un appareil chaque jour pendant les heures les moins chères."
+          "cheapest_hours_count": "Le temps est découpé en blocs fixes et contigus (à régler ci-dessous), et dans chaque bloc, ce nombre d'heures individuelles - éventuellement non consécutives - est choisi comme étant les moins chères. Utile pour une pompe à chaleur : par ex. 12 heures sur 24 sélectionne les douze heures les moins chères de chaque jour calendaire. Une fois le plan d'un bloc établi, il n'est plus jamais remanié, même si la prévision change ensuite. Ne doit jamais dépasser la longueur du bloc, et aucun plan n'est publié du tout si la prévision ne couvre pas encore entièrement le bloc.",
+          "cheapest_hours_window_hours": "Durée de chaque bloc répétitif. 24 se répète quotidiennement ; 48 choisit des heures dans un bloc fixe de deux jours (par ex. lundi 00h00 à mercredi 00h00, puis mercredi à vendredi, etc.). Un bloc plus long offre plus de choix - généralement plus d'économies, mais un fonctionnement moins régulièrement réparti.",
+          "cheapest_hours_start_hour": "Heure locale de la journée (0-23) à laquelle chaque bloc commence. 0 signifie que les blocs commencent à minuit ; avec un bloc de 24 heures, il s'agit simplement du début de chaque jour calendaire.",
+          "weekend_hours_count": "Un plan distinct pour un bloc fixe du samedi 00h00 au lundi 00h00, indépendant du bloc ci-dessus - utile pour une borne de recharge qui ne doit utiliser que la flexibilité du week-end. Choisi et verrouillé de la même manière, mais nécessite que le week-end entier soit couvert par la prévision (y compris les heures déjà passées) avant de se verrouiller, afin qu'un plan établi après un redémarrage tardif ne soit jamais partiel."
         }
       },
       "reconfigure": {
@@ -36,7 +42,10 @@
           "retail_pricing": "Activer le prix de détail (tout compris)",
           "postal_code": "Code postal",
           "update_interval_minutes": "Intervalle de mise à jour (minutes)",
-          "cheapest_hours_count": "Heures les moins chères à suivre (0 pour désactiver)"
+          "cheapest_hours_count": "Heures les moins chères par bloc (0 pour désactiver)",
+          "cheapest_hours_window_hours": "Longueur du bloc (heures)",
+          "cheapest_hours_start_hour": "Heure de début du bloc (heure locale)",
+          "weekend_hours_count": "Heures les moins chères pour le plan week-end (0 pour désactiver)"
         }
       }
     },
@@ -48,7 +57,8 @@
       "retail_not_supported": "Le prix de détail n'est pas encore disponible pour ce marché.",
       "postal_code_required": "Un code postal est requis pour le prix de détail en Allemagne.",
       "invalid_postal_code": "Saisissez un code postal allemand à 5 chiffres.",
-      "retail_unavailable": "Impossible de vérifier le prix de détail pour ce marché ou ce code postal."
+      "retail_unavailable": "Impossible de vérifier le prix de détail pour ce marché ou ce code postal.",
+      "cheapest_hours_exceeds_window": "Les heures les moins chères par bloc ne peuvent pas dépasser la longueur du bloc."
     },
     "abort": {
       "already_configured": "Ce marché est déjà configuré."
@@ -72,6 +82,7 @@
       "price_series": {"name": "Série de prix"},
       "retail_current_price": {"name": "Prix de détail actuel"},
       "cheapest_hours_next_start": {"name": "Prochaine heure la moins chère"},
+      "weekend_hours_next_start": {"name": "Prochaine heure la moins chère du week-end"},
       "retail_cheapest_window_average_price": {"name": "Prix moyen de la fenêtre la moins chère (détail)"},
       "retail_cheapest_window_start": {"name": "Début de la fenêtre la moins chère (détail)"},
       "retail_cheapest_window_end": {"name": "Fin de la fenêtre la moins chère (détail)"}
@@ -80,6 +91,7 @@
       "cheapest_window_active": {"name": "Fenêtre la moins chère active"},
       "greenest_window_active": {"name": "Fenêtre la plus verte active"},
       "is_in_cheapest_hours": {"name": "Heures les moins chères actives"},
+      "is_in_weekend_hours": {"name": "Heures les moins chères du week-end actives"},
       "retail_cheapest_window_active": {"name": "Fenêtre la moins chère active (détail)"}
     }
   }

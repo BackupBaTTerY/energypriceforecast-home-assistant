@@ -35,21 +35,30 @@ from .api import (
 from .const import (
     CONF_API_KEY,
     CONF_CHEAPEST_HOURS_COUNT,
+    CONF_CHEAPEST_HOURS_START_HOUR,
+    CONF_CHEAPEST_HOURS_WINDOW_HOURS,
     CONF_HORIZON_HOURS,
     CONF_MARKET,
     CONF_POSTAL_CODE,
     CONF_RETAIL_PRICING,
     CONF_UPDATE_INTERVAL_MINUTES,
+    CONF_WEEKEND_HOURS_COUNT,
     CONF_WINDOW_HOURS,
     DEFAULT_API_URL,
     DEFAULT_CHEAPEST_HOURS_COUNT,
+    DEFAULT_CHEAPEST_HOURS_START_HOUR,
+    DEFAULT_CHEAPEST_HOURS_WINDOW_HOURS,
     DEFAULT_HORIZON_HOURS,
     DEFAULT_UPDATE_INTERVAL_MINUTES,
+    DEFAULT_WEEKEND_HOURS_COUNT,
     DEFAULT_WINDOW_HOURS,
     DOMAIN,
     MARKETS,
     MAX_CHEAPEST_HOURS_COUNT,
+    MAX_CHEAPEST_HOURS_WINDOW_HOURS,
     MAX_UPDATE_INTERVAL_MINUTES,
+    MAX_WEEKEND_HOURS_COUNT,
+    MIN_CHEAPEST_HOURS_WINDOW_HOURS,
     MIN_UPDATE_INTERVAL_MINUTES,
     PRICES_API_URL,
     RETAIL_MARKETS,
@@ -83,6 +92,7 @@ def _schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                         SelectOptionDict(value="48", label="48"),
                         SelectOptionDict(value="72", label="72 (API-Key)"),
                         SelectOptionDict(value="120", label="120 (API-Key)"),
+                        SelectOptionDict(value="168", label="168 (API-Key)"),
                     ],
                     mode=SelectSelectorMode.DROPDOWN,
                 )
@@ -134,6 +144,46 @@ def _schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                     mode=NumberSelectorMode.BOX,
                 )
             ),
+            vol.Optional(
+                CONF_CHEAPEST_HOURS_WINDOW_HOURS,
+                default=defaults.get(
+                    CONF_CHEAPEST_HOURS_WINDOW_HOURS,
+                    DEFAULT_CHEAPEST_HOURS_WINDOW_HOURS,
+                ),
+            ): NumberSelector(
+                NumberSelectorConfig(
+                    min=MIN_CHEAPEST_HOURS_WINDOW_HOURS,
+                    max=MAX_CHEAPEST_HOURS_WINDOW_HOURS,
+                    step=1,
+                    mode=NumberSelectorMode.BOX,
+                )
+            ),
+            vol.Optional(
+                CONF_CHEAPEST_HOURS_START_HOUR,
+                default=defaults.get(
+                    CONF_CHEAPEST_HOURS_START_HOUR, DEFAULT_CHEAPEST_HOURS_START_HOUR
+                ),
+            ): NumberSelector(
+                NumberSelectorConfig(
+                    min=0,
+                    max=23,
+                    step=1,
+                    mode=NumberSelectorMode.BOX,
+                )
+            ),
+            vol.Optional(
+                CONF_WEEKEND_HOURS_COUNT,
+                default=defaults.get(
+                    CONF_WEEKEND_HOURS_COUNT, DEFAULT_WEEKEND_HOURS_COUNT
+                ),
+            ): NumberSelector(
+                NumberSelectorConfig(
+                    min=0,
+                    max=MAX_WEEKEND_HOURS_COUNT,
+                    step=1,
+                    mode=NumberSelectorMode.BOX,
+                )
+            ),
         }
     )
 
@@ -160,6 +210,19 @@ def _normalize_input(user_input: dict[str, Any]) -> dict[str, Any]:
     normalized[CONF_CHEAPEST_HOURS_COUNT] = int(
         normalized.get(CONF_CHEAPEST_HOURS_COUNT, DEFAULT_CHEAPEST_HOURS_COUNT)
     )
+    normalized[CONF_CHEAPEST_HOURS_WINDOW_HOURS] = int(
+        normalized.get(
+            CONF_CHEAPEST_HOURS_WINDOW_HOURS, DEFAULT_CHEAPEST_HOURS_WINDOW_HOURS
+        )
+    )
+    normalized[CONF_CHEAPEST_HOURS_START_HOUR] = int(
+        normalized.get(
+            CONF_CHEAPEST_HOURS_START_HOUR, DEFAULT_CHEAPEST_HOURS_START_HOUR
+        )
+    )
+    normalized[CONF_WEEKEND_HOURS_COUNT] = int(
+        normalized.get(CONF_WEEKEND_HOURS_COUNT, DEFAULT_WEEKEND_HOURS_COUNT)
+    )
     return normalized
 
 
@@ -179,6 +242,17 @@ def _validate_retail_selection(data: dict[str, Any]) -> str | None:
             return "postal_code_required"
         if not _POSTAL_CODE_RE.match(postal_code):
             return "invalid_postal_code"
+    return None
+
+
+def _validate_cheapest_hours_selection(data: dict[str, Any]) -> str | None:
+    """Check that the cheapest-hours count fits inside its own block.
+
+    Picking e.g. 10 cheapest hours out of an 8-hour block can never be
+    satisfied, so this is rejected here rather than silently clamped.
+    """
+    if data[CONF_CHEAPEST_HOURS_COUNT] > data[CONF_CHEAPEST_HOURS_WINDOW_HOURS]:
+        return "cheapest_hours_exceeds_window"
     return None
 
 
@@ -220,8 +294,11 @@ class EnergyPriceForecastConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             await self.async_set_unique_id(normalized[CONF_MARKET])
             self._abort_if_unique_id_configured()
             retail_error = _validate_retail_selection(normalized)
+            cheapest_hours_error = _validate_cheapest_hours_selection(normalized)
             if retail_error is not None:
                 errors["base"] = retail_error
+            elif cheapest_hours_error is not None:
+                errors["base"] = cheapest_hours_error
             else:
                 try:
                     await _validate_input(self.hass, normalized)
@@ -270,8 +347,11 @@ class EnergyPriceForecastConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "already_configured"
             else:
                 retail_error = _validate_retail_selection(normalized)
+                cheapest_hours_error = _validate_cheapest_hours_selection(normalized)
                 if retail_error is not None:
                     errors["base"] = retail_error
+                elif cheapest_hours_error is not None:
+                    errors["base"] = cheapest_hours_error
                 else:
                     try:
                         await _validate_input(self.hass, normalized)

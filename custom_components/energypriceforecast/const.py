@@ -25,7 +25,25 @@ CONF_POSTAL_CODE: Final = "postal_code"
 CONF_UPDATE_INTERVAL_MINUTES: Final = "update_interval_minutes"
 CONF_CHEAPEST_HOURS_COUNT: Final = "cheapest_hours_count"
 DEFAULT_CHEAPEST_HOURS_COUNT: Final = 0
-MAX_CHEAPEST_HOURS_COUNT: Final = 12
+MAX_CHEAPEST_HOURS_COUNT: Final = 48
+
+# The cheapest-hours block: a fixed, repeating period of CONF_..._WINDOW_HOURS
+# hours, anchored to local midnight plus CONF_..._START_HOUR. CONF_..._COUNT
+# hours are picked once per block and never re-picked once published, even if
+# a later forecast update would rank them differently - see planning.py.
+CONF_CHEAPEST_HOURS_WINDOW_HOURS: Final = "cheapest_hours_window_hours"
+DEFAULT_CHEAPEST_HOURS_WINDOW_HOURS: Final = 24
+MIN_CHEAPEST_HOURS_WINDOW_HOURS: Final = 2
+MAX_CHEAPEST_HOURS_WINDOW_HOURS: Final = 168
+CONF_CHEAPEST_HOURS_START_HOUR: Final = "cheapest_hours_start_hour"
+DEFAULT_CHEAPEST_HOURS_START_HOUR: Final = 0
+
+# The weekend plan: a separate, fixed Saturday 00:00 - Monday 00:00 block for
+# loads that are specifically flexible on weekends (e.g. EV charging), picked
+# and locked the same way as the regular cheapest-hours block.
+CONF_WEEKEND_HOURS_COUNT: Final = "weekend_hours_count"
+DEFAULT_WEEKEND_HOURS_COUNT: Final = 0
+MAX_WEEKEND_HOURS_COUNT: Final = 48
 
 PLATFORMS: Final = ["sensor", "binary_sensor"]
 

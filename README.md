@@ -16,8 +16,14 @@ requiring YAML or JSON templates.
 - Combined price/CO2 window score
 - Raw price-series sensor with `raw_today` / `raw_tomorrow` attributes
   (compatible with `apexcharts-card` and custom templates)
-- Optional "cheapest N hours" tracking - the N cheapest upcoming hours, which
-  may be non-contiguous, unlike the single best continuous window above
+- Optional "cheapest hours" plan - the N cheapest individual hours of each
+  fixed, repeating block (e.g. every calendar day, or every 48 hours), which
+  may be non-contiguous, unlike the single best continuous window above. Once
+  a block's plan is picked it is locked and never reshuffled by a later
+  forecast update, and no plan is published at all for a block the forecast
+  does not yet fully cover
+- Optional independent weekend plan (Saturday 00:00 to Monday 00:00) for
+  loads that are only flexible on weekends, e.g. EV charging
 - Optional assumption-based all-in retail price for supported markets
 - Configurable poll interval (15-120 minutes)
 - Access and horizon diagnostics, with API key and postal code redacted
@@ -54,8 +60,52 @@ in parallel - remove it only after the new entities have been checked.
 ## Horizon
 
 The public access currently provides up to 48 hours. An eligible API key can
-raise the horizon to 120 hours. The integration exposes both the requested and
-the actually permitted horizon, so automations can detect the effective range.
+raise the horizon up to 168 hours. The integration exposes both the requested
+and the actually permitted horizon, so automations can detect the effective
+range.
+
+## Which plan should I use?
+
+### Heat pump or water heater: N cheapest hours per X-hour block
+
+Time is split into fixed, back-to-back blocks, and within each block the
+integration picks the cheapest individual hours. Once a block's plan is
+picked, it does not move: it is never reshuffled by a later forecast update.
+
+Examples:
+
+- **12 of 24 hours, start 00:00**: every calendar day, the twelve cheapest
+  individual hours are picked. A reasonable starting point for a heat pump -
+  the actual count should match the house's heat demand.
+- **24 of 48 hours, anchored Monday 00:00**: 24 hours are picked per fixed
+  two-day block. Blocks run back-to-back, e.g. Monday-to-Wednesday,
+  Wednesday-to-Friday, Friday-to-Sunday.
+
+A longer block gives the integration more hours to choose from, which
+typically means more savings - but for a heating system it can also spread
+runtime less evenly, so room temperature and hot-water comfort may swing more.
+Choose only as much flexibility as the house and its occupants can tolerate.
+
+`N` (cheapest hours) must never be greater than `X` (block length) - the
+config flow rejects that combination. If the forecast does not yet cover the
+full block, no partial plan is published; the plan appears once the forecast
+catches up.
+
+### EV charging on weekends
+
+The weekend plan is independent of the block-based plan above and always ends
+Monday at 00:00. With public access it uses the fixed 48-hour window from
+Saturday 00:00 to Monday 00:00. A plan is only published once the entire
+window is covered by the forecast (including hours already in the past), so a
+plan built after a late restart is never partial.
+
+### Two similarly-named features
+
+- **Cheapest hours plan**: several individual cheap hours inside a fixed
+  block - for flexible loads that can run in interrupted bursts.
+- **Cheapest window**: a single, uninterrupted window of the configured
+  "best-window duration" - for a device that needs to run for several hours
+  without a pause.
 
 ## Data updates
 

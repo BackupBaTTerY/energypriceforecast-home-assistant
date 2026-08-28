@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Strompreis- und CO2-Prognose hinzufügen",
-        "description": "Wähle einen Markt und den Prognosehorizont. Der öffentliche Zugang liefert aktuell bis zu 48 Stunden; ein berechtigter API-Key kann 120 Stunden freischalten.",
+        "description": "Wähle einen Markt und den Prognosehorizont. Der öffentliche Zugang liefert aktuell bis zu 48 Stunden; ein berechtigter API-Key kann bis zu 168 Stunden freischalten.",
         "data": {
           "market": "Markt oder Preiszone",
           "horizon_hours": "Gewünschter Horizont",
@@ -13,7 +13,10 @@
           "retail_pricing": "Endkundenpreis (Gesamtpreis) aktivieren",
           "postal_code": "Postleitzahl",
           "update_interval_minutes": "Aktualisierungsintervall (Minuten)",
-          "cheapest_hours_count": "Günstigste Stunden verfolgen (0 zum Deaktivieren)"
+          "cheapest_hours_count": "Günstigste Stunden je Block (0 zum Deaktivieren)",
+          "cheapest_hours_window_hours": "Blocklänge (Stunden)",
+          "cheapest_hours_start_hour": "Startstunde des Blocks (Ortszeit)",
+          "weekend_hours_count": "Günstigste Stunden für den Wochenendplan (0 zum Deaktivieren)"
         },
         "data_description": {
           "horizon_hours": "Den tatsächlich erlaubten Horizont zeigt die Integration als Diagnose-Sensor an.",
@@ -22,7 +25,10 @@
           "retail_pricing": "Ergänzt einen annahmenbasierten Gesamtpreis (Netzentgelt, Abgaben, MwSt.) zusätzlich zum Marktpreis. Nur für einige Märkte verfügbar; kein exakter Liefertarif.",
           "postal_code": "Für Deutschland bei aktiviertem Endkundenpreis erforderlich, wird für die Netzentgelt-Ermittlung genutzt. Für andere Märkte nicht benötigt.",
           "update_interval_minutes": "Wie oft die API abgefragt wird. Die Datenauflösung liegt bei 15 Minuten, kürzere Intervalle liefern daher selten neue Informationen.",
-          "cheapest_hours_count": "Ergänzt Entitäten für die N günstigsten Stunden jedes einzelnen Kalendertags (nicht insgesamt über den ganzen Horizont), die nicht zusammenhängen müssen – nützlich für Automatisierungen wie 'Gerät jeden Tag während der günstigsten Stunden laufen lassen'."
+          "cheapest_hours_count": "Die Zeit wird in feste, lückenlose Blöcke geteilt (siehe unten), und in jedem Block werden so viele einzelne - nicht zwingend zusammenhängende - Stunden als die günstigsten ausgewählt. Gut für eine Wärmepumpe: z. B. 12 von 24 Stunden wählt an jedem Kalendertag die zwölf günstigsten Stunden. Der Plan eines Blocks wird nach seiner Erstellung nicht mehr neu gemischt, auch wenn sich die Prognose später ändert. Darf nie größer als die Blocklänge sein; sind nicht genug Prognosedaten für den vollständigen Block vorhanden, wird gar kein Plan veröffentlicht.",
+          "cheapest_hours_window_hours": "Länge des sich wiederholenden Blocks. 24 wiederholt sich täglich; 48 wählt Stunden aus einem festen Zweitagesblock (z. B. Montag 00:00 bis Mittwoch 00:00, dann Mittwoch bis Freitag usw.). Ein längerer Block bietet mehr Auswahl - meist mehr Ersparnis, aber eine ungleichmäßiger verteilte Laufzeit.",
+          "cheapest_hours_start_hour": "Ortszeit-Stunde (0-23), zu der jeder Block beginnt. 0 bedeutet, Blöcke beginnen um Mitternacht; bei einem 24-Stunden-Block ist das einfach der Beginn jedes Kalendertags.",
+          "weekend_hours_count": "Ein eigener Plan für einen festen Block von Samstag 00:00 bis Montag 00:00, unabhängig vom obigen Block - nützlich für eine Wallbox, die nur die Wochenend-Flexibilität nutzen soll. Wird genauso ausgewählt und fixiert, erfordert aber, dass das gesamte Wochenende von der Prognose abgedeckt ist (auch bereits vergangene Stunden), bevor er fixiert wird - ein nach einem späten Neustart erstellter Plan ist dadurch nie unvollständig."
         }
       },
       "reconfigure": {
@@ -36,7 +42,10 @@
           "retail_pricing": "Endkundenpreis (Gesamtpreis) aktivieren",
           "postal_code": "Postleitzahl",
           "update_interval_minutes": "Aktualisierungsintervall (Minuten)",
-          "cheapest_hours_count": "Günstigste Stunden verfolgen (0 zum Deaktivieren)"
+          "cheapest_hours_count": "Günstigste Stunden je Block (0 zum Deaktivieren)",
+          "cheapest_hours_window_hours": "Blocklänge (Stunden)",
+          "cheapest_hours_start_hour": "Startstunde des Blocks (Ortszeit)",
+          "weekend_hours_count": "Günstigste Stunden für den Wochenendplan (0 zum Deaktivieren)"
         }
       }
     },
@@ -48,7 +57,8 @@
       "retail_not_supported": "Endkundenpreise sind für diesen Markt noch nicht verfügbar.",
       "postal_code_required": "Für Endkundenpreise in Deutschland ist eine Postleitzahl erforderlich.",
       "invalid_postal_code": "Bitte eine 5-stellige deutsche Postleitzahl eingeben.",
-      "retail_unavailable": "Endkundenpreise für diesen Markt bzw. diese Postleitzahl konnten nicht geprüft werden."
+      "retail_unavailable": "Endkundenpreise für diesen Markt bzw. diese Postleitzahl konnten nicht geprüft werden.",
+      "cheapest_hours_exceeds_window": "Die günstigsten Stunden je Block dürfen nicht größer als die Blocklänge sein."
     },
     "abort": {
       "already_configured": "Dieser Markt ist bereits eingerichtet."
@@ -72,6 +82,7 @@
       "price_series": {"name": "Preisreihe"},
       "retail_current_price": {"name": "Aktueller Endkundenpreis"},
       "cheapest_hours_next_start": {"name": "Nächste günstige Stunde"},
+      "weekend_hours_next_start": {"name": "Nächste günstige Wochenendstunde"},
       "retail_cheapest_window_average_price": {"name": "Durchschnittspreis günstigstes Fenster (Endkundenpreis)"},
       "retail_cheapest_window_start": {"name": "Start günstigstes Fenster (Endkundenpreis)"},
       "retail_cheapest_window_end": {"name": "Ende günstigstes Fenster (Endkundenpreis)"}
@@ -80,6 +91,7 @@
       "cheapest_window_active": {"name": "Günstigstes Fenster aktiv"},
       "greenest_window_active": {"name": "Grünstes Fenster aktiv"},
       "is_in_cheapest_hours": {"name": "Günstigste Stunden aktiv"},
+      "is_in_weekend_hours": {"name": "Günstigste Wochenendstunden aktiv"},
       "retail_cheapest_window_active": {"name": "Günstigstes Fenster aktiv (Endkundenpreis)"}
     }
   }

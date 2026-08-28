@@ -116,6 +116,8 @@ async def test_core_sensors_are_created_without_optional_features(hass) -> None:
     assert f"{entry.entry_id}_retail_current_price" not in unique_ids
     assert f"{entry.entry_id}_cheapest_hours_next_start" not in unique_ids
     assert f"{entry.entry_id}_is_in_cheapest_hours" not in unique_ids
+    assert f"{entry.entry_id}_weekend_hours_next_start" not in unique_ids
+    assert f"{entry.entry_id}_is_in_weekend_hours" not in unique_ids
     assert f"{entry.entry_id}_retail_cheapest_window_average_price" not in unique_ids
     assert f"{entry.entry_id}_retail_cheapest_window_start" not in unique_ids
     assert f"{entry.entry_id}_retail_cheapest_window_end" not in unique_ids
@@ -276,3 +278,39 @@ async def test_retail_window_sensors_use_retail_summary(hass) -> None:
 
     binary_state = _state_for_unique_id(hass, entry, "retail_cheapest_window_active")
     assert binary_state.state == "on"
+
+
+async def test_weekend_hours_entities_created_when_enabled(hass, freezer) -> None:
+    """weekend_hours_next_start and is_in_weekend_hours appear once configured."""
+    from datetime import datetime, timedelta
+
+    await hass.config.async_set_time_zone("UTC")
+    # A Saturday, so the current weekend block is 2026-08-15T00:00 - 08-17T00:00.
+    freezer.move_to("2026-08-15T00:00:00+00:00")
+    start = datetime(2026, 8, 15, 0, 0)
+    entries = [
+        {
+            "start": (start + timedelta(hours=h)).isoformat() + "Z",
+            "end": (start + timedelta(hours=h + 1)).isoformat() + "Z",
+            "value": 0.05 if h == 2 else 0.50,
+        }
+        for h in range(48)
+    ]
+
+    entry = await _setup_entry(
+        hass,
+        extra_data={"weekend_hours_count": 1},
+        price_entries=entries,
+    )
+
+    registry = er.async_get(hass)
+    entries_reg = er.async_entries_for_config_entry(registry, entry.entry_id)
+    unique_ids = {e.unique_id for e in entries_reg}
+    assert f"{entry.entry_id}_weekend_hours_next_start" in unique_ids
+    assert f"{entry.entry_id}_is_in_weekend_hours" in unique_ids
+
+    start_state = _state_for_unique_id(hass, entry, "weekend_hours_next_start")
+    assert start_state.state == "2026-08-15T02:00:00+00:00"
+
+    active_state = _state_for_unique_id(hass, entry, "is_in_weekend_hours")
+    assert active_state.state == "off"

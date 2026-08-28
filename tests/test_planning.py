@@ -3,11 +3,33 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
+import pytest
+from homeassistant.util import dt as dt_util
+
 from custom_components.energypriceforecast.planning import (
     fixed_repeating_window,
     fixed_weekend_window,
     select_cheapest_hours,
 )
+
+
+@pytest.fixture(autouse=True)
+def _utc_local_time_zone():
+    """Pin dt_util's local time zone to UTC for these tests.
+
+    fixed_repeating_window/fixed_weekend_window are deliberately local-time
+    aware (see planning.py), so these tests compare against UTC-based
+    expectations under the assumption that "local" is UTC. Without pinning
+    it, these plain unit tests (no hass fixture) inherit whatever the
+    process-global dt_util default time zone happens to be left at by
+    other test modules' hass fixtures (pytest-homeassistant-custom-component
+    defaults it to US/Pacific), which is a test-order-dependent leak, not a
+    bug in the code under test.
+    """
+    original = dt_util.DEFAULT_TIME_ZONE
+    dt_util.set_default_time_zone(dt_util.UTC)
+    yield
+    dt_util.set_default_time_zone(original)
 
 
 def _quarter_hour_entries(

@@ -104,6 +104,14 @@ async def _setup_entry(hass, extra_data: dict | None = None, price_entries=None)
 
 
 async def _refresh_with_prices(hass, entry, price_entries) -> None:
+    """Force a coordinator refresh with new price data.
+
+    Must also mock async_get_summary - without it, the refresh's real
+    (unmocked) summary call fails with a network error, _async_update_data
+    raises UpdateFailed before ever reaching the plan recomputation, and
+    a test asserting the plan is unchanged would pass for the wrong
+    reason (the code never ran) rather than because the lock held.
+    """
     prices_payload = {
         "format": "home-assistant-prices",
         "country": "DE",
@@ -111,13 +119,25 @@ async def _refresh_with_prices(hass, entry, price_entries) -> None:
         "unit": "EUR/kWh",
         "entries": price_entries,
     }
-    with patch(
-        "custom_components.energypriceforecast.api.EnergyPriceForecastApi"
-        ".async_get_prices",
-        new=AsyncMock(return_value=prices_payload),
+    with (
+        patch(
+            "custom_components.energypriceforecast.api.EnergyPriceForecastApi"
+            ".async_get_summary",
+            new=AsyncMock(return_value=SUMMARY_PAYLOAD),
+        ),
+        patch(
+            "custom_components.energypriceforecast.api.EnergyPriceForecastApi"
+            ".async_get_prices",
+            new=AsyncMock(return_value=prices_payload),
+        ),
     ):
         await entry.runtime_data.async_refresh()
         await hass.async_block_till_done()
+
+    assert entry.runtime_data.last_update_success, (
+        "refresh failed - a real network call likely slipped through an "
+        "incomplete mock"
+    )
 
 
 async def test_cheapest_hours_plan_locks_and_survives_a_reshuffled_forecast(

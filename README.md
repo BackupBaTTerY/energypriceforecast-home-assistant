@@ -148,6 +148,7 @@ Rules for your result:
 - Use only the raw_today / raw_tomorrow / raw_forecast attributes I described. Do not invent other attributes or a different data shape.
 - Use apexcharts-card's data_generator to turn the attribute list into a chart series - do not assume the card accepts the attribute directly as a series.
 - If I asked for known prices and forecast as separate series, use two series against the same entity (one summing raw_today+raw_tomorrow, one for raw_forecast), each with its own data_generator, and set extend_to: false on both - otherwise apexcharts-card visually extends the last value to the edge of the graph, which is misleading here.
+- The forecast series must start where the known series ends. In the raw_forecast data_generator, prepend the last entry of raw_today+raw_tomorrow to the forecast points. The two attributes are adjacent but not overlapping, so without that point the two lines are drawn with a visible gap, which reads as the forecast disagreeing with the last known price instead of continuing from it. Keep the prepended point in the forecast series' own colour and style, so no known value is presented as a forecast or the other way round.
 - Quote any string value (title, name, tooltip format) that itself contains a colon, like "Known: forecast" or "dd.MM. HH:mm" - an unquoted colon inside a YAML value breaks parsing.
 - Produce a complete, correctly indented YAML block for a manual Lovelace card (type: custom:apexcharts-card).
 - Tell me exactly where to paste it (Dashboard > Edit > Add card > Manual).

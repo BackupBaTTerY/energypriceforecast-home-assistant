@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Tilføj el-pris- og CO2-prognose",
-        "description": "Vælg et marked og prognosehorisonten. Offentlig adgang giver i øjeblikket op til 48 timer; en berettiget API-nøgle kan låse op til 168 timer.",
+        "description": "Vælg et marked og prognosehorisonten. Offentlig adgang giver i øjeblikket op til 48 timer; en berettiget API-nøgle kan låse op til 120 timer.",
         "data": {
           "market": "Marked eller prisområde",
           "horizon_hours": "Ønsket horisont",

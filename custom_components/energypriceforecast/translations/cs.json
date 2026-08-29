@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Přidat předpověď ceny elektřiny a CO2",
-        "description": "Vyberte trh a horizont předpovědi. Veřejný přístup aktuálně poskytuje až 48 hodin; oprávněný API klíč může odemknout až 168 hodin.",
+        "description": "Vyberte trh a horizont předpovědi. Veřejný přístup aktuálně poskytuje až 48 hodin; oprávněný API klíč může odemknout až 120 hodin.",
         "data": {
           "market": "Trh nebo cenová zóna",
           "horizon_hours": "Požadovaný horizont",

@@ -160,7 +160,7 @@ of configuring around it.
 ## Horizon
 
 The public access currently provides up to 48 hours. An eligible API key can
-raise the horizon up to 168 hours. The integration exposes both the requested
+raise the horizon up to 120 hours. The integration exposes both the requested
 and the actually permitted horizon, so automations can detect the effective
 range.
 

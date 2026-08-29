@@ -11,6 +11,15 @@ PRICES_API_URL: Final = (
     "https://api.energypriceforecast.eu/api/v1/home-assistant/prices"
 )
 DEFAULT_HORIZON_HOURS: Final = 48
+
+# The horizons the config flow offers, and the ceiling everything else clamps
+# to. The API accepts hours=168 as a request parameter, but the forecast
+# itself never produces more than 120 hours of data. Offering more would
+# promise coverage that never arrives, and the "Allowed horizon" diagnostic
+# sensor would then contradict the value the user just picked.
+HORIZON_HOURS_OPTIONS: Final[tuple[int, ...]] = (24, 48, 72, 120)
+MAX_HORIZON_HOURS: Final = 120
+
 DEFAULT_WINDOW_HOURS: Final = 4
 DEFAULT_UPDATE_INTERVAL_MINUTES: Final = 30
 MIN_UPDATE_INTERVAL_MINUTES: Final = 15
@@ -34,7 +43,9 @@ MAX_CHEAPEST_HOURS_COUNT: Final = 48
 CONF_CHEAPEST_HOURS_WINDOW_HOURS: Final = "cheapest_hours_window_hours"
 DEFAULT_CHEAPEST_HOURS_WINDOW_HOURS: Final = 24
 MIN_CHEAPEST_HOURS_WINDOW_HOURS: Final = 2
-MAX_CHEAPEST_HOURS_WINDOW_HOURS: Final = 168
+# A block can never be longer than the forecast that has to cover it, or no
+# plan could ever be published for it.
+MAX_CHEAPEST_HOURS_WINDOW_HOURS: Final = MAX_HORIZON_HOURS
 CONF_CHEAPEST_HOURS_START_HOUR: Final = "cheapest_hours_start_hour"
 DEFAULT_CHEAPEST_HOURS_START_HOUR: Final = 0
 

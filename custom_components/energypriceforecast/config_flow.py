@@ -53,6 +53,7 @@ from .const import (
     DEFAULT_WEEKEND_HOURS_COUNT,
     DEFAULT_WINDOW_HOURS,
     DOMAIN,
+    HORIZON_HOURS_OPTIONS,
     MARKETS,
     MAX_CHEAPEST_HOURS_COUNT,
     MAX_CHEAPEST_HOURS_WINDOW_HOURS,
@@ -65,6 +66,28 @@ from .const import (
 )
 
 _POSTAL_CODE_RE = re.compile(r"^[0-9]{5}$")
+
+
+def _horizon_default(defaults: dict[str, Any]) -> str:
+    """Return the stored horizon as a valid dropdown value.
+
+    An entry written before 168 was withdrawn still holds it, and voluptuous
+    validates a Required field's default whenever the key is missing from the
+    input - so an unknown value here would make the form raise instead of
+    render. Entries are migrated on load, but a stale one must still show a
+    usable form rather than a crash.
+    """
+    stored = defaults.get(CONF_HORIZON_HOURS, DEFAULT_HORIZON_HOURS)
+    try:
+        hours = int(stored)
+    except (TypeError, ValueError):
+        return str(DEFAULT_HORIZON_HOURS)
+    if hours in HORIZON_HOURS_OPTIONS:
+        return str(hours)
+    # Fall back to the largest offered horizon that does not exceed the
+    # stored one, so a withdrawn 168 becomes 120 rather than the default 48.
+    lower = [option for option in HORIZON_HOURS_OPTIONS if option <= hours]
+    return str(max(lower)) if lower else str(min(HORIZON_HOURS_OPTIONS))
 
 
 def _schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
@@ -84,15 +107,19 @@ def _schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
             ),
             vol.Required(
                 CONF_HORIZON_HOURS,
-                default=str(defaults.get(CONF_HORIZON_HOURS, DEFAULT_HORIZON_HOURS)),
+                default=_horizon_default(defaults),
             ): SelectSelector(
                 SelectSelectorConfig(
                     options=[
-                        SelectOptionDict(value="24", label="24"),
-                        SelectOptionDict(value="48", label="48"),
-                        SelectOptionDict(value="72", label="72 (API-Key)"),
-                        SelectOptionDict(value="120", label="120 (API-Key)"),
-                        SelectOptionDict(value="168", label="168 (API-Key)"),
+                        SelectOptionDict(
+                            value=str(hours),
+                            label=(
+                                f"{hours} (API-Key)"
+                                if hours > DEFAULT_HORIZON_HOURS
+                                else str(hours)
+                            ),
+                        )
+                        for hours in HORIZON_HOURS_OPTIONS
                     ],
                     mode=SelectSelectorMode.DROPDOWN,
                 )
@@ -282,7 +309,9 @@ async def _validate_input(hass: HomeAssistant, data: dict[str, Any]) -> None:
 class EnergyPriceForecastConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Configure Energy Price Forecast EU through the UI."""
 
-    VERSION = 1
+    # 2: horizons above MAX_HORIZON_HOURS are clamped - 168 was offered for a
+    #    while although the forecast never produced more than 120 hours.
+    VERSION = 2
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None

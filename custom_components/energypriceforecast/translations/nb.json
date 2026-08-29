@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Legg til strømpris- og CO2-prognose",
-        "description": "Velg et marked og prognosehorisonten. Offentlig tilgang gir for øyeblikket opptil 48 timer; en kvalifisert API-nøkkel kan låse opp til 168 timer.",
+        "description": "Velg et marked og prognosehorisonten. Offentlig tilgang gir for øyeblikket opptil 48 timer; en kvalifisert API-nøkkel kan låse opp til 120 timer.",
         "data": {
           "market": "Marked eller prissone",
           "horizon_hours": "Ønsket horisont",

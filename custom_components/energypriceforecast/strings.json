@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Add electricity-price and CO2 forecast",
-        "description": "Choose a market and the forecast horizon. Public access currently provides up to 48 hours; an eligible API key can unlock up to 168 hours.",
+        "description": "Choose a market and the forecast horizon. Public access currently provides up to 48 hours; an eligible API key can unlock up to 120 hours.",
         "data": {
           "market": "Market or price zone",
           "horizon_hours": "Requested horizon",

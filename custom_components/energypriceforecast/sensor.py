@@ -117,7 +117,7 @@ def _forecast_only(entries: Any) -> list[dict[str, Any]]:
 
 
 # The raw series attributes hold one entry per 15-minute slot across the
-# whole horizon - at 168 hours that is far past the recorder's 16 KB per-state
+# whole horizon - at 120 hours that is far past the recorder's 16 KB per-state
 # attribute limit, which makes it drop the attributes and log a warning on
 # every update. They are meant to be read live (charts, templates), never
 # from history, so keep them out of the database entirely.

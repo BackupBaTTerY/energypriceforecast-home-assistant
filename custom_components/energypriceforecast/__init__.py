@@ -23,8 +23,10 @@ from .const import (
     DEFAULT_CHEAPEST_HOURS_COUNT,
     DEFAULT_CHEAPEST_HOURS_START_HOUR,
     DEFAULT_CHEAPEST_HOURS_WINDOW_HOURS,
+    DEFAULT_HORIZON_HOURS,
     DEFAULT_UPDATE_INTERVAL_MINUTES,
     DEFAULT_WEEKEND_HOURS_COUNT,
+    MAX_HORIZON_HOURS,
     PLATFORMS,
     PRICES_API_URL,
 )
@@ -68,6 +70,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.runtime_data = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_reload_entry))
+    return True
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Bring an older config entry up to the current schema."""
+    if entry.version == 1:
+        data = dict(entry.data)
+        horizon = data.get(CONF_HORIZON_HOURS, DEFAULT_HORIZON_HOURS)
+        try:
+            horizon = int(horizon)
+        except (TypeError, ValueError):
+            horizon = DEFAULT_HORIZON_HOURS
+        # 168 was offered as a horizon for a while, but the forecast never
+        # produced more than MAX_HORIZON_HOURS of data, so the extra hours
+        # never arrived. Clamping here keeps the stored value in step with
+        # what the config flow now offers - an entry left at 168 would make
+        # the reconfigure form raise on a value no longer in the dropdown.
+        data[CONF_HORIZON_HOURS] = min(horizon, MAX_HORIZON_HOURS)
+        hass.config_entries.async_update_entry(entry, data=data, version=2)
     return True
 
 

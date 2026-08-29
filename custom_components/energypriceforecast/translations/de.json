@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Strompreis- und CO2-Prognose hinzufügen",
-        "description": "Wähle einen Markt und den Prognosehorizont. Der öffentliche Zugang liefert aktuell bis zu 48 Stunden; ein berechtigter API-Key kann bis zu 168 Stunden freischalten.",
+        "description": "Wähle einen Markt und den Prognosehorizont. Der öffentliche Zugang liefert aktuell bis zu 48 Stunden; ein berechtigter API-Key kann bis zu 120 Stunden freischalten.",
         "data": {
           "market": "Markt oder Preiszone",
           "horizon_hours": "Gewünschter Horizont",

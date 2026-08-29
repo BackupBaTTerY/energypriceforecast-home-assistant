@@ -14,14 +14,19 @@ from custom_components.energypriceforecast.config_flow import (
     _validate_cheapest_hours_selection,
     _validate_retail_selection,
 )
+from custom_components.energypriceforecast import async_migrate_entry
 from custom_components.energypriceforecast.const import (
     CONF_CHEAPEST_HOURS_COUNT,
     CONF_CHEAPEST_HOURS_WINDOW_HOURS,
+    CONF_HORIZON_HOURS,
     CONF_MARKET,
     CONF_POSTAL_CODE,
     CONF_RETAIL_PRICING,
     DOMAIN,
+    HORIZON_HOURS_OPTIONS,
+    MAX_HORIZON_HOURS,
 )
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 BASE_USER_INPUT = {
     "market": "DE",
@@ -183,6 +188,58 @@ async def test_user_flow_aborts_on_duplicate_market(hass) -> None:
 
     assert result["type"] is data_entry_flow.FlowResultType.ABORT
     assert result["reason"] == "already_configured"
+
+
+def test_withdrawn_horizon_does_not_break_the_form() -> None:
+    """A stored 168 must render as a valid option, not raise.
+
+    168 was offered until the forecast was confirmed to never exceed
+    MAX_HORIZON_HOURS. Entries are migrated on load, but voluptuous
+    validates a Required field's default whenever the key is missing from
+    the input, so a stale entry reaching the form must still degrade to the
+    nearest offered horizon instead of raising.
+    """
+    schema = _schema({CONF_HORIZON_HOURS: 168})
+
+    validated = schema({})
+
+    assert validated[CONF_HORIZON_HOURS] == str(MAX_HORIZON_HOURS)
+
+
+def test_horizon_options_stay_within_the_forecast_ceiling() -> None:
+    """Nothing may be offered that the forecast cannot actually deliver."""
+    assert max(HORIZON_HOURS_OPTIONS) == MAX_HORIZON_HOURS
+
+
+async def test_migration_clamps_a_withdrawn_horizon(hass) -> None:
+    """An existing entry on 168 is rewritten to the real ceiling on load."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        version=1,
+        unique_id="DE",
+        data={**BASE_USER_INPUT, CONF_HORIZON_HOURS: 168},
+    )
+    entry.add_to_hass(hass)
+
+    assert await async_migrate_entry(hass, entry)
+
+    assert entry.data[CONF_HORIZON_HOURS] == MAX_HORIZON_HOURS
+    assert entry.version == 2
+
+
+async def test_migration_leaves_a_valid_horizon_alone(hass) -> None:
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        version=1,
+        unique_id="NL",
+        data={**BASE_USER_INPUT, CONF_HORIZON_HOURS: 48},
+    )
+    entry.add_to_hass(hass)
+
+    assert await async_migrate_entry(hass, entry)
+
+    assert entry.data[CONF_HORIZON_HOURS] == 48
+    assert entry.version == 2
 
 
 def test_schema_default_horizon_survives_validation_when_stored_as_int() -> None:

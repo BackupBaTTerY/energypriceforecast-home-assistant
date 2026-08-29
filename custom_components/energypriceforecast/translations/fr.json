@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Ajouter une prévision de prix de l'électricité et de CO2",
-        "description": "Choisissez un marché et l'horizon de prévision. L'accès public fournit actuellement jusqu'à 48 heures ; une clé API éligible peut débloquer jusqu'à 168 heures.",
+        "description": "Choisissez un marché et l'horizon de prévision. L'accès public fournit actuellement jusqu'à 48 heures ; une clé API éligible peut débloquer jusqu'à 120 heures.",
         "data": {
           "market": "Marché ou zone de prix",
           "horizon_hours": "Horizon demandé",

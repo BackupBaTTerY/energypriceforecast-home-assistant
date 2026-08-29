@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Elektriciteitsprijs- en CO2-prognose toevoegen",
-        "description": "Kies een markt en de prognosehorizon. Publieke toegang biedt momenteel tot 48 uur; een gerechtigde API-sleutel kan tot 168 uur ontgrendelen.",
+        "description": "Kies een markt en de prognosehorizon. Publieke toegang biedt momenteel tot 48 uur; een gerechtigde API-sleutel kan tot 120 uur ontgrendelen.",
         "data": {
           "market": "Markt of prijszone",
           "horizon_hours": "Gewenste horizon",

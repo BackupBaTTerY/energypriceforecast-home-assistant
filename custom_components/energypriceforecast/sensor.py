@@ -116,6 +116,32 @@ def _forecast_only(entries: Any) -> list[dict[str, Any]]:
     ]
 
 
+# The raw series attributes hold one entry per 15-minute slot across the
+# whole horizon - at 168 hours that is far past the recorder's 16 KB per-state
+# attribute limit, which makes it drop the attributes and log a warning on
+# every update. They are meant to be read live (charts, templates), never
+# from history, so keep them out of the database entirely.
+_SERIES_ATTRIBUTES = frozenset({"raw_today", "raw_tomorrow", "raw_forecast"})
+
+
+class _StickyUnitMixin:
+    """Keep the last known unit when an update leaves the payload empty.
+
+    Units are read out of the API payload, so a failed or partial update
+    would otherwise flip them to None. Home Assistant reads that as a unit
+    change and then permanently suppresses long-term statistics for the
+    entity ("cannot be converted to the unit of previously compiled
+    statistics") - a lasting consequence for a momentary outage.
+    """
+
+    _last_unit: str | None = None
+
+    def _sticky_unit(self, unit: Any) -> str | None:
+        if isinstance(unit, str) and unit:
+            self._last_unit = unit
+        return self._last_unit
+
+
 @dataclass(frozen=True, kw_only=True)
 class EnergyPriceForecastSensorDescription(SensorEntityDescription):
     """Describe how a value is read from the summary."""
@@ -287,7 +313,9 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-class EnergyPriceForecastSensor(EnergyPriceForecastEntity, SensorEntity):
+class EnergyPriceForecastSensor(
+    _StickyUnitMixin, EnergyPriceForecastEntity, SensorEntity
+):
     """One sensor backed by the shared summary response."""
 
     entity_description: EnergyPriceForecastSensorDescription
@@ -308,11 +336,13 @@ class EnergyPriceForecastSensor(EnergyPriceForecastEntity, SensorEntity):
     @property
     def native_unit_of_measurement(self) -> str | None:
         if self.entity_description.unit_fn is not None:
-            return self.entity_description.unit_fn(self.coordinator.data)
+            return self._sticky_unit(self.entity_description.unit_fn(self.coordinator.data))
         return self.entity_description.native_unit_of_measurement
 
 
-class EnergyPriceForecastRetailWindowSensor(EnergyPriceForecastEntity, SensorEntity):
+class EnergyPriceForecastRetailWindowSensor(
+    _StickyUnitMixin, EnergyPriceForecastEntity, SensorEntity
+):
     """One cheapest-window value read from the retail-mode summary.
 
     Only created when retail pricing was enabled. The base window
@@ -348,13 +378,17 @@ class EnergyPriceForecastRetailWindowSensor(EnergyPriceForecastEntity, SensorEnt
     @property
     def native_unit_of_measurement(self) -> str | None:
         if self.coordinator.retail_summary is None:
-            return self.entity_description.native_unit_of_measurement
+            return self._sticky_unit(None)
         if self.entity_description.unit_fn is not None:
-            return self.entity_description.unit_fn(self.coordinator.retail_summary)
+            return self._sticky_unit(
+                self.entity_description.unit_fn(self.coordinator.retail_summary)
+            )
         return self.entity_description.native_unit_of_measurement
 
 
-class EnergyPriceForecastRetailPriceSensor(EnergyPriceForecastEntity, SensorEntity):
+class EnergyPriceForecastRetailPriceSensor(
+    _StickyUnitMixin, EnergyPriceForecastEntity, SensorEntity
+):
     """Current assumption-based retail (all-in) electricity price.
 
     Only created when retail pricing was enabled during setup. Backed by
@@ -370,6 +404,7 @@ class EnergyPriceForecastRetailPriceSensor(EnergyPriceForecastEntity, SensorEnti
     _attr_icon = "mdi:cash-multiple"
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_suggested_display_precision = 4
+    _unrecorded_attributes = _SERIES_ATTRIBUTES
 
     def __init__(
         self, coordinator: EnergyPriceForecastCoordinator, entry: ConfigEntry
@@ -387,7 +422,7 @@ class EnergyPriceForecastRetailPriceSensor(EnergyPriceForecastEntity, SensorEnti
 
     @property
     def native_unit_of_measurement(self) -> str | None:
-        return _path(self.coordinator.retail_data or {}, "unit")
+        return self._sticky_unit(_path(self.coordinator.retail_data or {}, "unit"))
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -400,7 +435,9 @@ class EnergyPriceForecastRetailPriceSensor(EnergyPriceForecastEntity, SensorEnti
         }
 
 
-class EnergyPriceForecastPriceSeriesSensor(EnergyPriceForecastEntity, SensorEntity):
+class EnergyPriceForecastPriceSeriesSensor(
+    _StickyUnitMixin, EnergyPriceForecastEntity, SensorEntity
+):
     """Raw price forecast series for charting and custom automations.
 
     Always created (unlike the other optional sensors): forecasting the
@@ -417,6 +454,7 @@ class EnergyPriceForecastPriceSeriesSensor(EnergyPriceForecastEntity, SensorEnti
     _attr_icon = "mdi:chart-line"
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_suggested_display_precision = 4
+    _unrecorded_attributes = _SERIES_ATTRIBUTES
 
     def __init__(
         self, coordinator: EnergyPriceForecastCoordinator, entry: ConfigEntry
@@ -434,7 +472,7 @@ class EnergyPriceForecastPriceSeriesSensor(EnergyPriceForecastEntity, SensorEnti
 
     @property
     def native_unit_of_measurement(self) -> str | None:
-        return _path(self.coordinator.price_series or {}, "unit")
+        return self._sticky_unit(_path(self.coordinator.price_series or {}, "unit"))
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -458,6 +496,7 @@ class EnergyPriceForecastCheapestHoursSensor(EnergyPriceForecastEntity, SensorEn
     _attr_translation_key = "cheapest_hours_next_start"
     _attr_icon = "mdi:sort-clock-ascending"
     _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _unrecorded_attributes = frozenset({"hours"})
 
     def __init__(
         self, coordinator: EnergyPriceForecastCoordinator, entry: ConfigEntry
@@ -501,6 +540,7 @@ class EnergyPriceForecastWeekendHoursSensor(EnergyPriceForecastEntity, SensorEnt
     _attr_translation_key = "weekend_hours_next_start"
     _attr_icon = "mdi:calendar-weekend"
     _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _unrecorded_attributes = frozenset({"hours"})
 
     def __init__(
         self, coordinator: EnergyPriceForecastCoordinator, entry: ConfigEntry

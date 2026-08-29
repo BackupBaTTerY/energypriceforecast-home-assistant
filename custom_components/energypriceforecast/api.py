@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from aiohttp import ClientError, ClientResponseError, ClientSession
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class EnergyPriceForecastApiError(Exception):
@@ -28,8 +31,8 @@ class EnergyPriceForecastRetailUnavailable(EnergyPriceForecastApiError):
 
 
 # The public API never returns HTTP 401/403 for a rejected key: it responds
-# with 200 and reports the outcome in meta.api_key_state instead. States other
-# than "valid" mean the supplied key was not accepted.
+# with 200 and reports the outcome in meta.api_key_state instead. Only these
+# states mean the key itself was examined and refused.
 REJECTED_API_KEY_STATES = frozenset(
     {
         "invalid",
@@ -37,10 +40,18 @@ REJECTED_API_KEY_STATES = frozenset(
         "revoked",
         "inactive",
         "expired",
-        "lookup_failed",
-        "rate_limited",
     }
 )
+
+# These say nothing about whether the key is valid. The API sets
+# "lookup_failed" when its own key lookup raised and it fell back to serving
+# the request with public access, and "rate_limited" accompanies an HTTP 429
+# for a valid key that hit its daily quota (so it never reaches the 200 path
+# here at all). Both are transient and still return usable data, so treating
+# them as a rejected key would take every entity down - reporting
+# "unavailable" for a momentary backend hiccup - instead of quietly serving
+# the public-horizon data the response actually contains.
+DEGRADED_API_KEY_STATES = frozenset({"lookup_failed", "rate_limited"})
 
 
 class EnergyPriceForecastApi:
@@ -154,7 +165,16 @@ class EnergyPriceForecastApi:
         return payload
 
     def _raise_if_key_rejected(self, api_key_state: Any) -> None:
-        if self._api_key and api_key_state in REJECTED_API_KEY_STATES:
+        if not self._api_key:
+            return
+        if api_key_state in REJECTED_API_KEY_STATES:
             raise EnergyPriceForecastAuthError(
                 f"The API key was not accepted (state: {api_key_state})."
+            )
+        if api_key_state in DEGRADED_API_KEY_STATES:
+            _LOGGER.warning(
+                "The API could not apply the configured API key (state: %s). "
+                "Serving this update with public access limits, so the "
+                "horizon may be shorter than requested",
+                api_key_state,
             )

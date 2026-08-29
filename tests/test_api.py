@@ -1,14 +1,19 @@
-"""Tests for the API client's handling of a rejected API key.
+"""Tests for the API client's handling of meta.api_key_state.
 
 The public API never returns HTTP 401/403 for a rejected key: it responds
 with 200 and reports the outcome in meta.api_key_state instead. A caller
 that only checked the HTTP status would treat a rejected key as success.
+
+The inverse mistake matters just as much: not every non-"valid" state is a
+rejection. Some describe a backend condition while the response still holds
+usable data, and failing on those takes the whole integration offline.
 """
 from __future__ import annotations
 
 import pytest
 
 from custom_components.energypriceforecast.api import (
+    DEGRADED_API_KEY_STATES,
     REJECTED_API_KEY_STATES,
     EnergyPriceForecastApi,
     EnergyPriceForecastAuthError,
@@ -92,6 +97,35 @@ async def test_rejected_key_raises_auth_error(state: str) -> None:
     )
     with pytest.raises(EnergyPriceForecastAuthError):
         await api.async_get_summary()
+
+
+@pytest.mark.parametrize("state", sorted(DEGRADED_API_KEY_STATES))
+async def test_degraded_key_state_still_returns_data(state: str) -> None:
+    """A state that judges the backend, not the key, must not fail the update.
+
+    "lookup_failed" means the API's own key lookup raised and it served the
+    request with public access anyway; "rate_limited" means a valid key hit
+    its daily quota. Both still carry usable data. Raising here would mark
+    every entity unavailable over a momentary backend problem - which is
+    exactly what happened once, hence this test.
+    """
+    api = EnergyPriceForecastApi(
+        session=_FakeSession(_payload(state)),
+        base_url="https://example.invalid",
+        market="NO3",
+        horizon_hours=48,
+        window_hours=4,
+        api_key="a-real-looking-key-123456",
+    )
+
+    payload = await api.async_get_summary()
+
+    assert payload["meta"]["api_key_state"] == state
+
+
+def test_rejected_and_degraded_states_do_not_overlap() -> None:
+    """A state must be handled as exactly one of the two, never both."""
+    assert not REJECTED_API_KEY_STATES & DEGRADED_API_KEY_STATES
 
 
 def _retail_payload(entries: object = None) -> dict:

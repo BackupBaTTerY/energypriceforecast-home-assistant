@@ -46,6 +46,17 @@
           "cheapest_hours_window_hours": "Blocklänge (Stunden)",
           "cheapest_hours_start_hour": "Startstunde des Blocks (Ortszeit)",
           "weekend_hours_count": "Günstigste Stunden für den Wochenendplan (0 zum Deaktivieren)"
+        },
+        "data_description": {
+          "horizon_hours": "Den tatsächlich erlaubten Horizont zeigt die Integration als Diagnose-Sensor an.",
+          "window_hours": "Länge des günstigsten und des grünsten zusammenhängenden Zeitfensters.",
+          "retail_pricing": "Ergänzt einen annahmenbasierten Gesamtpreis (Netzentgelt, Abgaben, MwSt.) zusätzlich zum Marktpreis. Nur für einige Märkte verfügbar; kein exakter Liefertarif.",
+          "postal_code": "Für Deutschland bei aktiviertem Endkundenpreis erforderlich, wird für die Netzentgelt-Ermittlung genutzt. Für andere Märkte nicht benötigt.",
+          "update_interval_minutes": "Wie oft die API abgefragt wird. Die Datenauflösung liegt bei 15 Minuten, kürzere Intervalle liefern daher selten neue Informationen.",
+          "cheapest_hours_count": "Die Zeit wird in feste, lückenlose Blöcke geteilt (siehe unten), und in jedem Block werden so viele einzelne - nicht zwingend zusammenhängende - Stunden als die günstigsten ausgewählt. Gut für eine Wärmepumpe: z. B. 12 von 24 Stunden wählt an jedem Kalendertag die zwölf günstigsten Stunden. Der Plan eines Blocks wird nach seiner Erstellung nicht mehr neu gemischt, auch wenn sich die Prognose später ändert. Darf nie größer als die Blocklänge sein; sind nicht genug Prognosedaten für den vollständigen Block vorhanden, wird gar kein Plan veröffentlicht.",
+          "cheapest_hours_window_hours": "Länge des sich wiederholenden Blocks. 24 wiederholt sich täglich; 48 wählt Stunden aus einem festen Zweitagesblock (z. B. Montag 00:00 bis Mittwoch 00:00, dann Mittwoch bis Freitag usw.). Ein längerer Block bietet mehr Auswahl - meist mehr Ersparnis, aber eine ungleichmäßiger verteilte Laufzeit.",
+          "cheapest_hours_start_hour": "Ortszeit-Stunde (0-23), zu der jeder Block beginnt. 0 bedeutet, Blöcke beginnen um Mitternacht; bei einem 24-Stunden-Block ist das einfach der Beginn jedes Kalendertags.",
+          "weekend_hours_count": "Ein eigener Plan für einen festen Block von Samstag 00:00 bis Montag 00:00, unabhängig vom obigen Block - nützlich für eine Wallbox, die nur die Wochenend-Flexibilität nutzen soll. Wird genauso ausgewählt und fixiert, erfordert aber, dass das gesamte Wochenende von der Prognose abgedeckt ist (auch bereits vergangene Stunden), bevor er fixiert wird - ein nach einem späten Neustart erstellter Plan ist dadurch nie unvollständig."
         }
       }
     },

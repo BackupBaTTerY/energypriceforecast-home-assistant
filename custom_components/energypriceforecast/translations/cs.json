@@ -46,6 +46,17 @@
           "cheapest_hours_window_hours": "Délka bloku (hodiny)",
           "cheapest_hours_start_hour": "Počáteční hodina bloku (místní čas)",
           "weekend_hours_count": "Nejlevnější hodiny pro víkendový plán (0 pro vypnutí)"
+        },
+        "data_description": {
+          "horizon_hours": "API hlásí skutečně povolený horizont jako diagnostický senzor.",
+          "window_hours": "Délka nejlevnějšího a nejzelenějšího souvislého časového okna.",
+          "retail_pricing": "Přidává odhadovanou kompletní cenu (poplatek za síť, poplatky, DPH) navíc k tržní ceně. Dostupné jen pro některé trhy; nejde o přesný tarif dodavatele.",
+          "postal_code": "Vyžadováno pro Německo, pokud je povolena maloobchodní cena, používá se pro vyhledání poplatku za síť. Pro ostatní trhy se nepoužívá.",
+          "update_interval_minutes": "Jak často se API dotazuje. Rozlišení dat je 15 minut, kratší intervaly proto zřídka přinášejí nové informace.",
+          "cheapest_hours_count": "Čas se rozdělí na pevné, na sebe navazující bloky (nastavte níže) a v každém bloku se jako nejlevnější vybere tolik jednotlivých - případně nesouvislých - hodin. Vhodné pro tepelné čerpadlo: např. 12 z 24 hodin vybere každý kalendářní den dvanáct nejlevnějších hodin. Jakmile je plán bloku vybrán, už se znovu nepřeskládá, i když se prognóza později změní. Nesmí být větší než délka bloku, a pokud prognóza ještě plně nepokrývá celý blok, plán se vůbec nezveřejní.",
+          "cheapest_hours_window_hours": "Jak dlouhý je každý opakující se blok. 24 se opakuje denně; 48 vybírá hodiny z pevného dvoudenního bloku (např. pondělí 00:00 až středa 00:00, poté středa až pátek atd.). Delší blok nabízí větší výběr - obvykle vyšší úsporu, ale méně rovnoměrně rozložený provoz.",
+          "cheapest_hours_start_hour": "Místní hodina dne (0-23), kdy každý blok začíná. 0 znamená, že bloky začínají o půlnoci; u 24hodinového bloku je to prostě začátek každého kalendářního dne.",
+          "weekend_hours_count": "Samostatný plán pro pevný blok od soboty 00:00 do pondělí 00:00, nezávislý na výše uvedeném bloku - užitečné pro nabíječku, která má využívat pouze víkendovou flexibilitu. Vybírá se a zamyká stejným způsobem, ale vyžaduje, aby prognóza pokrývala celý víkend (včetně již uplynulých hodin), než se zamkne, takže plán vytvořený po pozdním restartu nikdy není částečný."
         }
       }
     },

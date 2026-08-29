@@ -46,6 +46,17 @@
           "cheapest_hours_window_hours": "Blokklengde (timer)",
           "cheapest_hours_start_hour": "Blokkens starttime (lokal tid)",
           "weekend_hours_count": "Billigste timer for helgeplanen (0 for å deaktivere)"
+        },
+        "data_description": {
+          "horizon_hours": "API-et rapporterer den faktisk tillatte horisonten som en diagnostikksensor.",
+          "window_hours": "Lengden på det billigste og grønneste sammenhengende tidsvinduet.",
+          "retail_pricing": "Legger til en antagelsesbasert alt-inkludert-pris (nettleie, avgifter, mva.) i tillegg til markedsprisen. Kun tilgjengelig for enkelte markeder; ikke en eksakt leverandørtariff.",
+          "postal_code": "Kreves for Tyskland når forbrukerpris er aktivert, brukes til oppslag av nettleie. Brukes ikke for andre markeder.",
+          "update_interval_minutes": "Hvor ofte API-et spørres. Dataoppløsningen er 15 minutter, så kortere intervaller gir sjelden ny informasjon.",
+          "cheapest_hours_count": "Tiden deles opp i faste, sammenhengende blokker (angis nedenfor), og i hver blokk velges så mange enkelttimer - eventuelt ikke sammenhengende - som de billigste. Bra for en varmepumpe: f.eks. velger 12 av 24 timer de tolv billigste timene hver kalenderdag. Når en blokks plan først er valgt, blir den aldri stokket om igjen, selv om prognosen senere endrer seg. Må aldri være større enn blokklengden, og ingen plan publiseres i det hele tatt hvis prognosen ennå ikke dekker hele blokken.",
+          "cheapest_hours_window_hours": "Hvor lang hver gjentakende blokk er. 24 gjentas daglig; 48 velger timer fra en fast toDagersblokk (f.eks. mandag 00:00 til onsdag 00:00, deretter onsdag til fredag osv.). En lengre blokk gir flere timer å velge mellom - vanligvis mer besparelse, men en mindre jevnt fordelt driftstid.",
+          "cheapest_hours_start_hour": "Lokal time på døgnet (0-23) der hver blokk starter. 0 betyr at blokker starter ved midnatt; med en 24-timers blokk er dette rett og slett starten på hver kalenderdag.",
+          "weekend_hours_count": "En egen plan for en fast blokk fra lørdag 00:00 til mandag 00:00, uavhengig av blokken over - nyttig for en ladeboks som kun skal bruke helgefleksibilitet. Velges og låses på samme måte, men krever at hele helgen er dekket av prognosen (også allerede passerte timer) før den låses, slik at en plan laget etter en sen omstart aldri er delvis."
         }
       }
     },

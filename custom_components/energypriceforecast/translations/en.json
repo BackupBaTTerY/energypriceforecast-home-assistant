@@ -46,6 +46,17 @@
           "cheapest_hours_window_hours": "Block length (hours)",
           "cheapest_hours_start_hour": "Block start hour (local time)",
           "weekend_hours_count": "Cheapest hours for the weekend plan (0 to disable)"
+        },
+        "data_description": {
+          "horizon_hours": "The API reports the actually permitted horizon as a diagnostic sensor.",
+          "window_hours": "Length of the cheapest and greenest continuous window.",
+          "retail_pricing": "Adds an assumption-based all-in price (grid fee, levies, VAT) in addition to the market price. Only available for some markets; not an exact supplier tariff.",
+          "postal_code": "Required for Germany when retail pricing is enabled, used for the grid-fee lookup. Not used for other markets.",
+          "update_interval_minutes": "How often to poll the API. Data resolution is 15 minutes, so shorter intervals rarely add new information.",
+          "cheapest_hours_count": "Time is split into fixed, back-to-back blocks (set below), and this many individual - possibly non-contiguous - hours are picked as the cheapest in each block. Good for a heat pump: e.g. 12 of 24 hours picks the twelve cheapest hours every calendar day. Once a block's plan has been picked it is never reshuffled, even if the forecast later changes. Must not be greater than the block length, and no plan is published at all if the forecast does not yet fully cover the block.",
+          "cheapest_hours_window_hours": "How long each repeating block is. 24 repeats daily; 48 picks hours from a fixed two-day block (e.g. Monday 00:00 to Wednesday 00:00, then Wednesday to Friday, and so on). A longer block gives more hours to choose from - typically more savings, but a less evenly spread runtime.",
+          "cheapest_hours_start_hour": "Local hour of day (0-23) at which each block starts. 0 means blocks start at midnight; with a 24-hour block this is simply the start of each calendar day.",
+          "weekend_hours_count": "A separate plan for a fixed Saturday 00:00 to Monday 00:00 block, independent of the block above - useful for a car charger that should only use weekend flexibility. Picked and locked the same way, but requires the entire weekend to be covered by the forecast (including hours already in the past) before it locks in, so a plan built after a late reload is never partial."
         }
       }
     },

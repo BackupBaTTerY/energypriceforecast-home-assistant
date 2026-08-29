@@ -46,6 +46,17 @@
           "cheapest_hours_window_hours": "Longueur du bloc (heures)",
           "cheapest_hours_start_hour": "Heure de début du bloc (heure locale)",
           "weekend_hours_count": "Heures les moins chères pour le plan week-end (0 pour désactiver)"
+        },
+        "data_description": {
+          "horizon_hours": "L'API indique l'horizon réellement autorisé via un capteur de diagnostic.",
+          "window_hours": "Durée de la fenêtre continue la moins chère et la plus verte.",
+          "retail_pricing": "Ajoute un prix tout compris basé sur des hypothèses (frais de réseau, taxes, TVA) en plus du prix du marché. Disponible uniquement pour certains marchés ; ce n'est pas un tarif fournisseur exact.",
+          "postal_code": "Requis pour l'Allemagne lorsque le prix de détail est activé, utilisé pour déterminer les frais de réseau. Non utilisé pour les autres marchés.",
+          "update_interval_minutes": "Fréquence d'interrogation de l'API. La résolution des données est de 15 minutes, des intervalles plus courts apportent donc rarement de nouvelles informations.",
+          "cheapest_hours_count": "Le temps est découpé en blocs fixes et contigus (à régler ci-dessous), et dans chaque bloc, ce nombre d'heures individuelles - éventuellement non consécutives - est choisi comme étant les moins chères. Utile pour une pompe à chaleur : par ex. 12 heures sur 24 sélectionne les douze heures les moins chères de chaque jour calendaire. Une fois le plan d'un bloc établi, il n'est plus jamais remanié, même si la prévision change ensuite. Ne doit jamais dépasser la longueur du bloc, et aucun plan n'est publié du tout si la prévision ne couvre pas encore entièrement le bloc.",
+          "cheapest_hours_window_hours": "Durée de chaque bloc répétitif. 24 se répète quotidiennement ; 48 choisit des heures dans un bloc fixe de deux jours (par ex. lundi 00h00 à mercredi 00h00, puis mercredi à vendredi, etc.). Un bloc plus long offre plus de choix - généralement plus d'économies, mais un fonctionnement moins régulièrement réparti.",
+          "cheapest_hours_start_hour": "Heure locale de la journée (0-23) à laquelle chaque bloc commence. 0 signifie que les blocs commencent à minuit ; avec un bloc de 24 heures, il s'agit simplement du début de chaque jour calendaire.",
+          "weekend_hours_count": "Un plan distinct pour un bloc fixe du samedi 00h00 au lundi 00h00, indépendant du bloc ci-dessus - utile pour une borne de recharge qui ne doit utiliser que la flexibilité du week-end. Choisi et verrouillé de la même manière, mais nécessite que le week-end entier soit couvert par la prévision (y compris les heures déjà passées) avant de se verrouiller, afin qu'un plan établi après un redémarrage tardif ne soit jamais partiel."
         }
       }
     },

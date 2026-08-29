@@ -14,13 +14,16 @@ from pathlib import Path
 COMPONENT_DIR = Path(__file__).parent.parent / "custom_components" / "energypriceforecast"
 TRANSLATIONS_DIR = COMPONENT_DIR / "translations"
 
-# Only these sections are required to match exactly: they drive the
-# config-flow UI and entity names, so a missing key is a visible bug.
-# "data_description" (extra help text) is intentionally excluded - it is
-# supplementary and not every language file fills it in.
+# These sections are required to match exactly: they drive the config-flow
+# UI and entity names, so a missing key is a visible bug. data_description
+# is included too - it was once excluded as "supplementary", which is how
+# the reconfigure step silently shipped with no help text at all while the
+# user step had it for every field.
 REQUIRED_SECTIONS = (
     ("config", "step", "user", "data"),
+    ("config", "step", "user", "data_description"),
     ("config", "step", "reconfigure", "data"),
+    ("config", "step", "reconfigure", "data_description"),
     ("config", "error"),
     ("config", "abort"),
     ("entity", "sensor"),
@@ -64,6 +67,30 @@ def test_translations_have_every_required_key_from_strings_json() -> None:
                 f"{translation_path.name} is missing keys {sorted(missing)} "
                 f"under {'.'.join(section)}"
             )
+
+
+# Fields whose meaning is not self-evident from the label alone: the
+# block/plan settings interact with each other (N must fit inside X) and
+# have non-obvious behaviour (plans lock in, no partial plans). Shipping
+# either config-flow step without help text for these leaves users
+# guessing, which is what happened once already - see REQUIRED_SECTIONS.
+FIELDS_NEEDING_HELP_TEXT = (
+    "cheapest_hours_count",
+    "cheapest_hours_window_hours",
+    "cheapest_hours_start_hour",
+    "weekend_hours_count",
+)
+
+
+def test_plan_settings_are_explained_in_both_config_steps() -> None:
+    for path in [COMPONENT_DIR / "strings.json", *_translation_files()]:
+        data = _load(path)
+        for step in ("user", "reconfigure"):
+            descriptions = _get(data, ("config", "step", step, "data_description"))
+            for field in FIELDS_NEEDING_HELP_TEXT:
+                assert descriptions.get(field), (
+                    f"{path.name}: no help text for {field} in the {step} step"
+                )
 
 
 def test_translations_do_not_have_unknown_extra_keys() -> None:

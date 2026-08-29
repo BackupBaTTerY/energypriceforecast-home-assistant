@@ -57,6 +57,78 @@ Until the integration is part of the HACS default repository list:
 An older YAML package using the same API remains fully supported and can run
 in parallel - remove it only after the new entities have been checked.
 
+## Entities
+
+One device is created per configured market. The names below are the English
+defaults; the actual `entity_id` is built from your device and area names in
+your Home Assistant language, so look yours up under **Settings > Devices &
+services > Energy Price Forecast EU > entities**.
+
+### Always created
+
+| Name | Type | Unit |
+| --- | --- | --- |
+| Current price | sensor | market currency, e.g. EUR/kWh |
+| Current CO2 intensity | sensor | gCO2/kWh |
+| Cheapest window average price | sensor | market currency |
+| Cheapest window start | sensor | timestamp |
+| Cheapest window end | sensor | timestamp |
+| Greenest window average CO2 | sensor | gCO2/kWh |
+| Greenest window start | sensor | timestamp |
+| Greenest window end | sensor | timestamp |
+| Combined window score | sensor | - |
+| Price forecast series | sensor | market currency |
+| Cheapest window active | binary sensor | on/off |
+| Greenest window active | binary sensor | on/off |
+
+Plus four diagnostic entities, shown separately in the device page: **Allowed
+horizon** and **Used horizon** (hours), **API-key status**, and **Last API
+update** (timestamp).
+
+"Cheapest window" here is the single *contiguous* window of the configured
+best-window duration - not the same thing as the cheapest-hours plan below.
+
+### With retail pricing enabled
+
+| Name | Type | Unit |
+| --- | --- | --- |
+| Current retail price | sensor | market currency |
+| Cheapest window average retail price | sensor | market currency |
+| Cheapest window start (retail) | sensor | timestamp |
+| Cheapest window end (retail) | sensor | timestamp |
+| Cheapest window active (retail) | binary sensor | on/off |
+
+These mirror the base entities but are computed on the all-in retail price, so
+the cheapest window can differ from the spot-price one.
+
+### With a cheapest-hours count above 0
+
+| Name | Type | Unit |
+| --- | --- | --- |
+| Next cheapest hour | sensor | timestamp |
+| Cheapest hours active | binary sensor | on/off |
+
+### With a weekend-hours count above 0
+
+| Name | Type | Unit |
+| --- | --- | --- |
+| Next weekend cheapest hour | sensor | timestamp |
+| Weekend cheapest hours active | binary sensor | on/off |
+
+### Attributes worth knowing
+
+- **Price forecast series** and **Current retail price** carry `raw_today`,
+  `raw_tomorrow` and `raw_forecast` - lists of `{start, end, value}` slots for
+  charting (see the chart section below).
+- **Next cheapest hour** and **Next weekend cheapest hour** carry `hours`: the
+  full locked plan as a list of `{start, end, average_value}`.
+
+These attributes are deliberately excluded from the recorder database. They
+hold one entry per 15-minute slot across the whole horizon, which exceeds the
+recorder's per-state limit and would be dropped with a warning on every update
+anyway. They are always available live for charts, templates and automations -
+only their *history* is not stored.
+
 ## Horizon
 
 The public access currently provides up to 48 hours. An eligible API key can

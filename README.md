@@ -144,6 +144,11 @@ the cheapest window can differ from the spot-price one.
 - **Next cheapest hour** and **Next weekend cheapest hour** carry `hours`: the
   full locked plan as a list of `{start, end, average_value}`.
 
+**To inspect them, use Developer tools > States**, pick the entity, and read
+the attributes in the panel on the right. They will not show up in the history
+or in the database (see below), so looking there is a dead end - you do not
+need a throwaway automation that logs them.
+
 These attributes are deliberately excluded from the recorder database since
 0.7.2. They hold one entry per 15-minute slot across the whole horizon, which
 exceeds the recorder's 16 KB per-state limit, so it used to drop them and log a
@@ -316,6 +321,10 @@ yaxis:
       title:
         text: EUR/kWh
 series:
+  # Both sensor.CHANGE_ME lines must be the SAME entity.
+  # Retail pricing enabled? Use your retail price sensor here, not the price
+  # series sensor - the spot price is not what you pay, and a chart on it
+  # will disagree with the retail price shown elsewhere on your dashboard.
   - entity: sensor.CHANGE_ME
     name: Known (day-ahead)
     yaxis_id: price
@@ -354,12 +363,15 @@ never forecast.
 
 ### Showing the planned cheap hours in the chart
 
-If you configured a cheapest-hours count, add this third series to mark the
-hours the plan actually picked. It draws a marker per planned hour along the
-bottom of the chart, so you can see at a glance whether the plan lines up with
+If you configured a cheapest-hours count, add this series to mark the hours the
+plan actually picked, so you can see at a glance whether the plan lines up with
 the price valleys. Point it at your *Next cheapest hour* sensor (German:
 `sensor..._naechste_guenstige_stunde`), and use the *Next weekend cheapest
 hour* sensor for the weekend plan.
+
+Add it as the **first** entry under `series:`, before the two price series -
+apexcharts draws series in order, so listing it first keeps the bands behind
+the price lines instead of on top of them.
 
 ```yaml
   - entity: sensor.CHANGE_ME_cheapest_hours
@@ -367,22 +379,31 @@ hour* sensor for the weekend plan.
     yaxis_id: plan
     type: column
     color: "#1e88e5"
-    opacity: 0.5
+    opacity: 0.25
+    stroke_width: 0
     extend_to: false
+    show:
+      legend_value: false
     data_generator: |
       return (entity.attributes.hours ?? []).map(
         h => [new Date(h.start).getTime(), 1]);
 ```
 
-It needs a second, hidden axis so the markers do not distort the price scale -
-add this under the existing `yaxis:` list:
+It needs a second, hidden axis so the bands do not distort the price scale.
+Add this under the existing `yaxis:` list - `max: 1` against a plotted value of
+1 makes each band span the full height of the chart, which is what makes them
+readable at a multi-day span:
 
 ```yaml
   - id: plan
     show: false
     min: 0
-    max: 4
+    max: 1
 ```
+
+A planned hour is one column an hour wide, so over a four-day span the bands
+are narrow by nature. If they are still too subtle, raise `opacity`, or shorten
+`graph_span` to 2d so each hour gets more width.
 
 ### Or let an AI build it for you
 

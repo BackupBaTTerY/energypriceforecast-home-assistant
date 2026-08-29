@@ -142,6 +142,23 @@ class _StickyUnitMixin:
         return self._last_unit
 
 
+def _next_planned_start(hours: list[dict[str, Any]] | None) -> datetime | None:
+    """Start of the first planned hour that has not begun yet.
+
+    A plan is a fixed list covering its whole block, so the first entry stays
+    the first entry all block long. Reporting it as the "next" hour leaves the
+    sensor pointing further and further into the past once that hour is over,
+    which is both wrong and useless to an automation asking when the next
+    cheap hour begins. Returns None once every planned hour has started - the
+    plan for this block is then simply done.
+    """
+    if not hours:
+        return None
+    now = datetime.now(timezone.utc)
+    # Plans are stored sorted by start, so the first future entry is the next.
+    return next((hour["start"] for hour in hours if hour["start"] > now), None)
+
+
 @dataclass(frozen=True, kw_only=True)
 class EnergyPriceForecastSensorDescription(SensorEntityDescription):
     """Describe how a value is read from the summary."""
@@ -509,8 +526,7 @@ class EnergyPriceForecastCheapestHoursSensor(EnergyPriceForecastEntity, SensorEn
 
     @property
     def native_value(self) -> Any:
-        hours = self.coordinator.cheapest_hours
-        return hours[0]["start"] if hours else None
+        return _next_planned_start(self.coordinator.cheapest_hours)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -553,8 +569,7 @@ class EnergyPriceForecastWeekendHoursSensor(EnergyPriceForecastEntity, SensorEnt
 
     @property
     def native_value(self) -> Any:
-        hours = self.coordinator.weekend_hours
-        return hours[0]["start"] if hours else None
+        return _next_planned_start(self.coordinator.weekend_hours)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

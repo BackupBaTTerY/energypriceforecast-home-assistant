@@ -1,10 +1,13 @@
 """Integration tests for the sensor/binary_sensor platforms."""
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+from custom_components.energypriceforecast.sensor import _next_planned_start
 
 DOMAIN = "energypriceforecast"
 
@@ -100,6 +103,43 @@ def _state_for_unique_id(hass, entry: MockConfigEntry, unique_id_suffix: str):
     )
     assert entity_id is not None, f"no entity registered for {unique_id_suffix}"
     return hass.states.get(entity_id)
+
+
+def _plan(*hours: int) -> list[dict]:
+    return [
+        {
+            "start": datetime(2026, 8, 29, hour, tzinfo=timezone.utc),
+            "end": datetime(2026, 8, 29, hour + 1, tzinfo=timezone.utc),
+            "average_value": 0.1,
+        }
+        for hour in hours
+    ]
+
+
+def test_next_planned_start_skips_hours_that_already_began(freezer) -> None:
+    """The sensor must advance through the plan, not stick to its first entry.
+
+    A plan covers its whole block, so returning hours[0] left a "next
+    cheapest hour" sensor pointing further into the past with every hour
+    that elapsed - it read "9 hours ago" by mid-block.
+    """
+    freezer.move_to("2026-08-29T12:00:00+00:00")
+
+    assert _next_planned_start(_plan(8, 14, 20)) == datetime(
+        2026, 8, 29, 14, tzinfo=timezone.utc
+    )
+
+
+def test_next_planned_start_is_none_once_the_plan_is_done(freezer) -> None:
+    """All hours started: there is no next one, so report nothing."""
+    freezer.move_to("2026-08-29T22:00:00+00:00")
+
+    assert _next_planned_start(_plan(8, 14, 20)) is None
+
+
+def test_next_planned_start_without_a_plan() -> None:
+    assert _next_planned_start(None) is None
+    assert _next_planned_start([]) is None
 
 
 async def test_core_sensors_are_created_without_optional_features(hass) -> None:

@@ -377,22 +377,33 @@ the price lines instead of on top of them.
   - entity: sensor.CHANGE_ME_cheapest_hours
     name: Planned hours
     yaxis_id: plan
-    type: column
+    type: area
+    curve: stepline
     color: "#1e88e5"
-    opacity: 0.25
+    opacity: 0.22
     stroke_width: 0
     extend_to: false
     show:
       legend_value: false
     data_generator: |
-      return (entity.attributes.hours ?? []).map(
-        h => [new Date(h.start).getTime(), 1]);
+      const raw = (entity.attributes.hours ?? []).map(h => ({
+        start: new Date(h.start).getTime(),
+        end: new Date(h.end).getTime(),
+      })).sort((a, b) => a.start - b.start);
+      // Merge back-to-back hours into one band, otherwise every boundary
+      // between two adjacent planned hours shows up as a zero-width dip.
+      const runs = [];
+      for (const hour of raw) {
+        const last = runs[runs.length - 1];
+        if (last && hour.start <= last.end) last.end = Math.max(last.end, hour.end);
+        else runs.push({ ...hour });
+      }
+      return runs.flatMap(run => [[run.start, 1], [run.end, 0]]);
 ```
 
 It needs a second, hidden axis so the bands do not distort the price scale.
 Add this under the existing `yaxis:` list - `max: 1` against a plotted value of
-1 makes each band span the full height of the chart, which is what makes them
-readable at a multi-day span:
+1 makes each band span the full height of the chart:
 
 ```yaml
   - id: plan
@@ -401,9 +412,12 @@ readable at a multi-day span:
     max: 1
 ```
 
-A planned hour is one column an hour wide, so over a four-day span the bands
-are narrow by nature. If they are still too subtle, raise `opacity`, or shorten
-`graph_span` to 2d so each hour gets more width.
+A stepped area is used rather than columns on purpose. A column series plots
+one point per planned hour and lets the card derive the bar width from the
+spacing between points, which makes scattered hours render as hairlines over a
+multi-day span. Emitting a start and an end point per hour instead draws a band
+of the hour's real width, at any zoom level, and a run of consecutive planned
+hours becomes one wide band rather than several touching bars.
 
 ### Or let an AI build it for you
 

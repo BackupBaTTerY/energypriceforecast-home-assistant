@@ -27,7 +27,9 @@ async def test_api_key_and_postal_code_are_redacted(hass) -> None:
         data={"flat": {"current_price": 0.2}},
         retail_data=None,
         cheapest_hours=None,
+        cheapest_hours_window_average=None,
         weekend_hours=None,
+        weekend_hours_window_average=None,
         last_update_success=True,
     )
 
@@ -50,7 +52,9 @@ async def test_diagnostics_include_retail_and_cheapest_hours_state(hass) -> None
         data={},
         retail_data={"entries": []},
         cheapest_hours=[{"average_value": 0.1}],
+        cheapest_hours_window_average=0.3,
         weekend_hours=[{"average_value": 0.2}],
+        weekend_hours_window_average=0.4,
         last_update_success=True,
     )
 
@@ -59,3 +63,5 @@ async def test_diagnostics_include_retail_and_cheapest_hours_state(hass) -> None
     assert diagnostics["retail_data"] == {"entries": []}
     assert diagnostics["cheapest_hours"] == [{"average_value": 0.1}]
     assert diagnostics["weekend_hours"] == [{"average_value": 0.2}]
+    assert diagnostics["cheapest_hours_window_average"] == 0.3
+    assert diagnostics["weekend_hours_window_average"] == 0.4

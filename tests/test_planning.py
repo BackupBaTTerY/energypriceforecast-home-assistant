@@ -146,7 +146,7 @@ def test_selects_the_cheapest_hours_within_the_window() -> None:
     result = select_cheapest_hours(entries, count=2, window_start=start, window_end=end, available_from=start)
 
     assert result is not None
-    assert [h["start"] for h in result] == [
+    assert [h["start"] for h in result["hours"]] == [
         start + timedelta(hours=1),
         start + timedelta(hours=3),
     ]
@@ -176,7 +176,46 @@ def test_only_requires_coverage_from_available_from_onward() -> None:
     )
 
     assert result is not None
-    assert [h["start"] for h in result] == [start + timedelta(hours=2), start + timedelta(hours=3)]
+    assert [h["start"] for h in result["hours"]] == [
+        start + timedelta(hours=2),
+        start + timedelta(hours=3),
+    ]
+
+
+def test_plan_reports_the_average_of_the_whole_block() -> None:
+    """The baseline covers every hour of the block, not just the picks.
+
+    Comparing the plan against itself would always show no saving, so the
+    figure the saving sensor divides by has to be the block as a whole.
+    """
+    start = datetime(2026, 8, 12, 0, 0, tzinfo=timezone.utc)
+    end = start + timedelta(hours=4)
+    entries = _quarter_hour_entries(start, {0: 0.10, 1: 0.20, 2: 0.30, 3: 0.40})
+
+    result = select_cheapest_hours(
+        entries, count=2, window_start=start, window_end=end, available_from=start
+    )
+
+    assert result is not None
+    assert [h["average_value"] for h in result["hours"]] == [0.10, 0.20]
+    # (0.10 + 0.20 + 0.30 + 0.40) / 4
+    assert result["window_average_value"] == pytest.approx(0.25)
+
+
+def test_block_average_weights_a_clipped_final_hour() -> None:
+    """A block ending mid-hour must not count that stub as a full hour."""
+    start = datetime(2026, 8, 12, 0, 0, tzinfo=timezone.utc)
+    end = start + timedelta(hours=2, minutes=30)
+    entries = _quarter_hour_entries(start, {0: 0.10, 1: 0.20, 2: 0.60})
+
+    result = select_cheapest_hours(
+        entries, count=1, window_start=start, window_end=end, available_from=start
+    )
+
+    assert result is not None
+    # 0.10 and 0.20 last a full hour, 0.60 only half of one:
+    # (0.10*60 + 0.20*60 + 0.60*30) / 150
+    assert result["window_average_value"] == pytest.approx(0.24)
 
 
 def test_zero_or_negative_count_yields_no_plan() -> None:

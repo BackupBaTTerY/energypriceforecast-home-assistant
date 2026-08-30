@@ -96,7 +96,14 @@
       "weekend_hours_next_start": {"name": "Next weekend cheapest hour"},
       "retail_cheapest_window_average_price": {"name": "Cheapest window average retail price"},
       "retail_cheapest_window_start": {"name": "Cheapest window start (retail)"},
-      "retail_cheapest_window_end": {"name": "Cheapest window end (retail)"}
+      "retail_cheapest_window_end": {"name": "Cheapest window end (retail)"},
+      "cheapest_window_remaining": {"name": "Cheapest window remaining"},
+      "greenest_window_remaining": {"name": "Greenest window remaining"},
+      "price_source": {"name": "Price source"},
+      "cheapest_hours_average_price": {"name": "Cheapest hours average price"},
+      "cheapest_hours_saving": {"name": "Cheapest hours saving"},
+      "weekend_hours_average_price": {"name": "Weekend hours average price"},
+      "weekend_hours_saving": {"name": "Weekend hours saving"}
     },
     "binary_sensor": {
       "cheapest_window_active": {"name": "Cheapest window active"},

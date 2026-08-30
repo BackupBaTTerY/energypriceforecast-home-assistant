@@ -134,14 +134,43 @@ def _integrated_average(
     return None
 
 
+def duration_weighted_mean(hours: list[dict[str, Any]]) -> float | None:
+    """Average over the hours, weighted by how long each one lasts.
+
+    Every hour is a full hour except the last one of a block, which the
+    block boundary can cut short. Weighting stops that stub from counting
+    as much as a whole hour.
+    """
+    total = 0.0
+    weight = 0.0
+    for hour in hours:
+        seconds = (hour["end"] - hour["start"]).total_seconds()
+        if seconds <= 0:
+            continue
+        total += hour["average_value"] * seconds
+        weight += seconds
+    return total / weight if weight else None
+
+
 def select_cheapest_hours(
     entries: list[dict[str, Any]],
     count: int,
     window_start: datetime,
     window_end: datetime,
     available_from: datetime,
-) -> list[dict[str, Any]] | None:
+) -> dict[str, Any] | None:
     """Pick the count cheapest whole hours inside [window_start, window_end).
+
+    Returns a plan shaped like::
+
+        {"hours": [...], "window_average_value": float}
+
+    "hours" are the picks, sorted by start. "window_average_value" is what
+    the block as a whole averages - the baseline the plan is worth being
+    compared against. It is computed here because every hour's price is
+    already known at this point, and because deriving it later would let
+    it drift away from the plan it describes, which is the very thing the
+    locking exists to prevent.
 
     Returns None - no plan - if any hour from available_from onward lacks
     full price coverage. Publishing a partial plan (or silently picking
@@ -170,5 +199,11 @@ def select_cheapest_hours(
         )
         hour_start += hour
 
+    if not hours:
+        return None
+
     cheapest = sorted(hours, key=lambda h: h["average_value"])[:count]
-    return sorted(cheapest, key=lambda h: h["start"])
+    return {
+        "hours": sorted(cheapest, key=lambda h: h["start"]),
+        "window_average_value": duration_weighted_mean(hours),
+    }

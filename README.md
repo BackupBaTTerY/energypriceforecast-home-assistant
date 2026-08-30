@@ -98,13 +98,16 @@ integration depends on the ID.
 | Greenest window start | sensor | timestamp |
 | Greenest window end | sensor | timestamp |
 | Combined window score | sensor | - |
+| Cheapest window remaining | sensor | minutes |
+| Greenest window remaining | sensor | minutes |
 | Price forecast series | sensor | market currency |
 | Cheapest window active | binary sensor | on/off |
 | Greenest window active | binary sensor | on/off |
 
-Plus four diagnostic entities, shown separately in the device page: **Allowed
-horizon** and **Used horizon** (hours), **API-key status**, and **Last API
-update** (timestamp).
+Plus five diagnostic entities, shown separately in the device page: **Allowed
+horizon** and **Used horizon** (hours), **API-key status**, **Price source**
+(whether the current price is a published `day_ahead` price or a `forecast`),
+and **Last API update** (timestamp).
 
 "Cheapest window" here is the single *contiguous* window of the configured
 best-window duration - not the same thing as the cheapest-hours plan below.
@@ -127,6 +130,8 @@ the cheapest window can differ from the spot-price one.
 | Name | Type | Unit |
 | --- | --- | --- |
 | Next cheapest hour | sensor | timestamp |
+| Cheapest hours average price | sensor | market currency |
+| Cheapest hours saving | sensor | % |
 | Cheapest hours active | binary sensor | on/off |
 
 ### With a weekend-hours count above 0
@@ -134,6 +139,8 @@ the cheapest window can differ from the spot-price one.
 | Name | Type | Unit |
 | --- | --- | --- |
 | Next weekend cheapest hour | sensor | timestamp |
+| Weekend hours average price | sensor | market currency |
+| Weekend hours saving | sensor | % |
 | Weekend cheapest hours active | binary sensor | on/off |
 
 ### Attributes worth knowing
@@ -146,6 +153,15 @@ the cheapest window can differ from the spot-price one.
   for those hours is in `raw_forecast` instead, and the two never overlap.
 - **Next cheapest hour** and **Next weekend cheapest hour** carry `hours`: the
   full locked plan as a list of `{start, end, average_value}`.
+- The same two price sensors also carry `average`, `min`, `max` and
+  `price_percent_to_average`, named after the Nordpool integration so its
+  templates port across. **The scope differs from Nordpool's** and it matters:
+  the API does not look back past "now", so these cover today's *remaining*
+  published hours, not the calendar day. Late in the evening that is only a
+  few hours, and they say nothing about tomorrow.
+  `price_percent_to_average` is therefore "this hour against the rest of
+  today" - 100% means average, 60% means clearly cheap. It is left empty when
+  that average is zero or negative, for the same reason the plan saving is.
 
 **To inspect them, use Developer tools > States**, pick the entity, and read
 the attributes in the panel on the right. They will not show up in the history
@@ -220,6 +236,64 @@ plan built after a late restart is never partial.
 All entities of one market share one API request per poll (default every 30
 minutes, configurable from 15 to 120 minutes). The integration does not
 create one request per entity.
+
+## What is the plan actually worth?
+
+Two sensors answer that, and they appear as soon as a cheapest-hours count is
+set (the weekend plan gets its own pair):
+
+- **Cheapest hours average price** - what the hours the plan picked cost on
+  average.
+- **Cheapest hours saving** - how far below the *whole block's* average that
+  lands, in percent.
+
+> Plan: 0.087 EUR/kWh - 38.7% below the block average of 0.142 EUR/kWh
+
+Both are computed once, when the block's hours are picked, and are locked
+together with the plan. They do not drift while the plan stays put, which is
+what makes them worth putting on a dashboard.
+
+**Read the saving for what it is.** It compares the picked hours against
+running at an arbitrary time *in the same block* - it is not a comparison
+against your old tariff, your neighbour, or a fixed-price contract, and it is
+not money. Converting it to money needs your consumption, which this
+integration does not know; see below for how to do that yourself.
+
+The saving is deliberately left empty when the block average is zero or
+negative. Negative prices are routine in these markets, and "40% cheaper than
+-0.001 EUR/kWh" states a number without stating anything true.
+
+### Turning it into euros
+
+The average-price sensor is the piece you need; the rest is standard Home
+Assistant. Multiply it by the energy your device actually used during the
+planned hours:
+
+```yaml
+template:
+  - sensor:
+      - name: Heat pump cost during cheap hours
+        unique_id: heat_pump_cheap_hour_cost
+        unit_of_measurement: EUR
+        state_class: total_increasing
+        device_class: monetary
+        state: >
+          {% set price = states('sensor.CHANGE_ME_cheapest_hours_average_price')
+             | float(0) %}
+          {% set energy = states('sensor.CHANGE_ME_heat_pump_energy')
+             | float(0) %}
+          {{ (price * energy) | round(2) }}
+```
+
+Point `sensor.CHANGE_ME_heat_pump_energy` at a kWh meter for the device - a
+smart plug's energy sensor, or a `utility_meter` helper that you reset per
+block. For a "what did I save" figure, build the same sensor a second time
+using the `window_average_value` attribute of the average-price sensor as the
+price, and subtract the two.
+
+This is left as a recipe rather than a built-in feature on purpose: it needs
+an entity only you can name, its correctness depends entirely on that meter
+being the right one, and a wrong number here is worse than no number.
 
 ## Switching a device with the plan
 

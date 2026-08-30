@@ -62,6 +62,10 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.price_series: dict[str, Any] | None = None
         self.cheapest_hours: list[dict[str, Any]] | None = None
         self.weekend_hours: list[dict[str, Any]] | None = None
+        # What the whole block averages, locked together with its plan - the
+        # baseline the plan's own average is compared against.
+        self.cheapest_hours_window_average: float | None = None
+        self.weekend_hours_window_average: float | None = None
         self._plan_store = Store[dict[str, Any]](
             hass, _PLAN_STORAGE_VERSION, f"{DOMAIN}_{entry_id}_plans"
         )
@@ -81,7 +85,7 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         count: int,
         entries: list[dict[str, Any]],
         available_from: datetime,
-    ) -> list[dict[str, Any]] | None:
+    ) -> dict[str, Any] | None:
         """Return the plan for one block, computing and locking it once.
 
         Every subsequent call for the same block (same plan_key and window
@@ -92,14 +96,23 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         cache_key = f"{plan_key}|{window_start.isoformat()}"
         cached = cache.get(cache_key)
         if cached is not None:
-            return [
-                {
-                    "start": datetime.fromisoformat(hour["start"]),
-                    "end": datetime.fromisoformat(hour["end"]),
-                    "average_value": hour["average_value"],
-                }
-                for hour in cached
-            ]
+            # Plans cached before the block average was stored are a bare
+            # list. They stay valid as plans - only the baseline is
+            # missing, and recomputing it now could contradict the picks it
+            # would be shown next to, so it stays absent for that block.
+            if isinstance(cached, list):
+                cached = {"hours": cached, "window_average_value": None}
+            return {
+                "hours": [
+                    {
+                        "start": datetime.fromisoformat(hour["start"]),
+                        "end": datetime.fromisoformat(hour["end"]),
+                        "average_value": hour["average_value"],
+                    }
+                    for hour in cached.get("hours", [])
+                ],
+                "window_average_value": cached.get("window_average_value"),
+            }
 
         plan = select_cheapest_hours(
             entries, count, window_start, window_end, available_from
@@ -107,14 +120,17 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if plan is None:
             return None
 
-        cache[cache_key] = [
-            {
-                "start": hour["start"].isoformat(),
-                "end": hour["end"].isoformat(),
-                "average_value": hour["average_value"],
-            }
-            for hour in plan
-        ]
+        cache[cache_key] = {
+            "hours": [
+                {
+                    "start": hour["start"].isoformat(),
+                    "end": hour["end"].isoformat(),
+                    "average_value": hour["average_value"],
+                }
+                for hour in plan["hours"]
+            ],
+            "window_average_value": plan["window_average_value"],
+        }
         if len(cache) > _MAX_CACHED_PLANS:
             for stale_key in list(cache)[: len(cache) - _MAX_CACHED_PLANS]:
                 del cache[stale_key]
@@ -159,7 +175,7 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             window_start, window_end = fixed_repeating_window(
                 now, self.cheapest_hours_start_hour, self.cheapest_hours_window_hours
             )
-            self.cheapest_hours = await self._async_get_plan(
+            plan = await self._async_get_plan(
                 f"block|{self.cheapest_hours_count}|"
                 f"{self.cheapest_hours_window_hours}|{self.cheapest_hours_start_hour}",
                 window_start,
@@ -170,10 +186,14 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 # gaps from now onward would make the plan unreliable.
                 max(window_start, now),
             )
+            self.cheapest_hours = plan["hours"] if plan else None
+            self.cheapest_hours_window_average = (
+                plan["window_average_value"] if plan else None
+            )
 
         if self.weekend_hours_count > 0 and self.price_series:
             window_start, window_end = fixed_weekend_window(now)
-            self.weekend_hours = await self._async_get_plan(
+            plan = await self._async_get_plan(
                 f"weekend|{self.weekend_hours_count}",
                 window_start,
                 window_end,
@@ -183,6 +203,10 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 # be covered before it locks in, even hours before "now" -
                 # so a plan built after a late reload is never partial.
                 window_start,
+            )
+            self.weekend_hours = plan["hours"] if plan else None
+            self.weekend_hours_window_average = (
+                plan["window_average_value"] if plan else None
             )
 
         return summary

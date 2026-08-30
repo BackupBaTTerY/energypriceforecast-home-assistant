@@ -14,13 +14,14 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EntityCategory, UnitOfTime
+from homeassistant.const import PERCENTAGE, EntityCategory, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
 from .coordinator import EnergyPriceForecastCoordinator
 from .entity import EnergyPriceForecastEntity
+from .planning import duration_weighted_mean
 
 
 def _path(data: dict[str, Any], *parts: str) -> Any:
@@ -153,6 +154,47 @@ class _StickyUnitMixin:
         return self._last_unit
 
 
+def _day_statistics(
+    today: list[dict[str, Any]], current: float | None
+) -> dict[str, Any]:
+    """Nordpool-style average/min/max over today's published prices.
+
+    Named to match the Nordpool integration so its templates port over, but
+    the scope genuinely differs and callers need to know it: the API does
+    not look back past "now", so this covers today's *remaining* published
+    hours, not the calendar day. Late in the evening that is a handful of
+    hours, and once tomorrow's prices are out it says nothing about them.
+
+    price_percent_to_average follows from that same window, so it answers
+    "how does this hour compare with the rest of today" - which is the
+    question worth asking anyway, since the past is not actionable.
+    """
+    values = [
+        entry["value"]
+        for entry in today
+        if isinstance(entry.get("value"), (int, float))
+    ]
+    if not values:
+        return {
+            "average": None,
+            "min": None,
+            "max": None,
+            "price_percent_to_average": None,
+        }
+    average = sum(values) / len(values)
+    percent = None
+    # Same reasoning as the plan saving sensor: a percentage of a zero or
+    # negative baseline conveys nothing, and negative prices are routine.
+    if current is not None and average > 0:
+        percent = current / average * 100
+    return {
+        "average": round(average, 6),
+        "min": min(values),
+        "max": max(values),
+        "price_percent_to_average": None if percent is None else round(percent, 1),
+    }
+
+
 def _next_planned_start(hours: list[dict[str, Any]] | None) -> datetime | None:
     """Start of the first planned hour that has not begun yet.
 
@@ -254,6 +296,35 @@ SENSORS: tuple[EnergyPriceForecastSensorDescription, ...] = (
         value_fn=lambda data: _path(data, "flat", "combined_window_score"),
     ),
     EnergyPriceForecastSensorDescription(
+        key="cheapest_window_remaining",
+        translation_key="cheapest_window_remaining",
+        icon="mdi:timer-sand",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.MINUTES,
+        suggested_display_precision=0,
+        value_fn=lambda data: _path(
+            data, "flat", "cheapest_window_remaining_minutes"
+        ),
+    ),
+    EnergyPriceForecastSensorDescription(
+        key="greenest_window_remaining",
+        translation_key="greenest_window_remaining",
+        icon="mdi:timer-sand",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.MINUTES,
+        suggested_display_precision=0,
+        value_fn=lambda data: _path(
+            data, "flat", "greenest_window_remaining_minutes"
+        ),
+    ),
+    EnergyPriceForecastSensorDescription(
+        key="price_source",
+        translation_key="price_source",
+        icon="mdi:database-check",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda data: _path(data, "flat", "current_price_source"),
+    ),
+    EnergyPriceForecastSensorDescription(
         key="allowed_horizon",
         translation_key="allowed_horizon",
         icon="mdi:clock-check-outline",
@@ -336,8 +407,14 @@ async def async_setup_entry(
         )
     if coordinator.cheapest_hours_count > 0:
         entities.append(EnergyPriceForecastCheapestHoursSensor(coordinator, entry))
+        entities.append(EnergyPriceForecastPlanAveragePriceSensor(coordinator, entry))
+        entities.append(EnergyPriceForecastPlanSavingSensor(coordinator, entry))
     if coordinator.weekend_hours_count > 0:
         entities.append(EnergyPriceForecastWeekendHoursSensor(coordinator, entry))
+        entities.append(
+            EnergyPriceForecastWeekendPlanAveragePriceSensor(coordinator, entry)
+        )
+        entities.append(EnergyPriceForecastWeekendPlanSavingSensor(coordinator, entry))
     async_add_entities(entities)
 
 
@@ -460,6 +537,7 @@ class EnergyPriceForecastRetailPriceSensor(
             "raw_today": today,
             "raw_tomorrow": tomorrow,
             "raw_forecast": _forecast_only(entries),
+            **_day_statistics(today, self.native_value),
         }
 
 
@@ -510,6 +588,7 @@ class EnergyPriceForecastPriceSeriesSensor(
             "raw_today": today,
             "raw_tomorrow": tomorrow,
             "raw_forecast": _forecast_only(entries),
+            **_day_statistics(today, self.native_value),
         }
 
 
@@ -552,6 +631,121 @@ class EnergyPriceForecastCheapestHoursSensor(EnergyPriceForecastEntity, SensorEn
                 for hour in hours
             ],
         }
+
+
+class _PlanStatisticSensor(_StickyUnitMixin, EnergyPriceForecastEntity, SensorEntity):
+    """Base for the numbers that say what a locked plan is worth.
+
+    Both values come from the plan itself, so they are as fixed as the plan
+    is: they are computed once when the block's hours are picked and do not
+    move afterwards. A figure that drifted while the plan stayed put would
+    be worse than none at all.
+    """
+
+    _hours_attribute = "cheapest_hours"
+    _window_average_attribute = "cheapest_hours_window_average"
+
+    @property
+    def _hours(self) -> list[dict[str, Any]] | None:
+        return getattr(self.coordinator, self._hours_attribute)
+
+    @property
+    def _window_average(self) -> float | None:
+        return getattr(self.coordinator, self._window_average_attribute)
+
+    @property
+    def _plan_average(self) -> float | None:
+        return duration_weighted_mean(self._hours or [])
+
+    @property
+    def available(self) -> bool:
+        return super().available and bool(self._hours)
+
+
+class EnergyPriceForecastPlanAveragePriceSensor(_PlanStatisticSensor):
+    """What the hours this plan picked cost on average."""
+
+    _attr_translation_key = "cheapest_hours_average_price"
+    _attr_icon = "mdi:cash-check"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 4
+
+    def __init__(
+        self, coordinator: EnergyPriceForecastCoordinator, entry: ConfigEntry
+    ) -> None:
+        super().__init__(coordinator, entry, self._attr_translation_key)
+
+    @property
+    def native_value(self) -> Any:
+        return self._plan_average
+
+    @property
+    def native_unit_of_measurement(self) -> str | None:
+        return self._sticky_unit(_path(self.coordinator.price_series or {}, "unit"))
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {"window_average_value": self._window_average}
+
+
+class EnergyPriceForecastPlanSavingSensor(_PlanStatisticSensor):
+    """How far below the block's own average the plan lands, in percent.
+
+    The comparison is against the whole block, not against some notional
+    tariff: it answers "what did picking these hours gain over running at an
+    arbitrary time in the same period", which is the only saving this
+    integration can state without knowing anything about consumption.
+    """
+
+    _attr_translation_key = "cheapest_hours_saving"
+    _attr_icon = "mdi:piggy-bank"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_suggested_display_precision = 1
+
+    def __init__(
+        self, coordinator: EnergyPriceForecastCoordinator, entry: ConfigEntry
+    ) -> None:
+        super().__init__(coordinator, entry, self._attr_translation_key)
+
+    @property
+    def native_value(self) -> Any:
+        window_average = self._window_average
+        plan_average = self._plan_average
+        if window_average is None or plan_average is None:
+            return None
+        # Percentages of a zero or negative baseline are not wrong so much
+        # as meaningless - "40% cheaper than -0.001 EUR/kWh" tells nobody
+        # anything. Negative prices are normal here, so this is not a
+        # theoretical case.
+        if window_average <= 0:
+            return None
+        return (window_average - plan_average) / window_average * 100
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {
+            "plan_average_value": self._plan_average,
+            "window_average_value": self._window_average,
+        }
+
+
+class EnergyPriceForecastWeekendPlanAveragePriceSensor(
+    EnergyPriceForecastPlanAveragePriceSensor
+):
+    """Average price of the weekend plan's picked hours."""
+
+    _attr_translation_key = "weekend_hours_average_price"
+    _hours_attribute = "weekend_hours"
+    _window_average_attribute = "weekend_hours_window_average"
+
+
+class EnergyPriceForecastWeekendPlanSavingSensor(EnergyPriceForecastPlanSavingSensor):
+    """How far below the weekend block's average its plan lands."""
+
+    _attr_translation_key = "weekend_hours_saving"
+    _hours_attribute = "weekend_hours"
+    _window_average_attribute = "weekend_hours_window_average"
 
 
 class EnergyPriceForecastWeekendHoursSensor(EnergyPriceForecastEntity, SensorEntity):

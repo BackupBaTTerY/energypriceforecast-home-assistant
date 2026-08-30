@@ -96,7 +96,14 @@
       "weekend_hours_next_start": {"name": "Neste billigste helgetime"},
       "retail_cheapest_window_average_price": {"name": "Gjennomsnittspris billigste tidsvindu (forbrukerpris)"},
       "retail_cheapest_window_start": {"name": "Start på billigste tidsvindu (forbrukerpris)"},
-      "retail_cheapest_window_end": {"name": "Slutt på billigste tidsvindu (forbrukerpris)"}
+      "retail_cheapest_window_end": {"name": "Slutt på billigste tidsvindu (forbrukerpris)"},
+      "cheapest_window_remaining": {"name": "Gjenstående tid billigste tidsvindu"},
+      "greenest_window_remaining": {"name": "Gjenstående tid grønneste tidsvindu"},
+      "price_source": {"name": "Priskilde"},
+      "cheapest_hours_average_price": {"name": "Gjennomsnittspris billigste timer"},
+      "cheapest_hours_saving": {"name": "Besparelse billigste timer"},
+      "weekend_hours_average_price": {"name": "Gjennomsnittspris helgeplan"},
+      "weekend_hours_saving": {"name": "Besparelse helgeplan"}
     },
     "binary_sensor": {
       "cheapest_window_active": {"name": "Billigste tidsvindu aktivt"},

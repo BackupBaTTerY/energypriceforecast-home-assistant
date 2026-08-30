@@ -96,7 +96,14 @@
       "weekend_hours_next_start": {"name": "Volgend goedkoopste weekenduur"},
       "retail_cheapest_window_average_price": {"name": "Gemiddelde prijs goedkoopste tijdvak (consumentenprijs)"},
       "retail_cheapest_window_start": {"name": "Start goedkoopste tijdvak (consumentenprijs)"},
-      "retail_cheapest_window_end": {"name": "Einde goedkoopste tijdvak (consumentenprijs)"}
+      "retail_cheapest_window_end": {"name": "Einde goedkoopste tijdvak (consumentenprijs)"},
+      "cheapest_window_remaining": {"name": "Resterende tijd goedkoopste tijdvak"},
+      "greenest_window_remaining": {"name": "Resterende tijd groenste tijdvak"},
+      "price_source": {"name": "Prijsbron"},
+      "cheapest_hours_average_price": {"name": "Gemiddelde prijs goedkoopste uren"},
+      "cheapest_hours_saving": {"name": "Besparing goedkoopste uren"},
+      "weekend_hours_average_price": {"name": "Gemiddelde prijs weekendplan"},
+      "weekend_hours_saving": {"name": "Besparing weekendplan"}
     },
     "binary_sensor": {
       "cheapest_window_active": {"name": "Goedkoopste tijdvak actief"},

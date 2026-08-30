@@ -4,10 +4,15 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
+import pytest
+
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.energypriceforecast.sensor import _next_planned_start
+from custom_components.energypriceforecast.sensor import (
+    _day_statistics,
+    _next_planned_start,
+)
 
 DOMAIN = "energypriceforecast"
 
@@ -142,6 +147,38 @@ def test_next_planned_start_without_a_plan() -> None:
     assert _next_planned_start([]) is None
 
 
+def test_day_statistics_over_todays_published_hours() -> None:
+    today = [{"value": 0.10}, {"value": 0.30}, {"value": 0.20}]
+
+    stats = _day_statistics(today, current=0.30)
+
+    assert stats["average"] == pytest.approx(0.20)
+    assert stats["min"] == 0.10
+    assert stats["max"] == 0.30
+    assert stats["price_percent_to_average"] == pytest.approx(150.0)
+
+
+def test_day_statistics_skip_the_percentage_on_a_non_positive_average() -> None:
+    """Negative prices are routine here, and a percentage of them says nothing."""
+    today = [{"value": -0.02}, {"value": 0.01}]
+
+    stats = _day_statistics(today, current=-0.02)
+
+    assert stats["average"] == pytest.approx(-0.005)
+    assert stats["price_percent_to_average"] is None
+
+
+def test_day_statistics_without_data() -> None:
+    stats = _day_statistics([], current=0.1)
+
+    assert stats == {
+        "average": None,
+        "min": None,
+        "max": None,
+        "price_percent_to_average": None,
+    }
+
+
 async def test_core_sensors_are_created_without_optional_features(hass) -> None:
     """Only the always-on entities exist when retail/cheapest-hours are off."""
     entry = await _setup_entry(hass)
@@ -162,6 +199,52 @@ async def test_core_sensors_are_created_without_optional_features(hass) -> None:
     assert f"{entry.entry_id}_retail_cheapest_window_start" not in unique_ids
     assert f"{entry.entry_id}_retail_cheapest_window_end" not in unique_ids
     assert f"{entry.entry_id}_retail_cheapest_window_active" not in unique_ids
+
+
+async def test_plan_saving_sensors_report_what_the_plan_gained(hass, freezer) -> None:
+    """The plan's average and its distance from the block average, end to end."""
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-08T00:00:00+00:00")
+    # A four-hour block priced 0.10 / 0.20 / 0.30 / 0.40. Picking the two
+    # cheapest gives 0.15 against a block average of 0.25 - 40% below it.
+    entries = [
+        {
+            "start": f"2026-08-08T{hour:02d}:00:00Z",
+            "end": f"2026-08-08T{hour + 1:02d}:00:00Z",
+            "value": value,
+            "source": "day_ahead",
+        }
+        for hour, value in enumerate([0.10, 0.20, 0.30, 0.40])
+    ]
+
+    entry = await _setup_entry(
+        hass,
+        extra_data={"cheapest_hours_count": 2, "cheapest_hours_window_hours": 4},
+        price_entries=entries,
+    )
+
+    average = _state_for_unique_id(hass, entry, "cheapest_hours_average_price")
+    assert float(average.state) == pytest.approx(0.15)
+    assert average.attributes["window_average_value"] == pytest.approx(0.25)
+
+    saving = _state_for_unique_id(hass, entry, "cheapest_hours_saving")
+    assert float(saving.state) == pytest.approx(40.0)
+    assert saving.attributes["unit_of_measurement"] == "%"
+
+
+async def test_saving_sensors_are_absent_without_a_plan(hass) -> None:
+    entry = await _setup_entry(hass)
+
+    registry = er.async_get(hass)
+    unique_ids = {
+        e.unique_id for e in er.async_entries_for_config_entry(registry, entry.entry_id)
+    }
+
+    assert f"{entry.entry_id}_cheapest_hours_average_price" not in unique_ids
+    assert f"{entry.entry_id}_cheapest_hours_saving" not in unique_ids
+    # The window countdowns come from the summary and are always created.
+    assert f"{entry.entry_id}_cheapest_window_remaining" in unique_ids
+    assert f"{entry.entry_id}_greenest_window_remaining" in unique_ids
 
 
 async def test_current_price_sensor_reflects_summary_value(hass) -> None:

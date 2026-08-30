@@ -243,6 +243,61 @@ async def test_price_series_sensor_exposes_forecast_only_entries(hass, freezer) 
     assert [item["value"] for item in state.attributes["raw_tomorrow"]] == [0.13]
 
 
+async def test_forecast_entries_stay_out_of_raw_today_and_tomorrow(
+    hass, freezer
+) -> None:
+    """Tomorrow stays empty until its day-ahead prices are published.
+
+    Before this was enforced, a day whose day-ahead was not out yet had its
+    forecast entries land in raw_tomorrow as well as raw_forecast. A chart
+    then drew them once as "known day-ahead" and once as forecast - and
+    because the forecast series starts before raw_tomorrow ends, joining
+    the two series sent the line backwards in time, drawing a flat stretch
+    across the overlap.
+    """
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-08T10:00:00+00:00")
+    entries = [
+        {
+            "start": "2026-08-08T11:00:00Z",
+            "end": "2026-08-08T12:00:00Z",
+            "value": 0.11,
+            "source": "day_ahead",
+        },
+        {
+            "start": "2026-08-09T05:00:00Z",
+            "end": "2026-08-09T06:00:00Z",
+            "value": 0.13,
+            "source": "forecast",
+        },
+    ]
+
+    entry = await _setup_entry(hass, price_entries=entries)
+
+    state = _state_for_unique_id(hass, entry, "price_series")
+
+    assert [item["value"] for item in state.attributes["raw_today"]] == [0.11]
+    assert state.attributes["raw_tomorrow"] == []
+    assert [item["value"] for item in state.attributes["raw_forecast"]] == [0.13]
+
+
+async def test_entries_without_a_source_still_count_as_known(hass, freezer) -> None:
+    """Only an explicit "forecast" is excluded, not an unlabelled entry."""
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-08T10:00:00+00:00")
+    entries = [
+        {"start": "2026-08-08T11:00:00Z", "end": "2026-08-08T12:00:00Z", "value": 0.11},
+        {"start": "2026-08-09T05:00:00Z", "end": "2026-08-09T06:00:00Z", "value": 0.13},
+    ]
+
+    entry = await _setup_entry(hass, price_entries=entries)
+
+    state = _state_for_unique_id(hass, entry, "price_series")
+
+    assert [item["value"] for item in state.attributes["raw_today"]] == [0.11]
+    assert [item["value"] for item in state.attributes["raw_tomorrow"]] == [0.13]
+
+
 async def test_retail_price_sensor_includes_raw_series(hass, freezer) -> None:
     """retail_current_price also exposes raw_today/raw_tomorrow, like price_series."""
     await hass.config.async_set_time_zone("UTC")

@@ -64,7 +64,7 @@ def _current_entry(
 def _split_today_tomorrow(
     entries: Any,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Split raw price entries into today's and tomorrow's, in local time.
+    """Split published day-ahead entries into today's and tomorrow's, locally.
 
     Matches the raw_today/raw_tomorrow attribute convention used by the
     Nordpool integration, so existing apexcharts-card templates work
@@ -72,6 +72,13 @@ def _split_today_tomorrow(
     the API - a rolling window starting at "now" - not the full
     calendar day; hours of today that have already passed are not
     included since the API does not look backward from local midnight.
+
+    Forecast entries are left out on purpose, which also follows that
+    convention: tomorrow stays empty until its day-ahead prices are
+    published, rather than being filled with estimates. Including them
+    would present modelled values as known prices, and would also make
+    them appear twice on a chart - once here and once in raw_forecast,
+    the second time starting before this series ends.
     """
     if not isinstance(entries, list):
         return [], []
@@ -82,6 +89,10 @@ def _split_today_tomorrow(
     for entry in entries:
         start = _timestamp(entry.get("start"))
         if start is None:
+            continue
+        # Anything not explicitly forecast counts as known: an entry
+        # without a source is treated the way it always has been.
+        if entry.get("source") == "forecast":
             continue
         item = {
             "start": entry.get("start"),

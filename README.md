@@ -140,7 +140,10 @@ the cheapest window can differ from the spot-price one.
 
 - **Price forecast series** and **Current retail price** carry `raw_today`,
   `raw_tomorrow` and `raw_forecast` - lists of `{start, end, value}` slots for
-  charting (see the chart section below).
+  charting (see the chart section below). `raw_today` and `raw_tomorrow` hold
+  published day-ahead prices only, so `raw_tomorrow` is **empty until
+  tomorrow's prices are published** (usually early afternoon) - the estimate
+  for those hours is in `raw_forecast` instead, and the two never overlap.
 - **Next cheapest hour** and **Next weekend cheapest hour** carry `hours`: the
   full locked plan as a list of `{start, end, average_value}`.
 
@@ -353,8 +356,12 @@ series:
       // are drawn with a gap and the forecast looks like it disagrees with
       // the last known price instead of continuing from it.
       const join = known.length ? [known[known.length - 1]] : [];
-      return [...join, ...forecast].map(
-        e => [new Date(e.start).getTime(), e.value]);
+      // Sorting is not cosmetic: a point out of order sends the line
+      // backwards in time, which draws as a long flat stretch across the
+      // overlap rather than as an obvious error.
+      return [...join, ...forecast]
+        .map(e => [new Date(e.start).getTime(), e.value])
+        .sort((a, b) => a[0] - b[0]);
 ```
 
 Both series are `extend_to: false` on purpose: without it, apexcharts-card

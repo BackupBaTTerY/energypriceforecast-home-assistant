@@ -399,6 +399,7 @@ async def async_setup_entry(
         for description in SENSORS
     ]
     entities.append(EnergyPriceForecastPriceSeriesSensor(coordinator, entry))
+    entities.append(EnergyPriceForecastQualitySensor(coordinator, entry))
     if coordinator.retail_pricing:
         entities.append(EnergyPriceForecastRetailPriceSensor(coordinator, entry))
         entities.extend(
@@ -630,6 +631,90 @@ class EnergyPriceForecastCheapestHoursSensor(EnergyPriceForecastEntity, SensorEn
                 }
                 for hour in hours
             ],
+        }
+
+
+class EnergyPriceForecastQualitySensor(
+    _StickyUnitMixin, EnergyPriceForecastEntity, SensorEntity
+):
+    """How far off the cheapest-window forecast has been lately.
+
+    The API replays its own frozen forecast against the day-ahead prices
+    that were later published, for the same window length this entry
+    requests, and reports what picking the forecast's window cost over
+    picking the one that turned out cheapest. The state is that extra cost,
+    so it is a number in the market's own currency that can be followed over
+    weeks - a rising line means the forecast is getting worse.
+
+    It covers the single contiguous price window only: not the
+    cheapest-hours plan, not the CO2 windows, and not retail pricing - the
+    API reports price_basis "base" even for a retail request, because the
+    replay runs on spot prices.
+    """
+
+    _attr_translation_key = "forecast_quality"
+    _attr_icon = "mdi:target"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 4
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(
+        self, coordinator: EnergyPriceForecastCoordinator, entry: ConfigEntry
+    ) -> None:
+        super().__init__(coordinator, entry, "forecast_quality")
+
+    @property
+    def _quality(self) -> dict[str, Any] | None:
+        """The price-window block, or None when the API reports none."""
+        quality = _path(self.coordinator.data, "forecast_quality")
+        if not isinstance(quality, dict) or not quality.get("available"):
+            return None
+        window = quality.get("price_window")
+        return window if isinstance(window, dict) else None
+
+    @property
+    def available(self) -> bool:
+        return super().available and self._quality is not None
+
+    @property
+    def native_value(self) -> Any:
+        window = self._quality
+        return window.get("mean_extra_cost") if window else None
+
+    @property
+    def native_unit_of_measurement(self) -> str | None:
+        window = self._quality or {}
+        return self._sticky_unit(window.get("mean_extra_cost_unit"))
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        window = self._quality
+        if window is None:
+            # Surface why there is no figure, so a card can say so rather
+            # than looking broken.
+            quality = _path(self.coordinator.data, "forecast_quality")
+            reason = quality.get("error") if isinstance(quality, dict) else None
+            return {"error": reason}
+
+        days = window.get("evaluated_days")
+        def _percent(count: Any) -> float | None:
+            if not isinstance(count, int) or not isinstance(days, int) or days <= 0:
+                return None
+            return round(count / days * 100, 1)
+
+        return {
+            "window_hours": window.get("window_hours"),
+            "price_basis": window.get("price_basis"),
+            "evaluated_days": days,
+            "exact_hit_days": window.get("exact_hit_days"),
+            "within_one_hour_days": window.get("within_one_hour_days"),
+            # Precomputed so a template card does not have to divide, and
+            # cannot divide by zero on a market with no evaluated days.
+            "exact_hit_percent": _percent(window.get("exact_hit_days")),
+            "within_one_hour_percent": _percent(window.get("within_one_hour_days")),
+            "period_start": window.get("period_start"),
+            "period_end": window.get("period_end"),
+            "error": None,
         }
 
 

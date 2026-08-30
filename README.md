@@ -104,10 +104,10 @@ integration depends on the ID.
 | Cheapest window active | binary sensor | on/off |
 | Greenest window active | binary sensor | on/off |
 
-Plus five diagnostic entities, shown separately in the device page: **Allowed
+Plus six diagnostic entities, shown separately in the device page: **Allowed
 horizon** and **Used horizon** (hours), **API-key status**, **Price source**
 (whether the current price is a published `day_ahead` price or a `forecast`),
-and **Last API update** (timestamp).
+**Forecast quality** (see below), and **Last API update** (timestamp).
 
 "Cheapest window" here is the single *contiguous* window of the configured
 best-window duration - not the same thing as the cheapest-hours plan below.
@@ -236,6 +236,66 @@ plan built after a late restart is never partial.
 All entities of one market share one API request per poll (default every 30
 minutes, configurable from 15 to 120 minutes). The integration does not
 create one request per entity.
+
+## How good is the forecast, really?
+
+The **Forecast quality** diagnostic entity answers that with measurements, not
+claims. The API replays its own frozen forecast against the day-ahead prices
+that were published afterwards, over a rolling window of complete days, and
+reports how often it picked the right cheapest window - for your market and
+for your configured best-window duration.
+
+The entity's state is the part that costs money: the average extra price paid
+by following the forecast's window instead of the one that turned out
+cheapest. It is a number in your market's currency with a `state_class`, so
+you can graph it - a rising line means the forecast is getting worse.
+
+The counts sit in attributes: `exact_hit_days`, `within_one_hour_days`,
+`evaluated_days`, `exact_hit_percent`, `within_one_hour_percent`,
+`window_hours`, `price_basis`, `period_start`, `period_end`.
+
+### As a banner on your dashboard
+
+Add via **Dashboard > Edit > Add card > Manual**, replacing the entity:
+
+```yaml
+type: markdown
+content: >-
+  {% set q = 'sensor.CHANGE_ME_forecast_quality' %}
+  {% if states(q) not in ['unknown', 'unavailable'] %}
+    ### Forecast quality
+
+    Cheapest {{ state_attr(q, 'window_hours') }}-hour window: within one hour
+    on **{{ state_attr(q, 'within_one_hour_days') }} of
+    {{ state_attr(q, 'evaluated_days') }} days**
+    ({{ state_attr(q, 'within_one_hour_percent') }}%).
+
+    Exactly right: {{ state_attr(q, 'exact_hit_days') }} days. Average extra
+    price versus the perfect window:
+    **{{ states(q) | float * 100 }} ct/kWh**.
+
+    <sub>Frozen forecast against published day-ahead prices,
+    {{ state_attr(q, 'period_start') }} to {{ state_attr(q, 'period_end') }}.
+    Complete days only.</sub>
+  {% else %}
+    Forecast quality is not available for this market yet.
+  {% endif %}
+```
+
+The `| float * 100` converts EUR/kWh to ct/kWh for readability - drop it for
+markets quoted in øre or DKK, where the raw unit is already small.
+
+### What it does and does not cover
+
+- **The contiguous cheapest window only.** Not the cheapest-hours plan, not
+  the CO2 windows.
+- **Spot prices only.** The API reports `price_basis: "base"` even when you
+  request retail, because the replay runs on spot. Verified: the figure is
+  byte-identical between a base and a retail request.
+- **Your market.** Quality differs a lot between markets, so a number from
+  somewhere else would say nothing about yours.
+- When there is too little history the entity is **unavailable** rather than
+  showing a zero, and the `error` attribute says why.
 
 ## What is the plan actually worth?
 

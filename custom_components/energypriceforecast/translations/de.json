@@ -103,7 +103,8 @@
       "cheapest_hours_average_price": {"name": "Durchschnittspreis günstigste Stunden"},
       "cheapest_hours_saving": {"name": "Ersparnis günstigste Stunden"},
       "weekend_hours_average_price": {"name": "Durchschnittspreis Wochenendplan"},
-      "weekend_hours_saving": {"name": "Ersparnis Wochenendplan"}
+      "weekend_hours_saving": {"name": "Ersparnis Wochenendplan"},
+      "forecast_quality": {"name": "Prognosegüte"}
     },
     "binary_sensor": {
       "cheapest_window_active": {"name": "Günstigstes Fenster aktiv"},

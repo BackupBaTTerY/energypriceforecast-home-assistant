@@ -103,7 +103,8 @@
       "cheapest_hours_average_price": {"name": "Průměrná cena nejlevnějších hodin"},
       "cheapest_hours_saving": {"name": "Úspora nejlevnějších hodin"},
       "weekend_hours_average_price": {"name": "Průměrná cena víkendového plánu"},
-      "weekend_hours_saving": {"name": "Úspora víkendového plánu"}
+      "weekend_hours_saving": {"name": "Úspora víkendového plánu"},
+      "forecast_quality": {"name": "Kvalita předpovědi"}
     },
     "binary_sensor": {
       "cheapest_window_active": {"name": "Nejlevnější okno aktivní"},

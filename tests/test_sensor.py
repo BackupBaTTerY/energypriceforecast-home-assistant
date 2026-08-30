@@ -48,6 +48,7 @@ async def _setup_entry(
     extra_data: dict | None = None,
     price_entries: list[dict] | None = None,
     retail_summary_payload: dict | None = None,
+    summary_extra: dict | None = None,
 ) -> MockConfigEntry:
     entry = MockConfigEntry(
         domain=DOMAIN,
@@ -76,10 +77,12 @@ async def _setup_entry(
         ],
     }
 
+    summary = {**SUMMARY_PAYLOAD, **(summary_extra or {})}
+
     async def _summary_side_effect(price_mode="base", postal_code=None):
         if price_mode == "retail":
-            return retail_summary_payload or SUMMARY_PAYLOAD
-        return SUMMARY_PAYLOAD
+            return retail_summary_payload or summary
+        return summary
 
     with (
         patch(
@@ -323,6 +326,70 @@ async def test_saving_sensors_are_absent_without_a_plan(hass) -> None:
     # The window countdowns come from the summary and are always created.
     assert f"{entry.entry_id}_cheapest_window_remaining" in unique_ids
     assert f"{entry.entry_id}_greenest_window_remaining" in unique_ids
+
+
+FORECAST_QUALITY = {
+    "available": True,
+    "error": None,
+    "price_window": {
+        "window_hours": 4,
+        "price_basis": "base",
+        "evaluated_days": 30,
+        "exact_hit_days": 17,
+        "within_one_hour_days": 28,
+        "mean_extra_cost": 0.001459,
+        "mean_extra_cost_unit": "EUR/kWh",
+        "period_start": "2026-08-02",
+        "period_end": "2026-08-31",
+    },
+}
+
+
+async def test_forecast_quality_sensor_reports_the_extra_cost(hass) -> None:
+    """State is the extra cost; the hit counts ride along as attributes."""
+    entry = await _setup_entry(
+        hass, summary_extra={"forecast_quality": FORECAST_QUALITY}
+    )
+
+    state = _state_for_unique_id(hass, entry, "forecast_quality")
+
+    assert float(state.state) == pytest.approx(0.001459)
+    assert state.attributes["unit_of_measurement"] == "EUR/kWh"
+    assert state.attributes["exact_hit_days"] == 17
+    assert state.attributes["within_one_hour_days"] == 28
+    assert state.attributes["evaluated_days"] == 30
+    assert state.attributes["window_hours"] == 4
+    assert state.attributes["price_basis"] == "base"
+    # Precomputed so a card never has to divide - and never divides by zero.
+    assert state.attributes["exact_hit_percent"] == pytest.approx(56.7)
+    assert state.attributes["within_one_hour_percent"] == pytest.approx(93.3)
+
+
+async def test_forecast_quality_sensor_is_unavailable_without_a_figure(hass) -> None:
+    """A market with too little history must show nothing, not a zero."""
+    entry = await _setup_entry(
+        hass,
+        summary_extra={
+            "forecast_quality": {
+                "available": False,
+                "error": "insufficient_history",
+                "price_window": None,
+            }
+        },
+    )
+
+    state = _state_for_unique_id(hass, entry, "forecast_quality")
+
+    assert state.state == "unavailable"
+
+
+async def test_forecast_quality_sensor_survives_a_missing_block(hass) -> None:
+    """An API that does not send the block at all must not break the entity."""
+    entry = await _setup_entry(hass)
+
+    state = _state_for_unique_id(hass, entry, "forecast_quality")
+
+    assert state.state == "unavailable"
 
 
 async def test_current_price_sensor_reflects_summary_value(hass) -> None:

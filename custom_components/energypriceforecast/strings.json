@@ -103,7 +103,8 @@
       "cheapest_hours_average_price": {"name": "Cheapest hours average price"},
       "cheapest_hours_saving": {"name": "Cheapest hours saving"},
       "weekend_hours_average_price": {"name": "Weekend hours average price"},
-      "weekend_hours_saving": {"name": "Weekend hours saving"}
+      "weekend_hours_saving": {"name": "Weekend hours saving"},
+      "forecast_quality": {"name": "Forecast quality"}
     },
     "binary_sensor": {
       "cheapest_window_active": {"name": "Cheapest window active"},

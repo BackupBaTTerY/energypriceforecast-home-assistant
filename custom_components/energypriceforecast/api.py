@@ -7,6 +7,8 @@ from typing import Any
 
 from aiohttp import ClientError, ClientResponseError, ClientSession
 
+from .const import VERSION
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -81,7 +83,7 @@ class EnergyPriceForecastApi:
         """Call one endpoint and return its parsed JSON body."""
         headers = {
             "Accept": "application/json",
-            "User-Agent": "EnergyPriceForecast-HomeAssistant/0.1.0",
+            "User-Agent": f"EnergyPriceForecast-HomeAssistant/{VERSION}",
         }
         if self._api_key:
             headers["Authorization"] = f"Bearer {self._api_key}"

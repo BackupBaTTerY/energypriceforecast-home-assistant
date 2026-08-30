@@ -4,6 +4,12 @@ from typing import Final
 
 DOMAIN: Final = "energypriceforecast"
 NAME: Final = "Energy Price Forecast EU"
+
+# Sent as the User-Agent, so the API can tell which version a request came
+# from. Must equal manifest.json's version - test_version.py enforces that,
+# because this drifted to 0.1.0 for ten releases and every request from
+# every user was mislabelled the whole time.
+VERSION: Final = "1.0.0"
 DEFAULT_API_URL: Final = (
     "https://api.energypriceforecast.eu/api/v1/home-assistant/summary"
 )

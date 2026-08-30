@@ -11,20 +11,28 @@ requiring YAML or JSON templates.
 
 - UI-based setup through Home Assistant's integration flow
 - Current electricity price and current CO2 intensity
-- Cheapest price window and greenest CO2 window
+- Cheapest price window and greenest CO2 window, with a countdown to the end
+  of each
 - Binary sensors indicating whether a best window is active now
 - Combined price/CO2 window score
-- Raw price-series sensor with `raw_today` / `raw_tomorrow` attributes
-  (compatible with `apexcharts-card` and custom templates)
+- Raw price-series sensor with `raw_today` / `raw_tomorrow` / `raw_forecast`
+  attributes (compatible with `apexcharts-card` and custom templates), plus
+  Nordpool-style `average` / `min` / `max` / `price_percent_to_average`
+- **Forecast quality**: how often the forecast actually picked the cheapest
+  window, replayed against the day-ahead prices published afterwards, and what
+  missing it cost - measured for your market, not claimed
 - Optional "cheapest hours" plan - the N cheapest individual hours of each
   fixed, repeating block (e.g. every calendar day, or every 48 hours), which
   may be non-contiguous, unlike the single best continuous window above. Once
   a block's plan is picked it is locked and never reshuffled by a later
   forecast update, and no plan is published at all for a block the forecast
   does not yet fully cover
+- **What the plan is worth**: the average price of its picked hours and how
+  far below the block average that lands
 - Optional independent weekend plan (Saturday 00:00 to Monday 00:00) for
   loads that are only flexible on weekends, e.g. EV charging
-- Optional assumption-based all-in retail price for supported markets
+- Optional assumption-based all-in retail price for supported markets - plans
+  and savings are then computed on the price you actually pay
 - Configurable poll interval (15-120 minutes)
 - Access and horizon diagnostics, with API key and postal code redacted
 - Multiple market entries, for example DK1 and DK2

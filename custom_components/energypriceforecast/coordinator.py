@@ -71,6 +71,16 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
         self._plan_cache: dict[str, list[dict[str, Any]]] | None = None
 
+    @property
+    def plan_series(self) -> dict[str, Any] | None:
+        """The price series the plans are built on, and priced in.
+
+        With retail pricing enabled that is the retail series: it is what a
+        planned hour actually costs the user, and the markup is not a flat
+        offset, so it can reorder the hours as well as change the saving.
+        """
+        return self.retail_data if self.retail_pricing else self.price_series
+
     async def _async_load_plan_cache(self) -> dict[str, list[dict[str, Any]]]:
         if self._plan_cache is None:
             stored = await self._plan_store.async_load()
@@ -160,10 +170,10 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             except EnergyPriceForecastApiError as err:
                 _LOGGER.warning("Retail summary update failed: %s", err)
 
-        # The raw price series backs both the price-series sensor (for
-        # charting, e.g. with apexcharts-card) and the cheapest-hours
-        # plans. Fetched unconditionally: it is the forecast data this
-        # integration exists to expose, not a niche add-on.
+        # The raw price series backs the price-series sensor (for charting,
+        # e.g. with apexcharts-card), and the plans too unless retail
+        # pricing is on. Fetched unconditionally: it is the forecast data
+        # this integration exists to expose, not a niche add-on.
         try:
             self.price_series = await self.api.async_get_prices(price_mode="base")
         except EnergyPriceForecastApiError as err:
@@ -171,17 +181,28 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         now = dt_util.utcnow()
 
-        if self.cheapest_hours_count > 0 and self.price_series:
+        # Plans are built on the series the user actually pays. With retail
+        # pricing on, the spot price is neither what a planned hour costs nor
+        # what it saves: the retail markup is not a flat offset, so it can in
+        # principle reorder the hours, and it always compresses the saving -
+        # against real data a 43% retail saving showed as 100% on spot.
+        # Falling back to spot when a retail update failed would silently mix
+        # the two, so the plan simply keeps its previous value until retail
+        # data is back.
+        plan_series = self.plan_series
+        plan_price_mode = "retail" if self.retail_pricing else "base"
+
+        if self.cheapest_hours_count > 0 and plan_series:
             window_start, window_end = fixed_repeating_window(
                 now, self.cheapest_hours_start_hour, self.cheapest_hours_window_hours
             )
             plan = await self._async_get_plan(
-                f"block|{self.cheapest_hours_count}|"
+                f"block|{plan_price_mode}|{self.cheapest_hours_count}|"
                 f"{self.cheapest_hours_window_hours}|{self.cheapest_hours_start_hour}",
                 window_start,
                 window_end,
                 self.cheapest_hours_count,
-                self.price_series["entries"],
+                plan_series["entries"],
                 # Past hours of the current block need no coverage - only
                 # gaps from now onward would make the plan unreliable.
                 max(window_start, now),
@@ -191,14 +212,14 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 plan["window_average_value"] if plan else None
             )
 
-        if self.weekend_hours_count > 0 and self.price_series:
+        if self.weekend_hours_count > 0 and plan_series:
             window_start, window_end = fixed_weekend_window(now)
             plan = await self._async_get_plan(
-                f"weekend|{self.weekend_hours_count}",
+                f"weekend|{plan_price_mode}|{self.weekend_hours_count}",
                 window_start,
                 window_end,
                 self.weekend_hours_count,
-                self.price_series["entries"],
+                plan_series["entries"],
                 # The weekend plan requires the *entire* Sat-Mon window to
                 # be covered before it locks in, even hours before "now" -
                 # so a plan built after a late reload is never partial.

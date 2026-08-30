@@ -259,9 +259,18 @@ against your old tariff, your neighbour, or a fixed-price contract, and it is
 not money. Converting it to money needs your consumption, which this
 integration does not know; see below for how to do that yourself.
 
-The saving is deliberately left empty when the block average is zero or
-negative. Negative prices are routine in these markets, and "40% cheaper than
--0.001 EUR/kWh" states a number without stating anything true.
+**With retail pricing enabled, the plan is built and priced on the retail
+series**, not the spot price - both the hours it picks and the saving it
+reports. That matters more than it sounds: the retail markup is a large
+addition, so the same hours look far cheaper against a spot baseline than
+against the price actually billed. On live German data, a genuine 43% retail
+saving showed as 100% when measured on spot.
+
+The saving is left empty when the block average is zero or negative. Negative
+prices are routine in these markets, and "40% cheaper than -0.001 EUR/kWh"
+states a number without stating anything true. On spot prices the saving can
+also exceed 100%, which is not a bug: it means the picked hours pay you rather
+than cost you.
 
 ### Turning it into euros
 

@@ -681,7 +681,9 @@ class EnergyPriceForecastPlanAveragePriceSensor(_PlanStatisticSensor):
 
     @property
     def native_unit_of_measurement(self) -> str | None:
-        return self._sticky_unit(_path(self.coordinator.price_series or {}, "unit"))
+        # Follows whichever series the plan was priced in, so the unit can
+        # never describe a different series than the value.
+        return self._sticky_unit(_path(self.coordinator.plan_series or {}, "unit"))
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

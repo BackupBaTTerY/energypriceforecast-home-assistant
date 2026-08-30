@@ -232,6 +232,84 @@ async def test_plan_saving_sensors_report_what_the_plan_gained(hass, freezer) ->
     assert saving.attributes["unit_of_measurement"] == "%"
 
 
+async def test_plan_is_priced_on_retail_when_retail_pricing_is_on(
+    hass, freezer
+) -> None:
+    """With retail enabled the plan must cost and save in retail terms.
+
+    Pricing the plan on spot while the user pays retail overstates the
+    saving badly: the markup is a large, roughly fixed addition, so the same
+    hours look far cheaper relative to a spot baseline than to the price
+    actually billed. Against live data a real 43% came out as 100%.
+    """
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-08T00:00:00+00:00")
+
+    def series(values):
+        return [
+            {
+                "start": f"2026-08-08T{hour:02d}:00:00Z",
+                "end": f"2026-08-08T{hour + 1:02d}:00:00Z",
+                "value": value,
+                "source": "day_ahead",
+            }
+            for hour, value in enumerate(values)
+        ]
+
+    # Same shape, shifted by a 0.20 markup: identical picks, but the plan
+    # average and the saving both have to follow the retail numbers.
+    base = series([0.10, 0.20, 0.30, 0.40])
+    retail = series([0.30, 0.40, 0.50, 0.60])
+
+    async def _prices(price_mode="base", postal_code=None):
+        return {
+            "format": "home-assistant-prices",
+            "country": "DE",
+            "unit": "EUR/kWh",
+            "entries": retail if price_mode == "retail" else base,
+        }
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="DE",
+        data={
+            "market": "DE",
+            "horizon_hours": 48,
+            "window_hours": 4,
+            "update_interval_minutes": 30,
+            "retail_pricing": True,
+            "postal_code": "10115",
+            "cheapest_hours_count": 2,
+            "cheapest_hours_window_hours": 4,
+        },
+    )
+    entry.add_to_hass(hass)
+    with (
+        patch(
+            "custom_components.energypriceforecast.api.EnergyPriceForecastApi"
+            ".async_get_summary",
+            new=AsyncMock(return_value=SUMMARY_PAYLOAD),
+        ),
+        patch(
+            "custom_components.energypriceforecast.api.EnergyPriceForecastApi"
+            ".async_get_prices",
+            new=AsyncMock(side_effect=_prices),
+        ),
+    ):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    average = _state_for_unique_id(hass, entry, "cheapest_hours_average_price")
+    # (0.30 + 0.40) / 2 on retail, not (0.10 + 0.20) / 2 on spot.
+    assert float(average.state) == pytest.approx(0.35)
+    assert average.attributes["window_average_value"] == pytest.approx(0.45)
+
+    saving = _state_for_unique_id(hass, entry, "cheapest_hours_saving")
+    # 22.2% against the retail baseline - on spot the same hours would have
+    # claimed 40%.
+    assert float(saving.state) == pytest.approx(22.2, abs=0.1)
+
+
 async def test_saving_sensors_are_absent_without_a_plan(hass) -> None:
     entry = await _setup_entry(hass)
 

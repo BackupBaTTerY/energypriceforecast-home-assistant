@@ -106,8 +106,8 @@ integration depends on the ID.
 | Greenest window start | sensor | timestamp |
 | Greenest window end | sensor | timestamp |
 | Combined window score | sensor | - |
-| Cheapest window remaining | sensor | minutes |
-| Greenest window remaining | sensor | minutes |
+| Cheapest window remaining *(1.0.0)* | sensor | minutes |
+| Greenest window remaining *(1.0.0)* | sensor | minutes |
 | Price forecast series | sensor | market currency |
 | Cheapest window active | binary sensor | on/off |
 | Greenest window active | binary sensor | on/off |
@@ -115,7 +115,7 @@ integration depends on the ID.
 Plus six diagnostic entities, shown separately in the device page: **Allowed
 horizon** and **Used horizon** (hours), **API-key status**, **Price source**
 (whether the current price is a published `day_ahead` price or a `forecast`),
-**Forecast quality** (see below), and **Last API update** (timestamp).
+**Forecast quality** *(1.0.0, see below)*, and **Last API update** (timestamp).
 
 "Cheapest window" here is the single *contiguous* window of the configured
 best-window duration - not the same thing as the cheapest-hours plan below.
@@ -138,8 +138,8 @@ the cheapest window can differ from the spot-price one.
 | Name | Type | Unit |
 | --- | --- | --- |
 | Next cheapest hour | sensor | timestamp |
-| Cheapest hours average price | sensor | market currency |
-| Cheapest hours saving | sensor | % |
+| Cheapest hours average price *(1.0.0)* | sensor | market currency |
+| Cheapest hours saving *(1.0.0)* | sensor | % |
 | Cheapest hours active | binary sensor | on/off |
 
 ### With a weekend-hours count above 0
@@ -147,8 +147,8 @@ the cheapest window can differ from the spot-price one.
 | Name | Type | Unit |
 | --- | --- | --- |
 | Next weekend cheapest hour | sensor | timestamp |
-| Weekend hours average price | sensor | market currency |
-| Weekend hours saving | sensor | % |
+| Weekend hours average price *(1.0.0)* | sensor | market currency |
+| Weekend hours saving *(1.0.0)* | sensor | % |
 | Weekend cheapest hours active | binary sensor | on/off |
 
 ### Attributes worth knowing
@@ -247,6 +247,9 @@ create one request per entity.
 
 ## How good is the forecast, really?
 
+*Added in 1.0.0 - if you do not see this entity, check your installed
+version under HACS before looking anywhere else.*
+
 The **Forecast quality** diagnostic entity answers that with measurements, not
 claims. The API replays its own frozen forecast against the day-ahead prices
 that were published afterwards, over a rolling window of complete days, and
@@ -280,18 +283,21 @@ content: >-
 
     Exactly right: {{ state_attr(q, 'exact_hit_days') }} days. Average extra
     price versus the perfect window:
-    **{{ states(q) | float * 100 }} ct/kWh**.
+    **{{ (states(q) | float * 100) | round(2) }} ct/kWh**.
 
     <sub>Frozen forecast against published day-ahead prices,
     {{ state_attr(q, 'period_start') }} to {{ state_attr(q, 'period_end') }}.
     Complete days only.</sub>
   {% else %}
-    Forecast quality is not available for this market yet.
+    Forecast quality is unavailable - either this market has too little
+    history yet, or the integration is older than 1.0.0.
   {% endif %}
 ```
 
 The `| float * 100` converts EUR/kWh to ct/kWh for readability - drop it for
-markets quoted in øre or DKK, where the raw unit is already small.
+markets quoted in øre or DKK, where the raw unit is already small. The
+`round(2)` is not cosmetic: without it the float arrives as
+`0.43000000000000005`.
 
 ### What it does and does not cover
 
@@ -306,6 +312,8 @@ markets quoted in øre or DKK, where the raw unit is already small.
   showing a zero, and the `error` attribute says why.
 
 ## What is the plan actually worth?
+
+*Added in 1.0.0.*
 
 Two sensors answer that, and they appear as soon as a cheapest-hours count is
 set (the weekend plan gets its own pair):

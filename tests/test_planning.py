@@ -10,6 +10,7 @@ from custom_components.energypriceforecast.planning import (
     fixed_repeating_window,
     fixed_weekend_window,
     select_cheapest_hours,
+    window_is_settled,
 )
 
 
@@ -33,19 +34,35 @@ def _utc_local_time_zone():
 
 
 def _quarter_hour_entries(
-    start: datetime, prices_by_hour: dict[int, float]
+    start: datetime, prices_by_hour: dict[int, float], source: str | None = None
 ) -> list[dict]:
     entries = []
     for hour_offset, price in prices_by_hour.items():
         for quarter in range(4):
             slot_start = start + timedelta(hours=hour_offset, minutes=quarter * 15)
-            entries.append(
-                {
-                    "start": slot_start.isoformat(),
-                    "end": (slot_start + timedelta(minutes=15)).isoformat(),
-                    "value": price,
-                }
-            )
+            entry = {
+                "start": slot_start.isoformat(),
+                "end": (slot_start + timedelta(minutes=15)).isoformat(),
+                "value": price,
+            }
+            if source is not None:
+                entry["source"] = source
+            entries.append(entry)
+    return entries
+
+
+def _quarter_prices(start: datetime, hour_offset: int, prices: list[float]) -> list[dict]:
+    """Four quarter-hour entries with individual prices, for one hour."""
+    entries = []
+    for quarter, price in enumerate(prices):
+        slot_start = start + timedelta(hours=hour_offset, minutes=quarter * 15)
+        entries.append(
+            {
+                "start": slot_start.isoformat(),
+                "end": (slot_start + timedelta(minutes=15)).isoformat(),
+                "value": price,
+            }
+        )
     return entries
 
 
@@ -216,6 +233,118 @@ def test_block_average_weights_a_clipped_final_hour() -> None:
     # 0.10 and 0.20 last a full hour, 0.60 only half of one:
     # (0.10*60 + 0.20*60 + 0.60*30) / 150
     assert result["window_average_value"] == pytest.approx(0.24)
+
+
+def test_an_hour_the_block_is_already_inside_is_cut_back_to_what_is_left() -> None:
+    """A planned hour must never start before the moment it was planned.
+
+    A plan locked at 02:30 used to report the hour it was standing in as a
+    full 02:00-03:00 hour, so the chart drew a planned band 30 minutes into
+    the past and an automation saw a start time that had already gone by.
+    """
+    start = datetime(2026, 8, 12, 0, 0, tzinfo=timezone.utc)
+    end = start + timedelta(hours=4)
+    available_from = start + timedelta(hours=2, minutes=30)
+    entries = _quarter_hour_entries(start, {2: 0.10, 3: 0.20})
+
+    result = select_cheapest_hours(
+        entries, count=1, window_start=start, window_end=end,
+        available_from=available_from,
+    )
+
+    assert result is not None
+    assert result["hours"][0]["start"] == available_from
+    assert result["hours"][0]["end"] == start + timedelta(hours=3)
+
+
+def test_a_started_hour_is_priced_on_the_minutes_that_are_left() -> None:
+    """Its price must describe the part still ahead, and say so in its span.
+
+    The old code took the average of the remaining minutes but kept the full
+    60-minute edge, which let a quarter of an hour compete for a slot as if
+    a whole cheap hour were on offer.
+    """
+    start = datetime(2026, 8, 12, 0, 0, tzinfo=timezone.utc)
+    end = start + timedelta(hours=4)
+    available_from = start + timedelta(hours=2, minutes=30)
+    entries = (
+        _quarter_prices(start, 2, [0.90, 0.90, 0.01, 0.01])
+        + _quarter_hour_entries(start, {3: 0.20})
+    )
+
+    result = select_cheapest_hours(
+        entries, count=1, window_start=start, window_end=end,
+        available_from=available_from,
+    )
+
+    assert result is not None
+    picked = result["hours"][0]
+    assert picked["average_value"] == pytest.approx(0.01)
+    # Half an hour of cheap power, and reported as half an hour.
+    assert picked["end"] - picked["start"] == timedelta(minutes=30)
+
+
+def test_block_average_weights_a_started_first_hour() -> None:
+    """The stub at the front of a block must not count as a whole hour."""
+    start = datetime(2026, 8, 12, 0, 0, tzinfo=timezone.utc)
+    end = start + timedelta(hours=3)
+    available_from = start + timedelta(minutes=30)
+    entries = _quarter_hour_entries(start, {0: 0.10, 1: 0.20, 2: 0.60})
+
+    result = select_cheapest_hours(
+        entries, count=1, window_start=start, window_end=end,
+        available_from=available_from,
+    )
+
+    assert result is not None
+    # (0.10*30 + 0.20*60 + 0.60*60) / 150 - not /180, which is what counting
+    # the half hour as a full one would give.
+    assert result["window_average_value"] == pytest.approx(0.34)
+
+
+# ---------------------------------------------------------------------------
+# window_is_settled
+# ---------------------------------------------------------------------------
+
+
+def test_a_window_of_published_prices_is_settled() -> None:
+    start = datetime(2026, 8, 12, 0, 0, tzinfo=timezone.utc)
+    entries = _quarter_hour_entries(start, {0: 0.10, 1: 0.20}, source="day_ahead")
+
+    assert window_is_settled(entries, start, start + timedelta(hours=2)) is True
+
+
+def test_a_window_holding_any_forecast_is_not_settled() -> None:
+    start = datetime(2026, 8, 12, 0, 0, tzinfo=timezone.utc)
+    entries = _quarter_hour_entries(
+        start, {0: 0.10}, source="day_ahead"
+    ) + _quarter_hour_entries(start, {1: 0.20}, source="forecast")
+
+    assert window_is_settled(entries, start, start + timedelta(hours=2)) is False
+    # The published part on its own still is.
+    assert window_is_settled(entries, start, start + timedelta(hours=1)) is True
+
+
+def test_an_entry_without_a_source_never_counts_as_settled() -> None:
+    """An unfamiliar payload must not be able to freeze a plan by accident."""
+    start = datetime(2026, 8, 12, 0, 0, tzinfo=timezone.utc)
+    entries = _quarter_hour_entries(start, {0: 0.10, 1: 0.20})
+
+    assert window_is_settled(entries, start, start + timedelta(hours=2)) is False
+
+
+def test_a_gap_in_the_published_prices_is_not_settled() -> None:
+    start = datetime(2026, 8, 12, 0, 0, tzinfo=timezone.utc)
+    entries = _quarter_hour_entries(start, {0: 0.10, 2: 0.20}, source="day_ahead")
+
+    assert window_is_settled(entries, start, start + timedelta(hours=3)) is False
+
+
+def test_an_empty_range_is_not_settled() -> None:
+    start = datetime(2026, 8, 12, 0, 0, tzinfo=timezone.utc)
+    entries = _quarter_hour_entries(start, {0: 0.10}, source="day_ahead")
+
+    assert window_is_settled(entries, start, start) is False
 
 
 def test_zero_or_negative_count_yields_no_plan() -> None:

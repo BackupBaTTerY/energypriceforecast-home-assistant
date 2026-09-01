@@ -13,6 +13,14 @@ Two related but independent concepts live here:
   poll - otherwise a later forecast revision could reshuffle which hours
   are "cheapest" mid-block, which defeats the point of a recurring
   automation like "run the heat pump during the cheapest hours every day".
+
+  The one thing that may still move a plan is the day-ahead auction: the
+  locking exists to keep forecast churn from reshuffling the picks, not to
+  defend a guess against the published price. So a plan whose block was
+  still partly forecast is re-picked exactly once, when day-ahead prices
+  cover the rest of the block - never again after that, and never for an
+  hour that has already started. ``window_is_settled`` reports when that
+  moment has come.
 """
 
 from __future__ import annotations
@@ -75,8 +83,14 @@ def fixed_weekend_window(now: datetime) -> tuple[datetime, datetime]:
 
 def _parse_entries(
     entries: list[dict[str, Any]],
-) -> list[tuple[datetime, datetime, float]]:
-    parsed: list[tuple[datetime, datetime, float]] = []
+) -> list[tuple[datetime, datetime, float, bool]]:
+    """Parse the price series, flagging which entries are settled prices.
+
+    The fourth element says whether the entry is a published day-ahead price
+    rather than a forecast. An entry that does not say what it is counts as
+    a forecast, so an unfamiliar source can never make a plan look settled.
+    """
+    parsed: list[tuple[datetime, datetime, float, bool]] = []
     for entry in entries:
         start_raw = entry.get("start")
         value = entry.get("value")
@@ -95,13 +109,17 @@ def _parse_entries(
                 end = None
         if end is None or end <= start:
             end = start + timedelta(minutes=15)
-        parsed.append((start, end, float(value)))
+        source = entry.get("source")
+        settled = isinstance(source, str) and source != "forecast"
+        parsed.append((start, end, float(value), settled))
     parsed.sort(key=lambda item: item[0])
     return parsed
 
 
 def _integrated_average(
-    entries: list[tuple[datetime, datetime, float]], start: datetime, end: datetime
+    entries: list[tuple[datetime, datetime, float, bool]],
+    start: datetime,
+    end: datetime,
 ) -> float | None:
     """Duration-weighted average price over [start, end).
 
@@ -114,7 +132,7 @@ def _integrated_average(
     cursor = start
     weighted = 0.0
     covered = timedelta()
-    for entry_start, entry_end, value in entries:
+    for entry_start, entry_end, value, _settled in entries:
         if entry_end <= cursor or entry_start >= end:
             continue
         if entry_start > cursor:
@@ -134,12 +152,28 @@ def _integrated_average(
     return None
 
 
+def window_is_settled(
+    entries: list[dict[str, Any]], start: datetime, end: datetime
+) -> bool:
+    """True when published day-ahead prices cover [start, end) end to end.
+
+    This is what tells a locked plan apart from a settled one: while any
+    part of the range is still a forecast, the picks inside it are a guess
+    and may be worth revisiting once. Once the whole range is published,
+    there is nothing better coming and the plan can stop moving for good.
+    """
+    if end <= start:
+        return False
+    settled = [item for item in _parse_entries(entries) if item[3]]
+    return _integrated_average(settled, start, end) is not None
+
+
 def duration_weighted_mean(hours: list[dict[str, Any]]) -> float | None:
     """Average over the hours, weighted by how long each one lasts.
 
-    Every hour is a full hour except the last one of a block, which the
-    block boundary can cut short. Weighting stops that stub from counting
-    as much as a whole hour.
+    Every hour is a full hour except the first and last one of a block,
+    which the block boundary or the current time can cut short. Weighting
+    stops such a stub from counting as much as a whole hour.
     """
     total = 0.0
     weight = 0.0
@@ -159,7 +193,11 @@ def select_cheapest_hours(
     window_end: datetime,
     available_from: datetime,
 ) -> dict[str, Any] | None:
-    """Pick the count cheapest whole hours inside [window_start, window_end).
+    """Pick the count cheapest clock hours inside [window_start, window_end).
+
+    Every pick runs from one clock hour to the next, except where the block
+    boundary or available_from cuts one short - those keep the part that is
+    actually on offer, never the full hour.
 
     Returns a plan shaped like::
 
@@ -190,13 +228,18 @@ def select_cheapest_hours(
     hour_start = first_hour_start
     while hour_start < window_end:
         hour_end = min(hour_start + hour, window_end)
-        covered_start = max(hour_start, available_from)
-        average = _integrated_average(parsed, covered_start, hour_end)
+        # The hour a block is already running through is kept, but cut back
+        # to the part that is still ahead. Dropping it instead would cost a
+        # cheap hour every single block, because the first poll of a block
+        # always lands some minutes after its boundary. Reporting it with
+        # its full 60-minute edge - which is what this used to do - drew a
+        # planned band into the past, priced a whole hour off a fraction of
+        # itself, and let a 15-minute stub outrank a genuinely cheap hour.
+        start = max(hour_start, available_from)
+        average = _integrated_average(parsed, start, hour_end)
         if average is None:
             return None
-        hours.append(
-            {"start": hour_start, "end": hour_end, "average_value": average}
-        )
+        hours.append({"start": start, "end": hour_end, "average_value": average})
         hour_start += hour
 
     if not hours:

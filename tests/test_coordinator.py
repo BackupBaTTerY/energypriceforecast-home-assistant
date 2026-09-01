@@ -42,8 +42,15 @@ SUMMARY_PAYLOAD = {
 }
 
 
-def _full_day_entries(start_iso: str, prices_by_hour: dict[int, float]) -> list[dict]:
-    """Quarter-hour entries covering every hour in prices_by_hour, from start_iso."""
+def _full_day_entries(
+    start_iso: str, prices_by_hour: dict[int, float], source: str | None = None
+) -> list[dict]:
+    """Quarter-hour entries covering every hour in prices_by_hour, from start_iso.
+
+    Without a source the entries read as a forecast, which is what most of
+    these tests want: a plan built on one is the only kind the day-ahead
+    auction is ever allowed to revise.
+    """
     from datetime import datetime, timedelta
 
     start = datetime.fromisoformat(start_iso.replace("Z", "+00:00"))
@@ -51,13 +58,14 @@ def _full_day_entries(start_iso: str, prices_by_hour: dict[int, float]) -> list[
     for hour_offset, price in prices_by_hour.items():
         for quarter in range(4):
             slot_start = start + timedelta(hours=hour_offset, minutes=quarter * 15)
-            entries.append(
-                {
-                    "start": slot_start.isoformat(),
-                    "end": (slot_start + timedelta(minutes=15)).isoformat(),
-                    "value": price,
-                }
-            )
+            entry = {
+                "start": slot_start.isoformat(),
+                "end": (slot_start + timedelta(minutes=15)).isoformat(),
+                "value": price,
+            }
+            if source is not None:
+                entry["source"] = source
+            entries.append(entry)
     return entries
 
 
@@ -171,6 +179,113 @@ async def test_cheapest_hours_plan_locks_and_survives_a_reshuffled_forecast(
 
     second_plan = entry.runtime_data.cheapest_hours
     assert [h["start"].hour for h in second_plan] == [14, 16]
+
+
+async def test_a_forecast_plan_is_repicked_once_when_the_day_ahead_arrives(
+    hass, freezer
+) -> None:
+    """The auction may correct a guess - but only that once.
+
+    Locking exists to keep forecast churn from reshuffling the picks, not to
+    defend a guess against the published price. So the first day-ahead that
+    covers the rest of the block re-picks the hours that are still ahead,
+    and every update after that leaves them alone.
+    """
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-12T10:00:00+00:00")
+
+    forecast_entries = _full_day_entries(
+        "2026-08-12T00:00:00Z", {h: 0.50 for h in range(24)} | {14: 0.05, 16: 0.10}
+    )
+    entry = await _setup_entry(
+        hass,
+        extra_data={"cheapest_hours_count": 2, "cheapest_hours_window_hours": 24},
+        price_entries=forecast_entries,
+    )
+    assert [h["start"].hour for h in entry.runtime_data.cheapest_hours] == [14, 16]
+
+    # The auction publishes, and the real cheapest hours are elsewhere.
+    freezer.move_to("2026-08-12T10:30:00+00:00")
+    settled_entries = _full_day_entries(
+        "2026-08-12T00:00:00Z",
+        {h: 0.50 for h in range(24)} | {20: 0.01, 22: 0.02},
+        source="day_ahead",
+    )
+    await _refresh_with_prices(hass, entry, settled_entries)
+    assert [h["start"].hour for h in entry.runtime_data.cheapest_hours] == [20, 22]
+
+    # Anything after that must not move it again, published or not.
+    freezer.move_to("2026-08-12T11:00:00+00:00")
+    later_entries = _full_day_entries(
+        "2026-08-12T00:00:00Z",
+        {h: 0.50 for h in range(24)} | {19: 0.001, 21: 0.002},
+        source="day_ahead",
+    )
+    await _refresh_with_prices(hass, entry, later_entries)
+    assert [h["start"].hour for h in entry.runtime_data.cheapest_hours] == [20, 22]
+
+
+async def test_a_plan_built_on_published_prices_is_never_repicked(
+    hass, freezer
+) -> None:
+    """Nothing better is coming, so the plan is settled the moment it is made."""
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-12T10:00:00+00:00")
+
+    settled_entries = _full_day_entries(
+        "2026-08-12T00:00:00Z",
+        {h: 0.50 for h in range(24)} | {14: 0.05, 16: 0.10},
+        source="day_ahead",
+    )
+    entry = await _setup_entry(
+        hass,
+        extra_data={"cheapest_hours_count": 2, "cheapest_hours_window_hours": 24},
+        price_entries=settled_entries,
+    )
+    assert [h["start"].hour for h in entry.runtime_data.cheapest_hours] == [14, 16]
+
+    freezer.move_to("2026-08-12T10:30:00+00:00")
+    reshuffled = _full_day_entries(
+        "2026-08-12T00:00:00Z",
+        {h: 0.50 for h in range(24)} | {20: 0.01, 22: 0.02},
+        source="day_ahead",
+    )
+    await _refresh_with_prices(hass, entry, reshuffled)
+
+    assert [h["start"].hour for h in entry.runtime_data.cheapest_hours] == [14, 16]
+
+
+async def test_an_hour_that_has_already_started_is_never_repicked(
+    hass, freezer
+) -> None:
+    """A running automation must not be pulled out from under itself."""
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-12T10:00:00+00:00")
+
+    # The hour the plan is locked in is one of the two cheapest.
+    forecast_entries = _full_day_entries(
+        "2026-08-12T00:00:00Z", {h: 0.50 for h in range(24)} | {10: 0.05, 14: 0.10}
+    )
+    entry = await _setup_entry(
+        hass,
+        extra_data={"cheapest_hours_count": 2, "cheapest_hours_window_hours": 24},
+        price_entries=forecast_entries,
+    )
+    assert [h["start"].hour for h in entry.runtime_data.cheapest_hours] == [10, 14]
+
+    # Half an hour later the auction says hours 20 and 21 are the cheap ones.
+    freezer.move_to("2026-08-12T10:30:00+00:00")
+    settled_entries = _full_day_entries(
+        "2026-08-12T00:00:00Z",
+        {h: 0.50 for h in range(24)} | {20: 0.01, 21: 0.02},
+        source="day_ahead",
+    )
+    await _refresh_with_prices(hass, entry, settled_entries)
+
+    plan = entry.runtime_data.cheapest_hours
+    # The hour under way keeps its place and its slot in the count, so only
+    # one hour is re-picked - not both.
+    assert [h["start"].hour for h in plan] == [10, 20]
 
 
 async def test_no_plan_is_published_when_the_block_is_not_fully_covered(

@@ -25,8 +25,9 @@ requiring YAML or JSON templates.
   fixed, repeating block (e.g. every calendar day, or every 48 hours), which
   may be non-contiguous, unlike the single best continuous window above. Once
   a block's plan is picked it is locked and never reshuffled by a later
-  forecast update, and no plan is published at all for a block the forecast
-  does not yet fully cover
+  forecast update - the one exception is the day-ahead auction, which may
+  correct a plan that was still a guess, once *(1.1.0)*. No plan is published
+  at all for a block the forecast does not yet fully cover
 - **What the plan is worth**: the average price of its picked hours and how
   far below the block average that lands
 - Optional independent weekend plan (Saturday 00:00 to Monday 00:00) for
@@ -223,6 +224,23 @@ config flow rejects that combination. If the forecast does not yet cover the
 full block, no partial plan is published; the plan appears once the forecast
 catches up.
 
+#### When a plan may still change *(1.1.0)*
+
+Locking is there to stop forecast churn from walking the plan around, not to
+defend a guess against the published price. A block that reaches past the
+day-ahead prices - a 48-hour block, or the weekend plan, which is picked on
+Saturday while Sunday's auction has not run yet - is planned on a forecast,
+and that forecast picks the genuinely cheapest window on 17 of 30 days for
+Germany. So when the auction publishes and settled prices cover the rest of
+the block, the hours that have **not started yet** are picked once more from
+those prices. After that the plan is settled and nothing moves it again.
+
+An hour that has already begun is never moved, and it keeps its slot in the
+count - an automation that is running right now is not pulled out from under
+itself. A plan whose block was already fully covered by published prices when
+it was picked - which is the normal case for a 24-hour block anchored at
+midnight - is settled from the start and never re-picked at all.
+
 ### EV charging on weekends
 
 The weekend plan is independent of the block-based plan above and always ends
@@ -327,7 +345,9 @@ set (the weekend plan gets its own pair):
 
 Both are computed once, when the block's hours are picked, and are locked
 together with the plan. They do not drift while the plan stays put, which is
-what makes them worth putting on a dashboard.
+what makes them worth putting on a dashboard. If the day-ahead auction
+re-picks a forecast-planned block (see above), both are recomputed with it -
+comparing settled picks against a guessed average would be meaningless.
 
 **Read the saving for what it is.** It compares the picked hours against
 running at an arbitrary time *in the same block* - it is not a comparison

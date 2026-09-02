@@ -19,6 +19,15 @@ from .coordinator import EnergyPriceForecastCoordinator
 from .entity import EnergyPriceForecastEntity
 
 
+def _parse_timestamp(value: object) -> datetime | None:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
 @dataclass(frozen=True, kw_only=True)
 class EnergyPriceForecastBinarySensorDescription(BinarySensorEntityDescription):
     """Describe a Boolean value in the flat summary."""
@@ -63,6 +72,9 @@ async def async_setup_entry(
         entities.append(EnergyPriceForecastCheapestHoursBinarySensor(coordinator, entry))
     if coordinator.weekend_hours_count > 0:
         entities.append(EnergyPriceForecastWeekendHoursBinarySensor(coordinator, entry))
+    if coordinator.greenest_hours_count > 0:
+        entities.append(EnergyPriceForecastGreenestHoursBinarySensor(coordinator, entry))
+    entities.append(EnergyPriceForecastCombinedWindowBinarySensor(coordinator, entry))
     async_add_entities(entities)
 
 
@@ -179,3 +191,71 @@ class EnergyPriceForecastWeekendHoursBinarySensor(
             hour["start"] <= now < hour["end"]
             for hour in self.coordinator.weekend_hours or []
         )
+
+
+class EnergyPriceForecastGreenestHoursBinarySensor(
+    EnergyPriceForecastEntity, BinarySensorEntity
+):
+    """Whether one of the plan's cleanest hours is running right now.
+
+    The switching signal for a CO2-driven automation, the counterpart of the
+    cheapest-hours sensor. Backed by coordinator.greenest_hours.
+    """
+
+    _attr_translation_key = "is_in_greenest_hours"
+    _attr_icon = "mdi:leaf-circle-outline"
+
+    def __init__(
+        self, coordinator: EnergyPriceForecastCoordinator, entry: ConfigEntry
+    ) -> None:
+        super().__init__(coordinator, entry, "is_in_greenest_hours")
+
+    @property
+    def available(self) -> bool:
+        return super().available and self.coordinator.greenest_hours is not None
+
+    @property
+    def is_on(self) -> bool:
+        now = datetime.now(timezone.utc)
+        return any(
+            hour["start"] <= now < hour["end"]
+            for hour in self.coordinator.greenest_hours or []
+        )
+
+
+class EnergyPriceForecastCombinedWindowBinarySensor(
+    EnergyPriceForecastEntity, BinarySensorEntity
+):
+    """Whether the best price-and-CO2 compromise window is running now.
+
+    The API reports no "is active now" flag for this window the way it does
+    for the price and CO2 ones, so this reads its start and end. The window
+    is a single contiguous block, so comparing against now is the whole test.
+    """
+
+    _attr_translation_key = "combined_window_active"
+    _attr_icon = "mdi:scale-balance"
+
+    def __init__(
+        self, coordinator: EnergyPriceForecastCoordinator, entry: ConfigEntry
+    ) -> None:
+        super().__init__(coordinator, entry, "combined_window_active")
+
+    def _window(self) -> tuple[datetime | None, datetime | None]:
+        flat = (self.coordinator.data or {}).get("flat") or {}
+        return (
+            _parse_timestamp(flat.get("combined_window_start")),
+            _parse_timestamp(flat.get("combined_window_end")),
+        )
+
+    @property
+    def available(self) -> bool:
+        start, end = self._window()
+        return super().available and start is not None and end is not None
+
+    @property
+    def is_on(self) -> bool:
+        start, end = self._window()
+        if start is None or end is None:
+            return False
+        return start <= datetime.now(timezone.utc) < end

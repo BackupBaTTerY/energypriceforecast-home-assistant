@@ -79,7 +79,9 @@ async def _setup_entry(
 
     summary = {**SUMMARY_PAYLOAD, **(summary_extra or {})}
 
-    async def _summary_side_effect(price_mode="base", postal_code=None):
+    async def _summary_side_effect(
+        price_mode="base", postal_code=None, include_series=False
+    ):
         if price_mode == "retail":
             return retail_summary_payload or summary
         return summary
@@ -637,3 +639,178 @@ async def test_weekend_hours_entities_created_when_enabled(hass, freezer) -> Non
 
     active_state = _state_for_unique_id(hass, entry, "is_in_weekend_hours")
     assert active_state.state == "off"
+
+
+def _co2_slots(start_iso: str, values_by_hour: dict[int, float]) -> list[dict]:
+    """Hourly CO2 slots in the shape the summary's series.co2 has."""
+    from datetime import datetime, timedelta
+
+    start = datetime.fromisoformat(start_iso.replace("Z", "+00:00"))
+    return [
+        {
+            "start": (start + timedelta(hours=hour)).isoformat().replace("+00:00", "Z"),
+            "end": (start + timedelta(hours=hour + 1)).isoformat().replace("+00:00", "Z"),
+            "value": value,
+            "unit": "gCO2/kWh",
+            "source": None,
+        }
+        for hour, value in sorted(values_by_hour.items())
+    ]
+
+
+async def test_combined_score_is_rescaled_so_higher_is_better(hass) -> None:
+    """The API's 0-is-best ranking key must reach the user as 100-is-best."""
+    entry = await _setup_entry(hass)
+
+    # SUMMARY_PAYLOAD carries a raw score of 0.2, a good window.
+    assert _state_for_unique_id(hass, entry, "combined_window_score").state == "80.0"
+
+
+async def test_combined_score_keeps_the_raw_key_as_an_attribute(hass) -> None:
+    """Nobody who read the old value loses access to it."""
+    entry = await _setup_entry(
+        hass,
+        summary_extra={
+            "combined": {
+                "best_window_next_horizon": {
+                    "start": "2026-08-08T04:00:00Z",
+                    "end": "2026-08-08T08:00:00Z",
+                    "duration_hours": 4,
+                    "score": 0.2,
+                    "average_price_value": 0.15,
+                    "average_co2_g_kwh": 250.0,
+                    "method": "equal_weight_normalized_price_and_co2",
+                }
+            }
+        },
+    )
+
+    state = _state_for_unique_id(hass, entry, "combined_window_score")
+    assert state.attributes["raw_score"] == 0.2
+    assert state.attributes["average_price_value"] == 0.15
+    assert state.attributes["average_co2_g_kwh"] == 250.0
+    assert state.attributes["window_hours"] == 4
+
+
+async def test_combined_window_start_end_and_active(hass, freezer) -> None:
+    """The window itself is what an automation acts on, so it has entities."""
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-08T05:00:00+00:00")
+
+    entry = await _setup_entry(
+        hass,
+        summary_extra={
+            "flat": {
+                **SUMMARY_PAYLOAD["flat"],
+                "combined_window_start": "2026-08-08T04:00:00Z",
+                "combined_window_end": "2026-08-08T08:00:00Z",
+            }
+        },
+    )
+
+    assert (
+        _state_for_unique_id(hass, entry, "combined_window_start").state
+        == "2026-08-08T04:00:00+00:00"
+    )
+    assert (
+        _state_for_unique_id(hass, entry, "combined_window_end").state
+        == "2026-08-08T08:00:00+00:00"
+    )
+    assert _state_for_unique_id(hass, entry, "combined_window_active").state == "on"
+
+
+async def test_co2_series_sensor_publishes_the_series(hass, freezer) -> None:
+    """CO2 was chartable nowhere before this - now it carries the same shape."""
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-08T04:30:00+00:00")
+
+    entry = await _setup_entry(
+        hass,
+        summary_extra={
+            "co2": {"available": True, "unit": "gCO2/kWh"},
+            "series": {"co2": _co2_slots("2026-08-08T04:00:00Z", {0: 300.0, 1: 120.0})},
+        },
+    )
+
+    state = _state_for_unique_id(hass, entry, "co2_series")
+    assert state.state == "300.0"
+    assert state.attributes["unit_of_measurement"] == "gCO2/kWh"
+    assert len(state.attributes["raw_today"]) == 2
+    assert state.attributes["min"] == 120.0
+    assert state.attributes["max"] == 300.0
+
+
+async def test_co2_series_sensor_is_unavailable_without_co2_data(hass) -> None:
+    """A market with no CO2 coverage must not show a stale or empty number."""
+    entry = await _setup_entry(hass)
+
+    assert _state_for_unique_id(hass, entry, "co2_series").state == "unavailable"
+
+
+async def test_greenest_hours_entities_created_when_enabled(hass, freezer) -> None:
+    """The CO2 plan mirrors the price plan, picked from the same block."""
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-08T00:00:00+00:00")
+
+    # Hour 3 is by far the cleanest, hour 5 the next cleanest.
+    values = {hour: 400.0 for hour in range(24)}
+    values.update({3: 90.0, 5: 150.0})
+
+    entry = await _setup_entry(
+        hass,
+        extra_data={"greenest_hours_count": 2, "cheapest_hours_window_hours": 24},
+        summary_extra={
+            "co2": {"available": True, "unit": "gCO2/kWh"},
+            "series": {"co2": _co2_slots("2026-08-08T00:00:00Z", values)},
+        },
+    )
+
+    registry = er.async_get(hass)
+    unique_ids = {
+        e.unique_id for e in er.async_entries_for_config_entry(registry, entry.entry_id)
+    }
+    assert f"{entry.entry_id}_greenest_hours_next_start" in unique_ids
+    assert f"{entry.entry_id}_greenest_hours_average_co2" in unique_ids
+    assert f"{entry.entry_id}_greenest_hours_saving" in unique_ids
+    assert f"{entry.entry_id}_is_in_greenest_hours" in unique_ids
+
+    assert (
+        _state_for_unique_id(hass, entry, "greenest_hours_next_start").state
+        == "2026-08-08T03:00:00+00:00"
+    )
+    # (90 + 150) / 2, in gCO2/kWh - not in the price series' currency.
+    average = _state_for_unique_id(hass, entry, "greenest_hours_average_co2")
+    assert average.state == "120.0"
+    assert average.attributes["unit_of_measurement"] == "gCO2/kWh"
+
+
+async def test_greenest_hours_saving_compares_against_the_block(hass, freezer) -> None:
+    """The saving is against the block's own average, as on the price side."""
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-08T00:00:00+00:00")
+
+    # Two hours at 100, two at 300: block average 200, plan average 100.
+    values = {0: 100.0, 1: 100.0, 2: 300.0, 3: 300.0}
+
+    entry = await _setup_entry(
+        hass,
+        extra_data={"greenest_hours_count": 2, "cheapest_hours_window_hours": 4},
+        summary_extra={
+            "co2": {"available": True, "unit": "gCO2/kWh"},
+            "series": {"co2": _co2_slots("2026-08-08T00:00:00Z", values)},
+        },
+    )
+
+    assert _state_for_unique_id(hass, entry, "greenest_hours_saving").state == "50.0"
+
+
+async def test_no_greenest_entities_without_a_count(hass) -> None:
+    """The CO2 plan stays opt-in, like every other plan."""
+    entry = await _setup_entry(hass)
+
+    registry = er.async_get(hass)
+    unique_ids = {
+        e.unique_id for e in er.async_entries_for_config_entry(registry, entry.entry_id)
+    }
+    assert f"{entry.entry_id}_greenest_hours_next_start" not in unique_ids
+    assert f"{entry.entry_id}_is_in_greenest_hours" not in unique_ids

@@ -359,3 +359,120 @@ async def test_weekend_plan_is_independent_of_the_block_plan(hass, freezer) -> N
 
     assert [h["start"].hour for h in entry.runtime_data.cheapest_hours] == [1]
     assert [h["start"].hour for h in entry.runtime_data.weekend_hours] == [6]
+
+
+def _co2_summary(start_iso: str, values_by_hour: dict[int, float]) -> dict:
+    """A summary payload carrying the CO2 series, as include_series returns it."""
+    from datetime import datetime, timedelta
+
+    start = datetime.fromisoformat(start_iso.replace("Z", "+00:00"))
+    return {
+        **SUMMARY_PAYLOAD,
+        "co2": {"available": True, "unit": "gCO2/kWh"},
+        "series": {
+            "co2": [
+                {
+                    "start": (start + timedelta(hours=hour))
+                    .isoformat()
+                    .replace("+00:00", "Z"),
+                    "end": (start + timedelta(hours=hour + 1))
+                    .isoformat()
+                    .replace("+00:00", "Z"),
+                    "value": value,
+                    "unit": "gCO2/kWh",
+                    "source": None,
+                }
+                for hour, value in sorted(values_by_hour.items())
+            ]
+        },
+    }
+
+
+async def _setup_with_summary(hass, extra_data: dict, summary: dict):
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="DE",
+        data={
+            "market": "DE",
+            "horizon_hours": 48,
+            "window_hours": 4,
+            "update_interval_minutes": 30,
+            "cheapest_hours_count": 0,
+            "retail_pricing": False,
+            **extra_data,
+        },
+    )
+    entry.add_to_hass(hass)
+    prices_payload = {
+        "format": "home-assistant-prices",
+        "country": "DE",
+        "currency": "EUR",
+        "unit": "EUR/kWh",
+        "entries": [],
+    }
+    with (
+        patch(
+            "custom_components.energypriceforecast.api.EnergyPriceForecastApi"
+            ".async_get_summary",
+            new=AsyncMock(return_value=summary),
+        ),
+        patch(
+            "custom_components.energypriceforecast.api.EnergyPriceForecastApi"
+            ".async_get_prices",
+            new=AsyncMock(return_value=prices_payload),
+        ),
+    ):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+    return entry
+
+
+async def test_greenest_plan_is_picked_from_the_co2_series(hass, freezer) -> None:
+    """The CO2 plan ranks emissions, and never touches the price series."""
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-12T00:00:00+00:00")
+
+    values = {hour: 400.0 for hour in range(24)}
+    values.update({6: 80.0, 9: 120.0})
+
+    entry = await _setup_with_summary(
+        hass,
+        {"greenest_hours_count": 2, "cheapest_hours_window_hours": 24},
+        _co2_summary("2026-08-12T00:00:00Z", values),
+    )
+
+    plan = entry.runtime_data.greenest_hours
+    assert [hour["start"].hour for hour in plan] == [6, 9]
+    # Priced in CO2, not in the price series' currency.
+    assert entry.runtime_data.co2_series["unit"] == "gCO2/kWh"
+    # The price plan is untouched: it was never switched on here.
+    assert entry.runtime_data.cheapest_hours is None
+
+
+async def test_greenest_plan_needs_the_whole_block_covered(hass, freezer) -> None:
+    """A partial CO2 forecast yields no plan at all, as on the price side."""
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-12T00:00:00+00:00")
+
+    entry = await _setup_with_summary(
+        hass,
+        {"greenest_hours_count": 2, "cheapest_hours_window_hours": 24},
+        _co2_summary("2026-08-12T00:00:00Z", {0: 100.0, 1: 200.0}),
+    )
+
+    assert entry.runtime_data.greenest_hours is None
+
+
+async def test_no_co2_series_means_no_co2_plan(hass, freezer) -> None:
+    """A market without CO2 coverage must not produce an empty or stale plan."""
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-12T00:00:00+00:00")
+
+    entry = await _setup_with_summary(
+        hass,
+        {"greenest_hours_count": 2, "cheapest_hours_window_hours": 24},
+        SUMMARY_PAYLOAD,
+    )
+
+    assert entry.runtime_data.co2_series is None
+    assert entry.runtime_data.greenest_hours is None

@@ -17,6 +17,7 @@ from .const import (
     CONF_POSTAL_CODE,
     CONF_RETAIL_PRICING,
     CONF_UPDATE_INTERVAL_MINUTES,
+    CONF_GREENEST_HOURS_COUNT,
     CONF_WEEKEND_HOURS_COUNT,
     CONF_WINDOW_HOURS,
     DEFAULT_API_URL,
@@ -25,6 +26,7 @@ from .const import (
     DEFAULT_CHEAPEST_HOURS_WINDOW_HOURS,
     DEFAULT_HORIZON_HOURS,
     DEFAULT_UPDATE_INTERVAL_MINUTES,
+    DEFAULT_GREENEST_HOURS_COUNT,
     DEFAULT_WEEKEND_HOURS_COUNT,
     MAX_HORIZON_HOURS,
     PLATFORMS,
@@ -64,6 +66,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         ),
         weekend_hours_count=entry.data.get(
             CONF_WEEKEND_HOURS_COUNT, DEFAULT_WEEKEND_HOURS_COUNT
+        ),
+        greenest_hours_count=entry.data.get(
+            CONF_GREENEST_HOURS_COUNT, DEFAULT_GREENEST_HOURS_COUNT
         ),
     )
     await coordinator.async_config_entry_first_refresh()

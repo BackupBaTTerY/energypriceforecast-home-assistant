@@ -16,7 +16,8 @@
           "cheapest_hours_count": "Billigste timer pr. blok (0 for at deaktivere)",
           "cheapest_hours_window_hours": "Bloklængde (timer)",
           "cheapest_hours_start_hour": "Blokkens starttime (lokal tid)",
-          "weekend_hours_count": "Billigste timer til weekendplanen (0 for at deaktivere)"
+          "weekend_hours_count": "Billigste timer til weekendplanen (0 for at deaktivere)",
+          "greenest_hours_count": "Reneste timer pr. blok (0 slår fra)"
         },
         "data_description": {
           "horizon_hours": "API'en rapporterer den faktisk tilladte horisont som en diagnosticeringssensor.",
@@ -26,9 +27,10 @@
           "postal_code": "Påkrævet for Tyskland, når detailpris er aktiveret, bruges til opslag af netafgift. Bruges ikke til andre markeder.",
           "update_interval_minutes": "Hvor ofte API'en forespørges. Dataopløsningen er 15 minutter, så kortere intervaller giver sjældent ny information.",
           "cheapest_hours_count": "Tiden deles op i faste, sammenhængende blokke (indstilles nedenfor), og i hver blok vælges så mange enkelte - eventuelt ikke-sammenhængende - timer som de billigste. Godt til en varmepumpe: f.eks. vælger 12 ud af 24 timer de tolv billigste timer hver kalenderdag. Når en bloks plan først er valgt, bliver den aldrig blandet om igen, selv hvis prognosen senere ændrer sig. Må aldrig være større end bloklængden, og der offentliggøres slet ingen plan, hvis prognosen endnu ikke dækker hele blokken.",
-          "cheapest_hours_window_hours": "Hvor lang hver gentagende blok er. 24 gentages dagligt; 48 vælger timer fra en fast toDages-blok (f.eks. mandag 00:00 til onsdag 00:00, derefter onsdag til fredag osv.). En længere blok giver flere timer at vælge imellem - typisk mere besparelse, men en mindre jævnt fordelt driftstid.",
+          "cheapest_hours_window_hours": "Hvor lang hver gentagende blok er. 24 gentages dagligt; 48 vælger timer fra en fast toDages-blok (f.eks. mandag 00:00 til onsdag 00:00, derefter onsdag til fredag osv.). En længere blok giver flere timer at vælge imellem - typisk mere besparelse, men en mindre jævnt fordelt driftstid. Planen for de reneste timer bruger den samme blok.",
           "cheapest_hours_start_hour": "Lokal time på døgnet (0-23), hvor hver blok starter. 0 betyder, at blokke starter ved midnat; med en 24-timers blok er dette blot starten på hver kalenderdag.",
-          "weekend_hours_count": "En separat plan for en fast blok fra lørdag 00:00 til mandag 00:00, uafhængig af blokken ovenfor - nyttigt til en ladeboks, der kun må bruge weekend-fleksibilitet. Vælges og låses på samme måde, men kræver, at hele weekenden er dækket af prognosen (også allerede passerede timer), før den låses, så en plan lavet efter en sen genstart aldrig er delvis."
+          "weekend_hours_count": "En separat plan for en fast blok fra lørdag 00:00 til mandag 00:00, uafhængig af blokken ovenfor - nyttigt til en ladeboks, der kun må bruge weekend-fleksibilitet. Vælges og låses på samme måde, men kræver, at hele weekenden er dækket af prognosen (også allerede passerede timer), før den låses, så en plan lavet efter en sen genstart aldrig er delvis.",
+          "greenest_hours_count": "Samme blokke som ovenfor, men timerne vælges efter nettets CO2-intensitet i stedet for prisen. Samme regler: når planen først er valgt, flytter den sig ikke, og så længe prognosen ikke dækker blokken, offentliggøres ingen plan. Må ikke være større end bloklængden."
         }
       },
       "reconfigure": {
@@ -45,7 +47,8 @@
           "cheapest_hours_count": "Billigste timer pr. blok (0 for at deaktivere)",
           "cheapest_hours_window_hours": "Bloklængde (timer)",
           "cheapest_hours_start_hour": "Blokkens starttime (lokal tid)",
-          "weekend_hours_count": "Billigste timer til weekendplanen (0 for at deaktivere)"
+          "weekend_hours_count": "Billigste timer til weekendplanen (0 for at deaktivere)",
+          "greenest_hours_count": "Reneste timer pr. blok (0 slår fra)"
         },
         "data_description": {
           "horizon_hours": "API'en rapporterer den faktisk tilladte horisont som en diagnosticeringssensor.",
@@ -54,9 +57,10 @@
           "postal_code": "Påkrævet for Tyskland, når detailpris er aktiveret, bruges til opslag af netafgift. Bruges ikke til andre markeder.",
           "update_interval_minutes": "Hvor ofte API'en forespørges. Dataopløsningen er 15 minutter, så kortere intervaller giver sjældent ny information.",
           "cheapest_hours_count": "Tiden deles op i faste, sammenhængende blokke (indstilles nedenfor), og i hver blok vælges så mange enkelte - eventuelt ikke-sammenhængende - timer som de billigste. Godt til en varmepumpe: f.eks. vælger 12 ud af 24 timer de tolv billigste timer hver kalenderdag. Når en bloks plan først er valgt, bliver den aldrig blandet om igen, selv hvis prognosen senere ændrer sig. Må aldrig være større end bloklængden, og der offentliggøres slet ingen plan, hvis prognosen endnu ikke dækker hele blokken.",
-          "cheapest_hours_window_hours": "Hvor lang hver gentagende blok er. 24 gentages dagligt; 48 vælger timer fra en fast toDages-blok (f.eks. mandag 00:00 til onsdag 00:00, derefter onsdag til fredag osv.). En længere blok giver flere timer at vælge imellem - typisk mere besparelse, men en mindre jævnt fordelt driftstid.",
+          "cheapest_hours_window_hours": "Hvor lang hver gentagende blok er. 24 gentages dagligt; 48 vælger timer fra en fast toDages-blok (f.eks. mandag 00:00 til onsdag 00:00, derefter onsdag til fredag osv.). En længere blok giver flere timer at vælge imellem - typisk mere besparelse, men en mindre jævnt fordelt driftstid. Planen for de reneste timer bruger den samme blok.",
           "cheapest_hours_start_hour": "Lokal time på døgnet (0-23), hvor hver blok starter. 0 betyder, at blokke starter ved midnat; med en 24-timers blok er dette blot starten på hver kalenderdag.",
-          "weekend_hours_count": "En separat plan for en fast blok fra lørdag 00:00 til mandag 00:00, uafhængig af blokken ovenfor - nyttigt til en ladeboks, der kun må bruge weekend-fleksibilitet. Vælges og låses på samme måde, men kræver, at hele weekenden er dækket af prognosen (også allerede passerede timer), før den låses, så en plan lavet efter en sen genstart aldrig er delvis."
+          "weekend_hours_count": "En separat plan for en fast blok fra lørdag 00:00 til mandag 00:00, uafhængig af blokken ovenfor - nyttigt til en ladeboks, der kun må bruge weekend-fleksibilitet. Vælges og låses på samme måde, men kræver, at hele weekenden er dækket af prognosen (også allerede passerede timer), før den låses, så en plan lavet efter en sen genstart aldrig er delvis.",
+          "greenest_hours_count": "Samme blokke som ovenfor, men timerne vælges efter nettets CO2-intensitet i stedet for prisen. Samme regler: når planen først er valgt, flytter den sig ikke, og så længe prognosen ikke dækker blokken, offentliggøres ingen plan. Må ikke være større end bloklængden."
         }
       }
     },
@@ -69,7 +73,8 @@
       "postal_code_required": "Et postnummer er påkrævet for detailpriser i Tyskland.",
       "invalid_postal_code": "Indtast et 5-cifret tysk postnummer.",
       "retail_unavailable": "Kunne ikke bekræfte detailprisen for dette marked eller postnummer.",
-      "cheapest_hours_exceeds_window": "Billigste timer pr. blok må ikke være større end bloklængden."
+      "cheapest_hours_exceeds_window": "Billigste timer pr. blok må ikke være større end bloklængden.",
+      "greenest_hours_exceeds_window": "Antallet af reneste timer må ikke være større end bloklængden."
     },
     "abort": {
       "already_configured": "Dette marked er allerede konfigureret."
@@ -86,14 +91,20 @@
       "greenest_window_start": {"name": "Start på grønneste tidsvindue"},
       "greenest_window_end": {"name": "Slut på grønneste tidsvindue"},
       "combined_window_score": {"name": "Kombineret tidsvindue-score"},
+      "combined_window_start": {"name": "Kombineret vindue start"},
+      "combined_window_end": {"name": "Kombineret vindue slut"},
       "allowed_horizon": {"name": "Tilladt horisont"},
       "used_horizon": {"name": "Anvendt horisont"},
       "api_key_state": {"name": "API-nøglestatus"},
       "last_update": {"name": "Seneste API-opdatering"},
       "price_series": {"name": "Prisserie"},
+      "co2_series": {"name": "CO2-prognoseserie"},
       "retail_current_price": {"name": "Aktuel detailpris"},
       "cheapest_hours_next_start": {"name": "Næste billigste time"},
       "weekend_hours_next_start": {"name": "Næste billigste weekendtime"},
+      "greenest_hours_next_start": {"name": "Næste reneste time"},
+      "greenest_hours_average_co2": {"name": "Reneste timer gennemsnitlig CO2"},
+      "greenest_hours_saving": {"name": "Reneste timer besparelse"},
       "retail_cheapest_window_average_price": {"name": "Gennemsnitspris billigste tidsvindue (detailpris)"},
       "retail_cheapest_window_start": {"name": "Start på billigste tidsvindue (detailpris)"},
       "retail_cheapest_window_end": {"name": "Slut på billigste tidsvindue (detailpris)"},
@@ -111,6 +122,8 @@
       "greenest_window_active": {"name": "Grønneste tidsvindue aktivt"},
       "is_in_cheapest_hours": {"name": "Billigste timer aktive"},
       "is_in_weekend_hours": {"name": "Billigste weekendtimer aktive"},
+      "is_in_greenest_hours": {"name": "Reneste timer aktive"},
+      "combined_window_active": {"name": "Kombineret vindue aktivt"},
       "retail_cheapest_window_active": {"name": "Billigste tidsvindue aktivt (detailpris)"}
     }
   }

@@ -37,6 +37,7 @@ from .const import (
     CONF_CHEAPEST_HOURS_COUNT,
     CONF_CHEAPEST_HOURS_START_HOUR,
     CONF_CHEAPEST_HOURS_WINDOW_HOURS,
+    CONF_GREENEST_HOURS_COUNT,
     CONF_HORIZON_HOURS,
     CONF_MARKET,
     CONF_POSTAL_CODE,
@@ -48,6 +49,7 @@ from .const import (
     DEFAULT_CHEAPEST_HOURS_COUNT,
     DEFAULT_CHEAPEST_HOURS_START_HOUR,
     DEFAULT_CHEAPEST_HOURS_WINDOW_HOURS,
+    DEFAULT_GREENEST_HOURS_COUNT,
     DEFAULT_HORIZON_HOURS,
     DEFAULT_UPDATE_INTERVAL_MINUTES,
     DEFAULT_WEEKEND_HOURS_COUNT,
@@ -57,6 +59,7 @@ from .const import (
     MARKETS,
     MAX_CHEAPEST_HOURS_COUNT,
     MAX_CHEAPEST_HOURS_WINDOW_HOURS,
+    MAX_GREENEST_HOURS_COUNT,
     MAX_UPDATE_INTERVAL_MINUTES,
     MAX_WEEKEND_HOURS_COUNT,
     MIN_CHEAPEST_HOURS_WINDOW_HOURS,
@@ -211,6 +214,19 @@ def _schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                     mode=NumberSelectorMode.BOX,
                 )
             ),
+            vol.Optional(
+                CONF_GREENEST_HOURS_COUNT,
+                default=defaults.get(
+                    CONF_GREENEST_HOURS_COUNT, DEFAULT_GREENEST_HOURS_COUNT
+                ),
+            ): NumberSelector(
+                NumberSelectorConfig(
+                    min=0,
+                    max=MAX_GREENEST_HOURS_COUNT,
+                    step=1,
+                    mode=NumberSelectorMode.BOX,
+                )
+            ),
         }
     )
 
@@ -250,6 +266,9 @@ def _normalize_input(user_input: dict[str, Any]) -> dict[str, Any]:
     normalized[CONF_WEEKEND_HOURS_COUNT] = int(
         normalized.get(CONF_WEEKEND_HOURS_COUNT, DEFAULT_WEEKEND_HOURS_COUNT)
     )
+    normalized[CONF_GREENEST_HOURS_COUNT] = int(
+        normalized.get(CONF_GREENEST_HOURS_COUNT, DEFAULT_GREENEST_HOURS_COUNT)
+    )
     return normalized
 
 
@@ -280,6 +299,14 @@ def _validate_cheapest_hours_selection(data: dict[str, Any]) -> str | None:
     """
     if data[CONF_CHEAPEST_HOURS_COUNT] > data[CONF_CHEAPEST_HOURS_WINDOW_HOURS]:
         return "cheapest_hours_exceeds_window"
+    # The greenest hours are picked from the same block, so the same ceiling
+    # applies to them. Read with a default: an entry saved before this option
+    # existed simply has no such count, which means the plan is off.
+    if (
+        data.get(CONF_GREENEST_HOURS_COUNT, 0)
+        > data[CONF_CHEAPEST_HOURS_WINDOW_HOURS]
+    ):
+        return "greenest_hours_exceeds_window"
     return None
 
 

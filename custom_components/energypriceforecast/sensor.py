@@ -19,6 +19,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
+from .const import COMBINED_SCORE_SCALE
 from .coordinator import EnergyPriceForecastCoordinator
 from .entity import EnergyPriceForecastEntity
 from .planning import duration_weighted_mean
@@ -195,6 +196,22 @@ def _day_statistics(
     }
 
 
+def _combined_score(data: dict[str, Any]) -> float | None:
+    """Rescale the combined window's ranking key into a readable score.
+
+    The API ranks candidate windows by normalising price and CO2 across the
+    horizon and averaging them, which yields 0 for the best window and 1 for
+    the worst. Exposed unchanged, that number was read backwards by everyone
+    who saw it: it is called a score, and a smaller score looked worse. This
+    turns it the right way up and onto a 0-100 scale, so 100 is the best
+    combination of price and CO2 on offer in the horizon.
+    """
+    raw = _path(data, "flat", "combined_window_score")
+    if not isinstance(raw, (int, float)):
+        return None
+    return (1 - float(raw)) * COMBINED_SCORE_SCALE
+
+
 def _next_planned_start(hours: list[dict[str, Any]] | None) -> datetime | None:
     """Start of the first planned hour that has not begun yet.
 
@@ -288,12 +305,18 @@ SENSORS: tuple[EnergyPriceForecastSensorDescription, ...] = (
         value_fn=lambda data: _timestamp(_path(data, "flat", "best_co2_window_end")),
     ),
     EnergyPriceForecastSensorDescription(
-        key="combined_window_score",
-        translation_key="combined_window_score",
-        icon="mdi:chart-bell-curve-cumulative",
-        state_class=SensorStateClass.MEASUREMENT,
-        suggested_display_precision=4,
-        value_fn=lambda data: _path(data, "flat", "combined_window_score"),
+        key="combined_window_start",
+        translation_key="combined_window_start",
+        icon="mdi:scale-balance",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        value_fn=lambda data: _timestamp(_path(data, "flat", "combined_window_start")),
+    ),
+    EnergyPriceForecastSensorDescription(
+        key="combined_window_end",
+        translation_key="combined_window_end",
+        icon="mdi:scale-balance",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        value_fn=lambda data: _timestamp(_path(data, "flat", "combined_window_end")),
     ),
     EnergyPriceForecastSensorDescription(
         key="cheapest_window_remaining",
@@ -399,6 +422,8 @@ async def async_setup_entry(
         for description in SENSORS
     ]
     entities.append(EnergyPriceForecastPriceSeriesSensor(coordinator, entry))
+    entities.append(EnergyPriceForecastCo2SeriesSensor(coordinator, entry))
+    entities.append(EnergyPriceForecastCombinedScoreSensor(coordinator, entry))
     entities.append(EnergyPriceForecastQualitySensor(coordinator, entry))
     if coordinator.retail_pricing:
         entities.append(EnergyPriceForecastRetailPriceSensor(coordinator, entry))
@@ -416,6 +441,14 @@ async def async_setup_entry(
             EnergyPriceForecastWeekendPlanAveragePriceSensor(coordinator, entry)
         )
         entities.append(EnergyPriceForecastWeekendPlanSavingSensor(coordinator, entry))
+    if coordinator.greenest_hours_count > 0:
+        entities.append(EnergyPriceForecastGreenestHoursSensor(coordinator, entry))
+        entities.append(
+            EnergyPriceForecastGreenestPlanAverageCo2Sensor(coordinator, entry)
+        )
+        entities.append(
+            EnergyPriceForecastGreenestPlanSavingSensor(coordinator, entry)
+        )
     async_add_entities(entities)
 
 
@@ -729,6 +762,9 @@ class _PlanStatisticSensor(_StickyUnitMixin, EnergyPriceForecastEntity, SensorEn
 
     _hours_attribute = "cheapest_hours"
     _window_average_attribute = "cheapest_hours_window_average"
+    # Which series the plan was picked from, so the unit can never describe a
+    # different series than the value.
+    _series_attribute = "plan_series"
 
     @property
     def _hours(self) -> list[dict[str, Any]] | None:
@@ -766,9 +802,8 @@ class EnergyPriceForecastPlanAveragePriceSensor(_PlanStatisticSensor):
 
     @property
     def native_unit_of_measurement(self) -> str | None:
-        # Follows whichever series the plan was priced in, so the unit can
-        # never describe a different series than the value.
-        return self._sticky_unit(_path(self.coordinator.plan_series or {}, "unit"))
+        series = getattr(self.coordinator, self._series_attribute) or {}
+        return self._sticky_unit(_path(series, "unit"))
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -876,3 +911,186 @@ class EnergyPriceForecastWeekendHoursSensor(EnergyPriceForecastEntity, SensorEnt
                 for hour in hours
             ],
         }
+
+
+class EnergyPriceForecastCombinedScoreSensor(
+    EnergyPriceForecastEntity, SensorEntity
+):
+    """How good the best price-and-CO2 compromise in the horizon is, 0-100.
+
+    The API searches the horizon for the window that is the best compromise
+    between a low price and low CO2 intensity, weighting the two equally. It
+    ranks candidates by normalising both against the horizon's own spread and
+    averaging them, which produces 0 for the winner and 1 for the worst
+    candidate. That raw key used to be the state of this sensor, and it was
+    unreadable three times over: smaller was better under the name "score",
+    it carried no unit, and being relative to the current horizon's spread it
+    could not be compared across days.
+
+    The state is now that key turned the right way up on a 0-100 scale, so
+    100 is the best compromise available. It stays relative to the horizon -
+    that is what the API computes - so it answers "how good is today's best
+    compromise window" and not "is today better than yesterday". The window
+    it describes, and what it actually costs and emits, are the attributes,
+    and they are the numbers to act on.
+    """
+
+    _attr_translation_key = "combined_window_score"
+    _attr_icon = "mdi:scale-balance"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 0
+
+    def __init__(
+        self, coordinator: EnergyPriceForecastCoordinator, entry: ConfigEntry
+    ) -> None:
+        super().__init__(coordinator, entry, "combined_window_score")
+
+    @property
+    def native_value(self) -> Any:
+        return _combined_score(self.coordinator.data)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        window = _path(
+            self.coordinator.data, "combined", "best_window_next_horizon"
+        )
+        window = window if isinstance(window, dict) else {}
+        return {
+            "window_start": window.get("start"),
+            "window_end": window.get("end"),
+            "window_hours": window.get("duration_hours"),
+            "average_price_value": window.get("average_price_value"),
+            "average_co2_g_kwh": window.get("average_co2_g_kwh"),
+            # The 0-1 ranking key the state is derived from, kept so nothing
+            # is lost for anyone who was reading the old value.
+            "raw_score": window.get("score"),
+            "method": window.get("method"),
+        }
+
+
+class EnergyPriceForecastCo2SeriesSensor(
+    _StickyUnitMixin, EnergyPriceForecastEntity, SensorEntity
+):
+    """Raw CO2 intensity series for charting, mirroring the price series.
+
+    Until this existed, CO2 had a current value and a best window but no way
+    to draw it, while the price side had a full series - so every dashboard
+    built from this integration was a price dashboard. Same attribute names
+    as the price series, so an existing apexcharts card only needs its entity
+    swapped.
+
+    CO2 is published hourly, where prices can be quarter-hourly. If the API
+    does not mark CO2 slots as forecast, everything lands in raw_today and
+    raw_tomorrow and raw_forecast stays empty - the same convention the price
+    series follows for an entry that does not say what it is.
+    """
+
+    _attr_translation_key = "co2_series"
+    _attr_icon = "mdi:molecule-co2"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 1
+    _unrecorded_attributes = _SERIES_ATTRIBUTES
+
+    def __init__(
+        self, coordinator: EnergyPriceForecastCoordinator, entry: ConfigEntry
+    ) -> None:
+        super().__init__(coordinator, entry, "co2_series")
+
+    @property
+    def available(self) -> bool:
+        return super().available and self.coordinator.co2_series is not None
+
+    @property
+    def native_value(self) -> Any:
+        current = _current_entry(self.coordinator.co2_series)
+        return current.get("value") if current else None
+
+    @property
+    def native_unit_of_measurement(self) -> str | None:
+        return self._sticky_unit(_path(self.coordinator.co2_series or {}, "unit"))
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        entries = _path(self.coordinator.co2_series or {}, "entries")
+        today, tomorrow = _split_today_tomorrow(entries)
+        return {
+            "raw_today": today,
+            "raw_tomorrow": tomorrow,
+            "raw_forecast": _forecast_only(entries),
+            **_day_statistics(today, self.native_value),
+        }
+
+
+class EnergyPriceForecastGreenestHoursSensor(
+    EnergyPriceForecastEntity, SensorEntity
+):
+    """Start of the next of the N cleanest upcoming hours.
+
+    The CO2 counterpart of the cheapest-hours plan: same block, same locking,
+    same refusal to publish a partial plan - picked on grid CO2 intensity
+    instead of price. Only created when a positive greenest-hour count was
+    configured. Backed by coordinator.greenest_hours.
+    """
+
+    _attr_translation_key = "greenest_hours_next_start"
+    _attr_icon = "mdi:leaf-circle-outline"
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _unrecorded_attributes = frozenset({"hours"})
+
+    def __init__(
+        self, coordinator: EnergyPriceForecastCoordinator, entry: ConfigEntry
+    ) -> None:
+        super().__init__(coordinator, entry, "greenest_hours_next_start")
+
+    @property
+    def available(self) -> bool:
+        return super().available and bool(self.coordinator.greenest_hours)
+
+    @property
+    def native_value(self) -> Any:
+        return _next_planned_start(self.coordinator.greenest_hours)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        hours = self.coordinator.greenest_hours or []
+        return {
+            "hours": [
+                {
+                    "start": hour["start"].isoformat(),
+                    "end": hour["end"].isoformat(),
+                    "average_value": round(hour["average_value"], 1),
+                }
+                for hour in hours
+            ],
+        }
+
+
+class EnergyPriceForecastGreenestPlanAverageCo2Sensor(
+    EnergyPriceForecastPlanAveragePriceSensor
+):
+    """Average CO2 intensity of the hours the greenest plan picked."""
+
+    _attr_translation_key = "greenest_hours_average_co2"
+    _attr_icon = "mdi:leaf"
+    _attr_suggested_display_precision = 1
+    _hours_attribute = "greenest_hours"
+    _window_average_attribute = "greenest_hours_window_average"
+    _series_attribute = "co2_series"
+
+
+class EnergyPriceForecastGreenestPlanSavingSensor(
+    EnergyPriceForecastPlanSavingSensor
+):
+    """How far below the block's average CO2 intensity the plan lands.
+
+    Same comparison as the price saving: against running at an arbitrary time
+    in the same block, not against a national average or a claim about
+    avoided emissions. CO2 intensity is never negative, so unlike the price
+    version this one has no zero-baseline case to withhold.
+    """
+
+    _attr_translation_key = "greenest_hours_saving"
+    _attr_icon = "mdi:leaf-circle"
+    _hours_attribute = "greenest_hours"
+    _window_average_attribute = "greenest_hours_window_average"
+    _series_attribute = "co2_series"

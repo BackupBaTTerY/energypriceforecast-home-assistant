@@ -14,10 +14,13 @@ requiring YAML or JSON templates.
 - Cheapest price window and greenest CO2 window, with a countdown to the end
   of each
 - Binary sensors indicating whether a best window is active now
-- Combined price/CO2 window score
+- Combined price/CO2 window: when the best compromise between a low price
+  and low emissions is, and a 0-100 score for how good that compromise is
 - Raw price-series sensor with `raw_today` / `raw_tomorrow` / `raw_forecast`
   attributes (compatible with `apexcharts-card` and custom templates), plus
   Nordpool-style `average` / `min` / `max` / `price_percent_to_average`
+- The same series for **CO2 intensity** *(1.2.0)*, so emissions can be charted
+  the way prices already could
 - **Forecast quality**: how often the forecast actually picked the cheapest
   window, replayed against the day-ahead prices published afterwards, and what
   missing it cost - measured for your market, not claimed
@@ -32,6 +35,8 @@ requiring YAML or JSON templates.
   far below the block average that lands
 - Optional independent weekend plan (Saturday 00:00 to Monday 00:00) for
   loads that are only flexible on weekends, e.g. EV charging
+- Optional "cleanest hours" plan *(1.2.0)* - the same block, the same locking,
+  but picked on grid CO2 intensity instead of price
 - Optional assumption-based all-in retail price for supported markets - plans
   and savings are then computed on the price you actually pay
 - Configurable poll interval (15-120 minutes)
@@ -106,12 +111,16 @@ integration depends on the ID.
 | Greenest window average CO2 | sensor | gCO2/kWh |
 | Greenest window start | sensor | timestamp |
 | Greenest window end | sensor | timestamp |
-| Combined window score | sensor | - |
+| Combined window score | sensor | 0-100, higher is better |
+| Combined window start *(1.2.0)* | sensor | timestamp |
+| Combined window end *(1.2.0)* | sensor | timestamp |
 | Cheapest window remaining *(1.0.0)* | sensor | minutes |
 | Greenest window remaining *(1.0.0)* | sensor | minutes |
 | Price forecast series | sensor | market currency |
+| CO2 forecast series *(1.2.0)* | sensor | gCO2/kWh |
 | Cheapest window active | binary sensor | on/off |
 | Greenest window active | binary sensor | on/off |
+| Combined window active *(1.2.0)* | binary sensor | on/off |
 
 Plus six diagnostic entities, shown separately in the device page: **Allowed
 horizon** and **Used horizon** (hours), **API-key status**, **Price source**
@@ -120,6 +129,29 @@ horizon** and **Used horizon** (hours), **API-key status**, **Price source**
 
 "Cheapest window" here is the single *contiguous* window of the configured
 best-window duration - not the same thing as the cheapest-hours plan below.
+
+#### The combined window, and what its score means *(1.2.0)*
+
+The cheapest window and the greenest window are rarely the same hours. The
+**combined window** is the compromise: the API searches the horizon for the
+window that scores best on price *and* CO2 intensity together, weighting the
+two equally. **Combined window start** and **end** say when it is, and
+**Combined window active** switches while it runs - those three are what an
+automation should use.
+
+**Combined window score** rates that compromise from 0 to 100, and **higher is
+better**: 100 means the window is the best available on both counts at once.
+It is a relative measure - the API normalises price and CO2 against the spread
+in the current horizon - so it answers "how good is today's best compromise",
+not "is today better than yesterday". Its attributes carry the numbers behind
+it: `average_price_value`, `average_co2_g_kwh`, `window_start`, `window_end`
+and `window_hours`.
+
+> Before 1.2.0 this sensor published the API's raw ranking key instead: a
+> value from 0 to 1 where **0** was the best window. It was read backwards by
+> more or less everyone. If an automation compares the score against a
+> threshold, it needs updating - the old key is still available as the
+> `raw_score` attribute.
 
 ### With retail pricing enabled
 
@@ -152,6 +184,21 @@ the cheapest window can differ from the spot-price one.
 | Weekend hours saving *(1.0.0)* | sensor | % |
 | Weekend cheapest hours active | binary sensor | on/off |
 
+### With a cleanest-hours count above 0 *(1.2.0)*
+
+| Name | Type | Unit |
+| --- | --- | --- |
+| Next cleanest hour | sensor | timestamp |
+| Cleanest hours average CO2 | sensor | gCO2/kWh |
+| Cleanest hours saving | sensor | % |
+| Cleanest hours active | binary sensor | on/off |
+
+The CO2 counterpart of the cheapest-hours plan, picked from the **same block**
+you configured above - same length, same start hour - but ranked on grid CO2
+intensity instead of price. Everything else is identical: the plan locks once
+picked, no partial plan is ever published, and the saving compares the picked
+hours against the block's own average.
+
 ### Attributes worth knowing
 
 - **Price forecast series** and **Current retail price** carry `raw_today`,
@@ -160,8 +207,13 @@ the cheapest window can differ from the spot-price one.
   published day-ahead prices only, so `raw_tomorrow` is **empty until
   tomorrow's prices are published** (usually early afternoon) - the estimate
   for those hours is in `raw_forecast` instead, and the two never overlap.
-- **Next cheapest hour** and **Next weekend cheapest hour** carry `hours`: the
-  full locked plan as a list of `{start, end, average_value}`.
+- **CO2 forecast series** carries the same `raw_today` / `raw_tomorrow` /
+  `raw_forecast` attributes as the price series, in gCO2/kWh, so a chart card
+  built for prices works by swapping the entity. CO2 is published hourly where
+  prices can be quarter-hourly.
+- **Next cheapest hour**, **Next weekend cheapest hour** and **Next cleanest
+  hour** carry `hours`: the full locked plan as a list of
+  `{start, end, average_value}`.
 - The same two price sensors also carry `average`, `min`, `max` and
   `price_percent_to_average`, named after the Nordpool integration so its
   templates port across. **The scope differs from Nordpool's** and it matters:
@@ -249,10 +301,23 @@ Saturday 00:00 to Monday 00:00. A plan is only published once the entire
 window is covered by the forecast (including hours already in the past), so a
 plan built after a late restart is never partial.
 
-### Two similarly-named features
+### Charging on clean power instead of cheap power *(1.2.0)*
+
+Set a **cleanest hours** count and you get the same plan ranked on grid CO2
+intensity: same block, same locking, its own entities. Cheap and clean often
+do not coincide - solar makes midday clean, and wind makes windy nights both
+cheap and clean, but a cheap hour can just as easily be a coal-heavy one.
+
+Run both plans at once if you like: they are independent, and a template
+condition can require an hour to be in either or in both. If you want the
+compromise decided for you instead, use the **combined window** above - that
+is exactly what it is for.
+
+### Three similarly-named features
 
 - **Cheapest hours plan**: several individual cheap hours inside a fixed
   block - for flexible loads that can run in interrupted bursts.
+- **Cleanest hours plan** *(1.2.0)*: the same, ranked on CO2 intensity.
 - **Cheapest window**: a single, uninterrupted window of the configured
   "best-window duration" - for a device that needs to run for several hours
   without a pause.
@@ -399,6 +464,34 @@ price, and subtract the two.
 This is left as a recipe rather than a built-in feature on purpose: it needs
 an entity only you can name, its correctness depends entirely on that meter
 being the right one, and a wrong number here is worse than no number.
+
+### Turning it into grams of CO2 *(1.2.0)*
+
+The same shape, with the cleanest-hours plan. **Cleanest hours average CO2**
+is in gCO2/kWh, so multiplying by kWh gives grams:
+
+```yaml
+template:
+  - sensor:
+      - name: Car charging CO2 during clean hours
+        unique_id: car_charging_clean_hour_co2
+        unit_of_measurement: g
+        state_class: total_increasing
+        state: >
+          {% set intensity = states('sensor.CHANGE_ME_cleanest_hours_average_co2')
+             | float(0) %}
+          {% set energy = states('sensor.CHANGE_ME_wallbox_energy')
+             | float(0) %}
+          {{ (intensity * energy) | round(0) }}
+```
+
+For "what did charging at these hours avoid", build the same sensor with the
+`window_average_value` attribute in place of the state - that is the block's
+own average intensity - and subtract the two. The result is emissions avoided
+**against charging at an arbitrary time in the same block**, which is the only
+comparison this integration can support. It is not a comparison against the
+grid average, against another country, or against not charging at all, and it
+is not a carbon offset.
 
 ## Switching a device with the plan
 

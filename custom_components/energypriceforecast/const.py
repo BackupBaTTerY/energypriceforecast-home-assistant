@@ -9,7 +9,7 @@ NAME: Final = "Energy Price Forecast EU"
 # from. Must equal manifest.json's version - test_version.py enforces that,
 # because this drifted to 0.1.0 for ten releases and every request from
 # every user was mislabelled the whole time.
-VERSION: Final = "1.1.0"
+VERSION: Final = "1.2.0"
 DEFAULT_API_URL: Final = (
     "https://api.energypriceforecast.eu/api/v1/home-assistant/summary"
 )
@@ -61,6 +61,20 @@ DEFAULT_CHEAPEST_HOURS_START_HOUR: Final = 0
 CONF_WEEKEND_HOURS_COUNT: Final = "weekend_hours_count"
 DEFAULT_WEEKEND_HOURS_COUNT: Final = 0
 MAX_WEEKEND_HOURS_COUNT: Final = 48
+
+# The greenest-hours plan: the same block as the cheapest-hours one, but
+# picked on CO2 intensity instead of price. It deliberately shares the block
+# length and start hour: how flexible a load is, is a property of the
+# household, not of the number being optimised - and two independent block
+# geometries would double the settings for a distinction nobody makes.
+CONF_GREENEST_HOURS_COUNT: Final = "greenest_hours_count"
+DEFAULT_GREENEST_HOURS_COUNT: Final = 0
+MAX_GREENEST_HOURS_COUNT: Final = 48
+
+# The combined window's score arrives as 0..1 with 0 being the best window in
+# the horizon - an internal ranking key that was exposed unchanged and read
+# backwards by everyone. Rescaled to 0..100 with 100 being best.
+COMBINED_SCORE_SCALE: Final = 100
 
 PLATFORMS: Final = ["sensor", "binary_sensor"]
 

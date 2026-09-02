@@ -341,3 +341,32 @@ async def test_user_flow_accepts_weekend_and_block_settings(hass) -> None:
     assert result["data"]["cheapest_hours_window_hours"] == 48
     assert result["data"]["cheapest_hours_start_hour"] == 6
     assert result["data"]["weekend_hours_count"] == 8
+
+
+@pytest.mark.parametrize(
+    ("greenest_count", "window_hours", "expected_error"),
+    [
+        (0, 24, None),
+        (24, 24, None),
+        (25, 24, "greenest_hours_exceeds_window"),
+    ],
+)
+def test_validate_greenest_hours_selection(
+    greenest_count, window_hours, expected_error
+) -> None:
+    """The CO2 plan shares the block, so it shares the block's ceiling."""
+    data = {
+        CONF_CHEAPEST_HOURS_COUNT: 0,
+        CONF_CHEAPEST_HOURS_WINDOW_HOURS: window_hours,
+        "greenest_hours_count": greenest_count,
+    }
+    assert _validate_cheapest_hours_selection(data) == expected_error
+
+
+def test_a_missing_greenest_count_is_not_an_error() -> None:
+    """Entries saved before 1.2.0 have no such key, and that means "off"."""
+    data = {
+        CONF_CHEAPEST_HOURS_COUNT: 4,
+        CONF_CHEAPEST_HOURS_WINDOW_HOURS: 24,
+    }
+    assert _validate_cheapest_hours_selection(data) is None

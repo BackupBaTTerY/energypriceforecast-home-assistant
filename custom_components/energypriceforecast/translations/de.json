@@ -16,7 +16,8 @@
           "cheapest_hours_count": "Günstigste Stunden je Block (0 zum Deaktivieren)",
           "cheapest_hours_window_hours": "Blocklänge (Stunden)",
           "cheapest_hours_start_hour": "Startstunde des Blocks (Ortszeit)",
-          "weekend_hours_count": "Günstigste Stunden für den Wochenendplan (0 zum Deaktivieren)"
+          "weekend_hours_count": "Günstigste Stunden für den Wochenendplan (0 zum Deaktivieren)",
+          "greenest_hours_count": "Sauberste Stunden je Block (0 = aus)"
         },
         "data_description": {
           "horizon_hours": "Den tatsächlich erlaubten Horizont zeigt die Integration als Diagnose-Sensor an.",
@@ -26,9 +27,10 @@
           "postal_code": "Für Deutschland bei aktiviertem Endkundenpreis erforderlich, wird für die Netzentgelt-Ermittlung genutzt. Für andere Märkte nicht benötigt.",
           "update_interval_minutes": "Wie oft die API abgefragt wird. Die Datenauflösung liegt bei 15 Minuten, kürzere Intervalle liefern daher selten neue Informationen.",
           "cheapest_hours_count": "Die Zeit wird in feste, lückenlose Blöcke geteilt (siehe unten), und in jedem Block werden so viele einzelne - nicht zwingend zusammenhängende - Stunden als die günstigsten ausgewählt. Gut für eine Wärmepumpe: z. B. 12 von 24 Stunden wählt an jedem Kalendertag die zwölf günstigsten Stunden. Der Plan eines Blocks wird nach seiner Erstellung nicht mehr neu gemischt, auch wenn sich die Prognose später ändert. Darf nie größer als die Blocklänge sein; sind nicht genug Prognosedaten für den vollständigen Block vorhanden, wird gar kein Plan veröffentlicht.",
-          "cheapest_hours_window_hours": "Länge des sich wiederholenden Blocks. 24 wiederholt sich täglich; 48 wählt Stunden aus einem festen Zweitagesblock (z. B. Montag 00:00 bis Mittwoch 00:00, dann Mittwoch bis Freitag usw.). Ein längerer Block bietet mehr Auswahl - meist mehr Ersparnis, aber eine ungleichmäßiger verteilte Laufzeit.",
+          "cheapest_hours_window_hours": "Länge des sich wiederholenden Blocks. 24 wiederholt sich täglich; 48 wählt Stunden aus einem festen Zweitagesblock (z. B. Montag 00:00 bis Mittwoch 00:00, dann Mittwoch bis Freitag usw.). Ein längerer Block bietet mehr Auswahl - meist mehr Ersparnis, aber eine ungleichmäßiger verteilte Laufzeit. Der Plan für die saubersten Stunden nutzt denselben Block.",
           "cheapest_hours_start_hour": "Ortszeit-Stunde (0-23), zu der jeder Block beginnt. 0 bedeutet, Blöcke beginnen um Mitternacht; bei einem 24-Stunden-Block ist das einfach der Beginn jedes Kalendertags.",
-          "weekend_hours_count": "Ein eigener Plan für einen festen Block von Samstag 00:00 bis Montag 00:00, unabhängig vom obigen Block - nützlich für eine Wallbox, die nur die Wochenend-Flexibilität nutzen soll. Wird genauso ausgewählt und fixiert, erfordert aber, dass das gesamte Wochenende von der Prognose abgedeckt ist (auch bereits vergangene Stunden), bevor er fixiert wird - ein nach einem späten Neustart erstellter Plan ist dadurch nie unvollständig."
+          "weekend_hours_count": "Ein eigener Plan für einen festen Block von Samstag 00:00 bis Montag 00:00, unabhängig vom obigen Block - nützlich für eine Wallbox, die nur die Wochenend-Flexibilität nutzen soll. Wird genauso ausgewählt und fixiert, erfordert aber, dass das gesamte Wochenende von der Prognose abgedeckt ist (auch bereits vergangene Stunden), bevor er fixiert wird - ein nach einem späten Neustart erstellter Plan ist dadurch nie unvollständig.",
+          "greenest_hours_count": "Dieselben Blöcke wie oben, aber die Stunden werden nach der CO2-Intensität des Netzes statt nach dem Preis gewählt. Gleiche Regeln: einmal gewählt bleibt der Plan stehen, und solange die Prognose den Block nicht abdeckt, wird gar kein Plan veröffentlicht. Darf nicht größer als die Blocklänge sein."
         }
       },
       "reconfigure": {
@@ -45,7 +47,8 @@
           "cheapest_hours_count": "Günstigste Stunden je Block (0 zum Deaktivieren)",
           "cheapest_hours_window_hours": "Blocklänge (Stunden)",
           "cheapest_hours_start_hour": "Startstunde des Blocks (Ortszeit)",
-          "weekend_hours_count": "Günstigste Stunden für den Wochenendplan (0 zum Deaktivieren)"
+          "weekend_hours_count": "Günstigste Stunden für den Wochenendplan (0 zum Deaktivieren)",
+          "greenest_hours_count": "Sauberste Stunden je Block (0 = aus)"
         },
         "data_description": {
           "horizon_hours": "Den tatsächlich erlaubten Horizont zeigt die Integration als Diagnose-Sensor an.",
@@ -54,9 +57,10 @@
           "postal_code": "Für Deutschland bei aktiviertem Endkundenpreis erforderlich, wird für die Netzentgelt-Ermittlung genutzt. Für andere Märkte nicht benötigt.",
           "update_interval_minutes": "Wie oft die API abgefragt wird. Die Datenauflösung liegt bei 15 Minuten, kürzere Intervalle liefern daher selten neue Informationen.",
           "cheapest_hours_count": "Die Zeit wird in feste, lückenlose Blöcke geteilt (siehe unten), und in jedem Block werden so viele einzelne - nicht zwingend zusammenhängende - Stunden als die günstigsten ausgewählt. Gut für eine Wärmepumpe: z. B. 12 von 24 Stunden wählt an jedem Kalendertag die zwölf günstigsten Stunden. Der Plan eines Blocks wird nach seiner Erstellung nicht mehr neu gemischt, auch wenn sich die Prognose später ändert. Darf nie größer als die Blocklänge sein; sind nicht genug Prognosedaten für den vollständigen Block vorhanden, wird gar kein Plan veröffentlicht.",
-          "cheapest_hours_window_hours": "Länge des sich wiederholenden Blocks. 24 wiederholt sich täglich; 48 wählt Stunden aus einem festen Zweitagesblock (z. B. Montag 00:00 bis Mittwoch 00:00, dann Mittwoch bis Freitag usw.). Ein längerer Block bietet mehr Auswahl - meist mehr Ersparnis, aber eine ungleichmäßiger verteilte Laufzeit.",
+          "cheapest_hours_window_hours": "Länge des sich wiederholenden Blocks. 24 wiederholt sich täglich; 48 wählt Stunden aus einem festen Zweitagesblock (z. B. Montag 00:00 bis Mittwoch 00:00, dann Mittwoch bis Freitag usw.). Ein längerer Block bietet mehr Auswahl - meist mehr Ersparnis, aber eine ungleichmäßiger verteilte Laufzeit. Der Plan für die saubersten Stunden nutzt denselben Block.",
           "cheapest_hours_start_hour": "Ortszeit-Stunde (0-23), zu der jeder Block beginnt. 0 bedeutet, Blöcke beginnen um Mitternacht; bei einem 24-Stunden-Block ist das einfach der Beginn jedes Kalendertags.",
-          "weekend_hours_count": "Ein eigener Plan für einen festen Block von Samstag 00:00 bis Montag 00:00, unabhängig vom obigen Block - nützlich für eine Wallbox, die nur die Wochenend-Flexibilität nutzen soll. Wird genauso ausgewählt und fixiert, erfordert aber, dass das gesamte Wochenende von der Prognose abgedeckt ist (auch bereits vergangene Stunden), bevor er fixiert wird - ein nach einem späten Neustart erstellter Plan ist dadurch nie unvollständig."
+          "weekend_hours_count": "Ein eigener Plan für einen festen Block von Samstag 00:00 bis Montag 00:00, unabhängig vom obigen Block - nützlich für eine Wallbox, die nur die Wochenend-Flexibilität nutzen soll. Wird genauso ausgewählt und fixiert, erfordert aber, dass das gesamte Wochenende von der Prognose abgedeckt ist (auch bereits vergangene Stunden), bevor er fixiert wird - ein nach einem späten Neustart erstellter Plan ist dadurch nie unvollständig.",
+          "greenest_hours_count": "Dieselben Blöcke wie oben, aber die Stunden werden nach der CO2-Intensität des Netzes statt nach dem Preis gewählt. Gleiche Regeln: einmal gewählt bleibt der Plan stehen, und solange die Prognose den Block nicht abdeckt, wird gar kein Plan veröffentlicht. Darf nicht größer als die Blocklänge sein."
         }
       }
     },
@@ -69,7 +73,8 @@
       "postal_code_required": "Für Endkundenpreise in Deutschland ist eine Postleitzahl erforderlich.",
       "invalid_postal_code": "Bitte eine 5-stellige deutsche Postleitzahl eingeben.",
       "retail_unavailable": "Endkundenpreise für diesen Markt bzw. diese Postleitzahl konnten nicht geprüft werden.",
-      "cheapest_hours_exceeds_window": "Die günstigsten Stunden je Block dürfen nicht größer als die Blocklänge sein."
+      "cheapest_hours_exceeds_window": "Die günstigsten Stunden je Block dürfen nicht größer als die Blocklänge sein.",
+      "greenest_hours_exceeds_window": "Die Anzahl der saubersten Stunden darf die Blocklänge nicht überschreiten."
     },
     "abort": {
       "already_configured": "Dieser Markt ist bereits eingerichtet."
@@ -86,14 +91,20 @@
       "greenest_window_start": {"name": "Start grünstes Fenster"},
       "greenest_window_end": {"name": "Ende grünstes Fenster"},
       "combined_window_score": {"name": "Kombinierter Fenster-Score"},
+      "combined_window_start": {"name": "Kombi-Fenster Start"},
+      "combined_window_end": {"name": "Kombi-Fenster Ende"},
       "allowed_horizon": {"name": "Erlaubter Horizont"},
       "used_horizon": {"name": "Genutzter Horizont"},
       "api_key_state": {"name": "API-Key-Status"},
       "last_update": {"name": "Letzte API-Aktualisierung"},
       "price_series": {"name": "Preisreihe"},
+      "co2_series": {"name": "CO2-Prognosereihe"},
       "retail_current_price": {"name": "Aktueller Endkundenpreis"},
       "cheapest_hours_next_start": {"name": "Nächste günstige Stunde"},
       "weekend_hours_next_start": {"name": "Nächste günstige Wochenendstunde"},
+      "greenest_hours_next_start": {"name": "Nächste sauberste Stunde"},
+      "greenest_hours_average_co2": {"name": "Sauberste Stunden Durchschnitts-CO2"},
+      "greenest_hours_saving": {"name": "Sauberste Stunden Ersparnis"},
       "retail_cheapest_window_average_price": {"name": "Durchschnittspreis günstigstes Fenster (Endkundenpreis)"},
       "retail_cheapest_window_start": {"name": "Start günstigstes Fenster (Endkundenpreis)"},
       "retail_cheapest_window_end": {"name": "Ende günstigstes Fenster (Endkundenpreis)"},
@@ -111,6 +122,8 @@
       "greenest_window_active": {"name": "Grünstes Fenster aktiv"},
       "is_in_cheapest_hours": {"name": "Günstigste Stunden aktiv"},
       "is_in_weekend_hours": {"name": "Günstigste Wochenendstunden aktiv"},
+      "is_in_greenest_hours": {"name": "Sauberste Stunden aktiv"},
+      "combined_window_active": {"name": "Kombi-Fenster aktiv"},
       "retail_cheapest_window_active": {"name": "Günstigstes Fenster aktiv (Endkundenpreis)"}
     }
   }

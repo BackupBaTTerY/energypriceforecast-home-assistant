@@ -115,15 +115,25 @@ class EnergyPriceForecastApi:
         return payload
 
     async def async_get_summary(
-        self, price_mode: str = "base", postal_code: str | None = None
+        self,
+        price_mode: str = "base",
+        postal_code: str | None = None,
+        include_series: bool = False,
     ) -> dict[str, Any]:
-        """Fetch and validate one automation summary."""
+        """Fetch and validate one automation summary.
+
+        include_series asks for the raw price and CO2 series. The CO2 series
+        has no endpoint of its own - the summary is the only place it is
+        published - and one flag returns both, so asking for it also repeats
+        the price series the prices endpoint already serves. Callers that do
+        not need CO2 slots should leave it off rather than pay for that.
+        """
         params = {
             "country": self._market.lower(),
             "hours": str(self._horizon_hours),
             "summary_hours": str(self._horizon_hours),
             "window_hours": str(self._window_hours),
-            "include_series": "false",
+            "include_series": "true" if include_series else "false",
             "prefer_live_day_ahead": "true",
             "price_mode": price_mode,
         }

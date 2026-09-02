@@ -44,6 +44,7 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         cheapest_hours_window_hours: int = 24,
         cheapest_hours_start_hour: int = 0,
         weekend_hours_count: int = 0,
+        greenest_hours_count: int = 0,
     ) -> None:
         super().__init__(
             hass,
@@ -58,15 +59,19 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.cheapest_hours_window_hours = cheapest_hours_window_hours
         self.cheapest_hours_start_hour = cheapest_hours_start_hour
         self.weekend_hours_count = weekend_hours_count
+        self.greenest_hours_count = greenest_hours_count
         self.retail_data: dict[str, Any] | None = None
         self.retail_summary: dict[str, Any] | None = None
         self.price_series: dict[str, Any] | None = None
+        self.co2_series: dict[str, Any] | None = None
         self.cheapest_hours: list[dict[str, Any]] | None = None
         self.weekend_hours: list[dict[str, Any]] | None = None
+        self.greenest_hours: list[dict[str, Any]] | None = None
         # What the whole block averages, locked together with its plan - the
         # baseline the plan's own average is compared against.
         self.cheapest_hours_window_average: float | None = None
         self.weekend_hours_window_average: float | None = None
+        self.greenest_hours_window_average: float | None = None
         self._plan_store = Store[dict[str, Any]](
             hass, _PLAN_STORAGE_VERSION, f"{DOMAIN}_{entry_id}_plans"
         )
@@ -234,11 +239,28 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 del cache[stale_key]
         await self._plan_store.async_save(cache)
 
+    @staticmethod
+    def _co2_series_from(summary: dict[str, Any]) -> dict[str, Any] | None:
+        """Lift the summary's CO2 slots into the same shape as a price series.
+
+        Everything downstream - the series sensor, the planner - already
+        speaks that shape, so CO2 needs no parallel code path.
+        """
+        entries = (summary.get("series") or {}).get("co2")
+        if not isinstance(entries, list) or not entries:
+            return None
+        unit = (summary.get("co2") or {}).get("unit") or "gCO2/kWh"
+        return {"unit": unit, "entries": entries}
+
     async def _async_update_data(self) -> dict[str, Any]:
         try:
-            summary = await self.api.async_get_summary()
+            summary = await self.api.async_get_summary(include_series=True)
         except EnergyPriceForecastApiError as err:
             raise UpdateFailed(str(err)) from err
+
+        # A market without CO2 coverage returns no slots. Keeping the last
+        # ones would be worse than showing nothing, so this clears.
+        self.co2_series = self._co2_series_from(summary)
 
         if self.retail_pricing:
             # Retail pricing is a supplementary feature: a temporary failure
@@ -316,6 +338,30 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             )
             self.weekend_hours = plan["hours"] if plan else None
             self.weekend_hours_window_average = (
+                plan["window_average_value"] if plan else None
+            )
+
+        # The greenest hours share the block geometry with the cheapest ones -
+        # same length, same anchor - but are picked on CO2 intensity. The
+        # planner ranks whatever "value" it is handed, so this is the same
+        # locking, the same coverage rule and the same one-off correction when
+        # the numbers settle, applied to a different series.
+        if self.greenest_hours_count > 0 and self.co2_series:
+            window_start, window_end = fixed_repeating_window(
+                now, self.cheapest_hours_start_hour, self.cheapest_hours_window_hours
+            )
+            plan = await self._async_get_plan(
+                f"greenest|co2|{self.greenest_hours_count}|"
+                f"{self.cheapest_hours_window_hours}|{self.cheapest_hours_start_hour}",
+                window_start,
+                window_end,
+                self.greenest_hours_count,
+                self.co2_series["entries"],
+                max(window_start, now),
+                now,
+            )
+            self.greenest_hours = plan["hours"] if plan else None
+            self.greenest_hours_window_average = (
                 plan["window_average_value"] if plan else None
             )
 

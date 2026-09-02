@@ -16,7 +16,8 @@
           "cheapest_hours_count": "Nejlevnější hodiny na blok (0 pro vypnutí)",
           "cheapest_hours_window_hours": "Délka bloku (hodiny)",
           "cheapest_hours_start_hour": "Počáteční hodina bloku (místní čas)",
-          "weekend_hours_count": "Nejlevnější hodiny pro víkendový plán (0 pro vypnutí)"
+          "weekend_hours_count": "Nejlevnější hodiny pro víkendový plán (0 pro vypnutí)",
+          "greenest_hours_count": "Nejčistší hodiny na blok (0 = vypnuto)"
         },
         "data_description": {
           "horizon_hours": "API hlásí skutečně povolený horizont jako diagnostický senzor.",
@@ -26,9 +27,10 @@
           "postal_code": "Vyžadováno pro Německo, pokud je povolena maloobchodní cena, používá se pro vyhledání poplatku za síť. Pro ostatní trhy se nepoužívá.",
           "update_interval_minutes": "Jak často se API dotazuje. Rozlišení dat je 15 minut, kratší intervaly proto zřídka přinášejí nové informace.",
           "cheapest_hours_count": "Čas se rozdělí na pevné, na sebe navazující bloky (nastavte níže) a v každém bloku se jako nejlevnější vybere tolik jednotlivých - případně nesouvislých - hodin. Vhodné pro tepelné čerpadlo: např. 12 z 24 hodin vybere každý kalendářní den dvanáct nejlevnějších hodin. Jakmile je plán bloku vybrán, už se znovu nepřeskládá, i když se prognóza později změní. Nesmí být větší než délka bloku, a pokud prognóza ještě plně nepokrývá celý blok, plán se vůbec nezveřejní.",
-          "cheapest_hours_window_hours": "Jak dlouhý je každý opakující se blok. 24 se opakuje denně; 48 vybírá hodiny z pevného dvoudenního bloku (např. pondělí 00:00 až středa 00:00, poté středa až pátek atd.). Delší blok nabízí větší výběr - obvykle vyšší úsporu, ale méně rovnoměrně rozložený provoz.",
+          "cheapest_hours_window_hours": "Jak dlouhý je každý opakující se blok. 24 se opakuje denně; 48 vybírá hodiny z pevného dvoudenního bloku (např. pondělí 00:00 až středa 00:00, poté středa až pátek atd.). Delší blok nabízí větší výběr - obvykle vyšší úsporu, ale méně rovnoměrně rozložený provoz. Plán nejčistších hodin používá stejný blok.",
           "cheapest_hours_start_hour": "Místní hodina dne (0-23), kdy každý blok začíná. 0 znamená, že bloky začínají o půlnoci; u 24hodinového bloku je to prostě začátek každého kalendářního dne.",
-          "weekend_hours_count": "Samostatný plán pro pevný blok od soboty 00:00 do pondělí 00:00, nezávislý na výše uvedeném bloku - užitečné pro nabíječku, která má využívat pouze víkendovou flexibilitu. Vybírá se a zamyká stejným způsobem, ale vyžaduje, aby prognóza pokrývala celý víkend (včetně již uplynulých hodin), než se zamkne, takže plán vytvořený po pozdním restartu nikdy není částečný."
+          "weekend_hours_count": "Samostatný plán pro pevný blok od soboty 00:00 do pondělí 00:00, nezávislý na výše uvedeném bloku - užitečné pro nabíječku, která má využívat pouze víkendovou flexibilitu. Vybírá se a zamyká stejným způsobem, ale vyžaduje, aby prognóza pokrývala celý víkend (včetně již uplynulých hodin), než se zamkne, takže plán vytvořený po pozdním restartu nikdy není částečný.",
+          "greenest_hours_count": "Stejné bloky jako výše, ale hodiny se vybírají podle emisní náročnosti sítě místo podle ceny. Stejná pravidla: jednou vybraný plán se už nemění a dokud předpověď blok nepokryje, žádný plán se nezveřejní. Nesmí být větší než délka bloku."
         }
       },
       "reconfigure": {
@@ -45,7 +47,8 @@
           "cheapest_hours_count": "Nejlevnější hodiny na blok (0 pro vypnutí)",
           "cheapest_hours_window_hours": "Délka bloku (hodiny)",
           "cheapest_hours_start_hour": "Počáteční hodina bloku (místní čas)",
-          "weekend_hours_count": "Nejlevnější hodiny pro víkendový plán (0 pro vypnutí)"
+          "weekend_hours_count": "Nejlevnější hodiny pro víkendový plán (0 pro vypnutí)",
+          "greenest_hours_count": "Nejčistší hodiny na blok (0 = vypnuto)"
         },
         "data_description": {
           "horizon_hours": "API hlásí skutečně povolený horizont jako diagnostický senzor.",
@@ -54,9 +57,10 @@
           "postal_code": "Vyžadováno pro Německo, pokud je povolena maloobchodní cena, používá se pro vyhledání poplatku za síť. Pro ostatní trhy se nepoužívá.",
           "update_interval_minutes": "Jak často se API dotazuje. Rozlišení dat je 15 minut, kratší intervaly proto zřídka přinášejí nové informace.",
           "cheapest_hours_count": "Čas se rozdělí na pevné, na sebe navazující bloky (nastavte níže) a v každém bloku se jako nejlevnější vybere tolik jednotlivých - případně nesouvislých - hodin. Vhodné pro tepelné čerpadlo: např. 12 z 24 hodin vybere každý kalendářní den dvanáct nejlevnějších hodin. Jakmile je plán bloku vybrán, už se znovu nepřeskládá, i když se prognóza později změní. Nesmí být větší než délka bloku, a pokud prognóza ještě plně nepokrývá celý blok, plán se vůbec nezveřejní.",
-          "cheapest_hours_window_hours": "Jak dlouhý je každý opakující se blok. 24 se opakuje denně; 48 vybírá hodiny z pevného dvoudenního bloku (např. pondělí 00:00 až středa 00:00, poté středa až pátek atd.). Delší blok nabízí větší výběr - obvykle vyšší úsporu, ale méně rovnoměrně rozložený provoz.",
+          "cheapest_hours_window_hours": "Jak dlouhý je každý opakující se blok. 24 se opakuje denně; 48 vybírá hodiny z pevného dvoudenního bloku (např. pondělí 00:00 až středa 00:00, poté středa až pátek atd.). Delší blok nabízí větší výběr - obvykle vyšší úsporu, ale méně rovnoměrně rozložený provoz. Plán nejčistších hodin používá stejný blok.",
           "cheapest_hours_start_hour": "Místní hodina dne (0-23), kdy každý blok začíná. 0 znamená, že bloky začínají o půlnoci; u 24hodinového bloku je to prostě začátek každého kalendářního dne.",
-          "weekend_hours_count": "Samostatný plán pro pevný blok od soboty 00:00 do pondělí 00:00, nezávislý na výše uvedeném bloku - užitečné pro nabíječku, která má využívat pouze víkendovou flexibilitu. Vybírá se a zamyká stejným způsobem, ale vyžaduje, aby prognóza pokrývala celý víkend (včetně již uplynulých hodin), než se zamkne, takže plán vytvořený po pozdním restartu nikdy není částečný."
+          "weekend_hours_count": "Samostatný plán pro pevný blok od soboty 00:00 do pondělí 00:00, nezávislý na výše uvedeném bloku - užitečné pro nabíječku, která má využívat pouze víkendovou flexibilitu. Vybírá se a zamyká stejným způsobem, ale vyžaduje, aby prognóza pokrývala celý víkend (včetně již uplynulých hodin), než se zamkne, takže plán vytvořený po pozdním restartu nikdy není částečný.",
+          "greenest_hours_count": "Stejné bloky jako výše, ale hodiny se vybírají podle emisní náročnosti sítě místo podle ceny. Stejná pravidla: jednou vybraný plán se už nemění a dokud předpověď blok nepokryje, žádný plán se nezveřejní. Nesmí být větší než délka bloku."
         }
       }
     },
@@ -69,7 +73,8 @@
       "postal_code_required": "Pro maloobchodní ceny v Německu je vyžadováno PSČ.",
       "invalid_postal_code": "Zadejte 5místné německé PSČ.",
       "retail_unavailable": "Nepodařilo se ověřit maloobchodní cenu pro tento trh nebo PSČ.",
-      "cheapest_hours_exceeds_window": "Nejlevnější hodiny na blok nesmí být větší než délka bloku."
+      "cheapest_hours_exceeds_window": "Nejlevnější hodiny na blok nesmí být větší než délka bloku.",
+      "greenest_hours_exceeds_window": "Počet nejčistších hodin nesmí být větší než délka bloku."
     },
     "abort": {
       "already_configured": "Tento trh je již nakonfigurován."
@@ -86,14 +91,20 @@
       "greenest_window_start": {"name": "Začátek nejzelenějšího okna"},
       "greenest_window_end": {"name": "Konec nejzelenějšího okna"},
       "combined_window_score": {"name": "Kombinované skóre okna"},
+      "combined_window_start": {"name": "Začátek kombinovaného okna"},
+      "combined_window_end": {"name": "Konec kombinovaného okna"},
       "allowed_horizon": {"name": "Povolený horizont"},
       "used_horizon": {"name": "Využitý horizont"},
       "api_key_state": {"name": "Stav API klíče"},
       "last_update": {"name": "Poslední aktualizace API"},
       "price_series": {"name": "Cenová řada"},
+      "co2_series": {"name": "Řada předpovědi CO2"},
       "retail_current_price": {"name": "Aktuální maloobchodní cena"},
       "cheapest_hours_next_start": {"name": "Další nejlevnější hodina"},
       "weekend_hours_next_start": {"name": "Další nejlevnější víkendová hodina"},
+      "greenest_hours_next_start": {"name": "Další nejčistší hodina"},
+      "greenest_hours_average_co2": {"name": "Průměrné CO2 nejčistších hodin"},
+      "greenest_hours_saving": {"name": "Úspora nejčistších hodin"},
       "retail_cheapest_window_average_price": {"name": "Průměrná cena nejlevnějšího okna (maloobchodní)"},
       "retail_cheapest_window_start": {"name": "Začátek nejlevnějšího okna (maloobchodní)"},
       "retail_cheapest_window_end": {"name": "Konec nejlevnějšího okna (maloobchodní)"},
@@ -111,6 +122,8 @@
       "greenest_window_active": {"name": "Nejzelenější okno aktivní"},
       "is_in_cheapest_hours": {"name": "Nejlevnější hodiny aktivní"},
       "is_in_weekend_hours": {"name": "Nejlevnější víkendové hodiny aktivní"},
+      "is_in_greenest_hours": {"name": "Nejčistší hodiny aktivní"},
+      "combined_window_active": {"name": "Kombinované okno aktivní"},
       "retail_cheapest_window_active": {"name": "Nejlevnější okno aktivní (maloobchodní)"}
     }
   }

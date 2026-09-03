@@ -214,18 +214,21 @@ Four things are worth knowing before an automation acts on it:
 - **Unknown generation gets a placeholder**, deliberately a high one, so that
   what we cannot identify is not silently counted as clean. That value is a
   guard, not a measurement.
-- **Storage currently counts as generation** at that placeholder, rather than
-  inheriting the emissions of the electricity it was charged with plus its
-  losses. While storage is a small share of generation this barely moves the
-  curve; it will be revisited when that stops being true.
+- **Storage is approximated in both directions.** Pumped storage is carried
+  as hydro and battery storage as unidentified generation, where the honest
+  answer would be the intensity of the electricity each was charged with plus
+  its losses. While storage is a small share of generation this barely moves
+  the curve; it will be revisited when that stops being true.
 - **The literature ranges are wide** - UNECE puts photovoltaics at roughly
   8-83 and wind at 7.8-23 gCO2e/kWh - so a single factor per category is
   always a choice, not a fact.
 
-The factors themselves are published by the API in `co2.assumptions`, together
-with the model version that applied them, rather than restated here. A copy in
-this file would drift from the values actually used, and an assumption that
-disagrees with the computation is worse than none.
+The factors themselves are published by the API in `co2.assumptions`, rather
+than restated here: the versioned profile name, the value per production type,
+and for each one whether it is a published IPCC median or a project stand-in -
+which you cannot tell by looking at the number. A copy in this file would drift
+from the values actually used, and an assumption that disagrees with the
+computation is worse than none.
 
 None of this makes the number useless: for deciding *which hour today is
 cleaner than another*, the mix forecast carries the signal and the factor

@@ -199,6 +199,40 @@ intensity instead of price. Everything else is identical: the plan locks once
 picked, no partial plan is ever published, and the saving compares the picked
 hours against the block's own average.
 
+### Where the CO2 number comes from
+
+It is **modelled, not measured**, and it is a forecast in the same sense the
+price is: the generation mix is predicted from weather and demand, and each
+ENTSO-E production type is multiplied by a lifecycle emission factor to give
+gCO2e/kWh.
+
+Four things are worth knowing before an automation acts on it:
+
+- **ENTSO-E categories are coarse.** They say nothing about plant age, fuel
+  quality, efficiency or lifecycle system boundary, and one category can cover
+  very different technologies.
+- **Unknown generation gets a placeholder**, deliberately a high one, so that
+  what we cannot identify is not silently counted as clean. That value is a
+  guard, not a measurement.
+- **Storage currently counts as generation** at that placeholder, rather than
+  inheriting the emissions of the electricity it was charged with plus its
+  losses. While storage is a small share of generation this barely moves the
+  curve; it will be revisited when that stops being true.
+- **The literature ranges are wide** - UNECE puts photovoltaics at roughly
+  8-83 and wind at 7.8-23 gCO2e/kWh - so a single factor per category is
+  always a choice, not a fact.
+
+The factors themselves are published by the API in `co2.assumptions`, together
+with the model version that applied them, rather than restated here. A copy in
+this file would drift from the values actually used, and an assumption that
+disagrees with the computation is worse than none.
+
+None of this makes the number useless: for deciding *which hour today is
+cleaner than another*, the mix forecast carries the signal and the factor
+uncertainty largely cancels out. It does mean the absolute gCO2e/kWh should
+not be treated as a measured quantity, and that "grams avoided" is a
+comparison against another hour in the same block, nothing more.
+
 ### Attributes worth knowing
 
 - **Price forecast series** and **Current retail price** carry `raw_today`,

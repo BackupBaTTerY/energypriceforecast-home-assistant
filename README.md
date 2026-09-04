@@ -223,12 +223,16 @@ Four things are worth knowing before an automation acts on it:
   8-83 and wind at 7.8-23 gCO2e/kWh - so a single factor per category is
   always a choice, not a fact.
 
-The factors themselves are published by the API in `co2.assumptions`, rather
-than restated here: the versioned profile name, the value per production type,
-and for each one whether it is a published IPCC median or a project stand-in -
-which you cannot tell by looking at the number. A copy in this file would drift
-from the values actually used, and an assumption that disagrees with the
-computation is worse than none.
+The factors themselves are not restated here - a copy would drift from the
+values actually used, and an assumption that disagrees with the computation is
+worse than none. They belong in the API's `co2.assumptions` field instead: the
+versioned profile name, the value per production type, and for each one whether
+it is a published IPCC median or a project stand-in, which you cannot tell by
+looking at the number.
+
+> That field is still rolling out. Until the backend deploy lands it reports
+> `available: false` and says why, rather than showing figures that might not
+> be the ones your reading was computed with.
 
 None of this makes the number useless: for deciding *which hour today is
 cleaner than another*, the mix forecast carries the signal and the factor

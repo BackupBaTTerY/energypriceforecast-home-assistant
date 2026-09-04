@@ -230,9 +230,11 @@ versioned profile name, the value per production type, and for each one whether
 it is a published IPCC median or a project stand-in, which you cannot tell by
 looking at the number.
 
-> That field is still rolling out. Until the backend deploy lands it reports
-> `available: false` and says why, rather than showing figures that might not
-> be the ones your reading was computed with.
+The **CO2 forecast series** sensor carries the same block in its `assumptions`
+attribute *(1.2.1)*, so you can read it in Home Assistant without calling the
+API yourself. A market whose model has not published its factors yet reports
+`available: false` there and says why, rather than showing figures that might
+not be the ones your reading was computed with.
 
 None of this makes the number useless: for deciding *which hour today is
 cleaner than another*, the mix forecast carries the signal and the factor
@@ -251,7 +253,9 @@ comparison against another hour in the same block, nothing more.
 - **CO2 forecast series** carries the same `raw_today` / `raw_tomorrow` /
   `raw_forecast` attributes as the price series, in gCO2/kWh, so a chart card
   built for prices works by swapping the entity. CO2 is published hourly where
-  prices can be quarter-hourly.
+  prices can be quarter-hourly. It also carries `assumptions` *(1.2.1)* - the
+  emission factors behind the number, with the source status of each; see
+  above.
 - **Next cheapest hour**, **Next weekend cheapest hour** and **Next cleanest
   hour** carry `hours`: the full locked plan as a list of
   `{start, end, average_value}`.

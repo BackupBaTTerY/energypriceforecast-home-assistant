@@ -136,6 +136,11 @@ def _forecast_only(entries: Any) -> list[dict[str, Any]]:
 # from history, so keep them out of the database entirely.
 _SERIES_ATTRIBUTES = frozenset({"raw_today", "raw_tomorrow", "raw_forecast"})
 
+# The emission assumptions are static for a model profile: the same ~1 KB
+# would be written to the database on every single update, describing a
+# value rather than being one.
+_CO2_SERIES_ATTRIBUTES = _SERIES_ATTRIBUTES | {"assumptions"}
+
 
 class _StickyUnitMixin:
     """Keep the last known unit when an update leaves the payload empty.
@@ -989,7 +994,7 @@ class EnergyPriceForecastCo2SeriesSensor(
     _attr_icon = "mdi:molecule-co2"
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_suggested_display_precision = 1
-    _unrecorded_attributes = _SERIES_ATTRIBUTES
+    _unrecorded_attributes = _CO2_SERIES_ATTRIBUTES
 
     def __init__(
         self, coordinator: EnergyPriceForecastCoordinator, entry: ConfigEntry
@@ -1017,6 +1022,11 @@ class EnergyPriceForecastCo2SeriesSensor(
             "raw_today": today,
             "raw_tomorrow": tomorrow,
             "raw_forecast": _forecast_only(entries),
+            # Which emission factors produced these numbers, and for each one
+            # whether it is a published median or a project stand-in. Passed
+            # through as the API sends it: this integration must not restate
+            # figures it does not compute.
+            "assumptions": _path(self.coordinator.data, "co2", "assumptions"),
             **_day_statistics(today, self.native_value),
         }
 

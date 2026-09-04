@@ -814,3 +814,77 @@ async def test_no_greenest_entities_without_a_count(hass) -> None:
     }
     assert f"{entry.entry_id}_greenest_hours_next_start" not in unique_ids
     assert f"{entry.entry_id}_is_in_greenest_hours" not in unique_ids
+
+
+async def test_co2_series_carries_the_emission_assumptions(hass, freezer) -> None:
+    """The factors behind the number reach Home Assistant, not just the API.
+
+    Passed through as the API sends it: this integration does not compute the
+    intensity, so it must not restate the figures that produced it.
+    """
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-08T04:30:00+00:00")
+
+    assumptions = {
+        "available": True,
+        "profile": "lifecycle_co2e_v0.1",
+        "basis": "lifecycle",
+        "unit": "gCO2e/kWh",
+        "factors": [
+            {
+                "production_type": "other",
+                "value_g_co2e_kwh": 450,
+                "source_status": "Projekt-Fallback",
+                "caveat": None,
+            }
+        ],
+        "notes": ["Pumpspeicher wird als hydro gefuehrt."],
+    }
+
+    entry = await _setup_entry(
+        hass,
+        summary_extra={
+            "co2": {
+                "available": True,
+                "unit": "gCO2/kWh",
+                "assumptions": assumptions,
+            },
+            "series": {"co2": _co2_slots("2026-08-08T04:00:00Z", {0: 300.0})},
+        },
+    )
+
+    state = _state_for_unique_id(hass, entry, "co2_series")
+    assert state.attributes["assumptions"] == assumptions
+
+
+def test_co2_assumptions_stay_out_of_the_recorder() -> None:
+    """Static provenance must not be written to the database on every update.
+
+    The block is the same ~1 KB on every poll and describes a value rather
+    than being one - the same reason the raw series are excluded.
+    """
+    from custom_components.energypriceforecast.sensor import (
+        EnergyPriceForecastCo2SeriesSensor,
+    )
+
+    excluded = EnergyPriceForecastCo2SeriesSensor._unrecorded_attributes
+    assert "assumptions" in excluded
+    # The series attributes stay excluded alongside it.
+    assert {"raw_today", "raw_tomorrow", "raw_forecast"} <= set(excluded)
+
+
+async def test_co2_series_without_assumptions_reports_none(hass, freezer) -> None:
+    """A backend that does not publish them yet must not invent a block."""
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-08T04:30:00+00:00")
+
+    entry = await _setup_entry(
+        hass,
+        summary_extra={
+            "co2": {"available": True, "unit": "gCO2/kWh"},
+            "series": {"co2": _co2_slots("2026-08-08T04:00:00Z", {0: 300.0})},
+        },
+    )
+
+    state = _state_for_unique_id(hass, entry, "co2_series")
+    assert state.attributes["assumptions"] is None

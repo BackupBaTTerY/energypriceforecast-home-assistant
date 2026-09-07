@@ -46,7 +46,17 @@ requiring YAML or JSON templates.
 
 ## Supported markets
 
-AT, BE, CZ, DE, DK1, DK2, FI, FR, NL, NO1-NO5, PL and SE1-SE4.
+AT, BE, CH, CZ, DE, DK1, DK2, FI, FR, NL, NO1-NO5, PL, SE1-SE4 and the
+seven Italian price zones: ITN, IT_CNOR, IT_CSUD, IT_SUD, IT_CALA,
+IT_SICI and IT_SARD.
+
+Switzerland and the Italian zones are new. Their forecasts run daily like
+every other market, but the rolling 30-day history each market is judged
+against is still filling up. Until it holds seven days, the forecast
+quality sensors stay empty rather than report a number built on two days
+of data -- expect them around 10 September for Switzerland and 12
+September for the Italian zones. Retail pricing is not offered for either;
+they provide spot price and CO2.
 
 ## Installation with HACS
 

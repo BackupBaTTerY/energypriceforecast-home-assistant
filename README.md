@@ -58,6 +58,37 @@ of data -- expect them around 10 September for Switzerland and 12
 September for the Italian zones. Retail pricing is not offered for either;
 they provide spot price and CO2.
 
+### Before you automate on price in CH or IT
+
+These two markets sell electricity to households differently, and it
+changes what a cheap hour is worth to you.
+
+**Switzerland — no exchange-coupled household tariff, as far as we know.**
+Around 590 grid operators each set their own tariff, calculated from their
+own generation and procurement costs, filed with ElCom by the end of
+August for the following year, and fixed for that whole year. Households
+cannot switch supplier; full market opening is not expected before 2028.
+So a cheap hour on the exchange does not make your bill smaller. The
+price entities still show you what the wholesale market is doing, and the
+CO2 entities work exactly as everywhere else -- shifting a load to a
+clean hour lowers emissions whatever your tariff says. If you know of a
+Swiss household tariff that does follow the spot price, please open an
+issue; we would like to be wrong about this.
+
+**Italy — coupled, but usually not by the hour.**
+Indexed offers on the free market follow the PUN, which *is* the
+day-ahead exchange price. Most of them bill the monthly average, or the
+three F1/F2/F3 time bands. Hourly-indexed contracts exist, and only on
+one of those does shifting a load within the day change your energy rate.
+
+There is a second wrinkle: Italian bills use the *national* PUN, while
+this integration reports your *zonal* price. Over 153 days we compared
+the zonal series against a load-weighted national index built from all
+seven zones. They picked the same cheapest four-hour window on 93% of
+days, at an average cost of 0.05 ct/kWh when they disagreed. The timing
+carries; the price level does not, which is why no retail price is
+offered for Italy.
+
 ## Installation with HACS
 
 Until the integration is part of the HACS default repository list:

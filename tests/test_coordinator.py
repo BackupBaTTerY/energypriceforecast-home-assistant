@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
 
+import pytest
+
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 DOMAIN = "energypriceforecast"
@@ -476,3 +478,86 @@ async def test_no_co2_series_means_no_co2_plan(hass, freezer) -> None:
 
     assert entry.runtime_data.co2_series is None
     assert entry.runtime_data.greenest_hours is None
+
+
+async def test_a_plan_without_a_currency_keeps_its_old_key(hass, freezer) -> None:
+    """Upgrading must still find every plan stored before the option existed.
+
+    The currency only enters the key when one is asked for. A key that changed
+    for everyone would lose each current block's plan on upgrade and re-pick it
+    halfway through - the one thing a locked plan promises never to do.
+    """
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-12T10:00:00+00:00")
+    entry = await _setup_entry(
+        hass,
+        extra_data={"cheapest_hours_count": 2, "cheapest_hours_window_hours": 24},
+        price_entries=_full_day_entries(
+            "2026-08-12T00:00:00Z",
+            {h: 0.50 for h in range(24)} | {14: 0.05, 16: 0.10},
+        ),
+    )
+
+    keys = list(entry.runtime_data._plan_cache)
+    assert len(keys) == 1
+    assert keys[0].startswith("block|base|2|24|0|")
+
+
+async def test_switching_currency_starts_a_fresh_plan(hass, freezer) -> None:
+    """A euro plan must not be shown next to koruna prices after a switch.
+
+    Reconfiguring reloads the entry, but the stored plans live on disk and
+    survive the reload. With the currency outside the key, the reloaded entry
+    would find this block's euro plan and keep serving its euro averages.
+    """
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-12T10:00:00+00:00")
+    rate = 24.25
+    euro = {h: 0.50 for h in range(24)} | {14: 0.05, 16: 0.10}
+    entry = await _setup_entry(
+        hass,
+        extra_data={
+            "market": "CZ",
+            "cheapest_hours_count": 2,
+            "cheapest_hours_window_hours": 24,
+        },
+        price_entries=_full_day_entries("2026-08-12T00:00:00Z", euro),
+    )
+    assert entry.runtime_data.currency is None
+    euro_average = entry.runtime_data.cheapest_hours_window_average
+    assert euro_average is not None
+
+    koruna_payload = {
+        "format": "home-assistant-prices",
+        "country": "CZ",
+        "currency": "CZK",
+        "unit": "CZK/kWh",
+        "entries": _full_day_entries(
+            "2026-08-12T00:00:00Z", {h: p * rate for h, p in euro.items()}
+        ),
+    }
+    with (
+        patch(
+            "custom_components.energypriceforecast.api.EnergyPriceForecastApi"
+            ".async_get_summary",
+            new=AsyncMock(return_value=SUMMARY_PAYLOAD),
+        ),
+        patch(
+            "custom_components.energypriceforecast.api.EnergyPriceForecastApi"
+            ".async_get_prices",
+            new=AsyncMock(return_value=koruna_payload),
+        ),
+    ):
+        hass.config_entries.async_update_entry(
+            entry, data={**entry.data, "local_currency": True}
+        )
+        await hass.async_block_till_done()
+
+    coordinator = entry.runtime_data
+    assert coordinator.currency == "CZK"
+    # The same hours - one conversion rate keeps their order ...
+    assert [h["start"].hour for h in coordinator.cheapest_hours] == [14, 16]
+    # ... but priced in koruna rather than carried over from the euro plan.
+    assert coordinator.cheapest_hours_window_average == pytest.approx(
+        euro_average * rate
+    )

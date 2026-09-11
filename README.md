@@ -39,6 +39,8 @@ requiring YAML or JSON templates.
   but picked on grid CO2 intensity instead of price
 - Optional assumption-based all-in retail price for supported markets - plans
   and savings are then computed on the price you actually pay
+- Optional prices in your own currency *(1.4.0)* - Czech koruna, Polish złoty
+  or Swedish krona instead of euro, at the ECB's daily reference rate
 - Configurable poll interval (15-120 minutes)
 - Access and horizon diagnostics, with API key and postal code redacted
 - Multiple market entries, for example DK1 and DK2
@@ -328,6 +330,41 @@ loss than the attributes. If you are still seeing "State attributes ... exceed
 maximum size" warnings, you are on a version older than 0.7.2; update instead
 of configuring around it.
 
+## Prices in your own currency *(1.4.0)*
+
+For Czechia, Poland and Sweden the API answers in euro unless it is asked
+for something else. Tick **Show prices in local currency** when you set the
+integration up or reconfigure it, and every price it shows - current price,
+windows, plans, the price series, the forecast-quality cost - arrives in
+CZK, PLN or SEK instead.
+
+| Market | With the option ticked |
+|---|---|
+| CZ | CZK |
+| PL | PLN |
+| SE1-SE4 | SEK |
+| DK1, DK2, NO1-NO5 | DKK or NOK - already the default, ticked or not |
+| all other markets | euro - the option changes nothing |
+
+**Which exchange rate.** The conversion uses the European Central Bank's
+daily reference rate, and the API picks up a new one within twelve hours of
+its publication. Czech spot tariffs usually convert OTE's euro price with the
+Czech National Bank's rate instead. On 11 September 2026 the two stood at
+24.264 and 24.260 CZK per euro: 0.016% apart, a thousandth of a koruna per
+kWh, far inside the error of any forecast.
+
+**What switching does.** Home Assistant keeps each sensor's long-term
+statistics in the sensor's unit, and it cannot convert between currencies.
+When a price sensor's unit changes from EUR/kWh to CZK/kWh, Home Assistant
+stops extending the old statistics and offers to fix them under
+*Developer tools > Statistics* - usually by deleting them. Switching
+therefore starts the price history afresh. A plan already picked for the
+current block is picked once more in the new currency; the hours stay the
+same, because converting every price with one rate does not change their
+order.
+
+Switzerland stays in euro: the API does not offer francs.
+
 ## Horizon
 
 The public access currently provides up to 48 hours. An eligible API key can
@@ -540,6 +577,9 @@ template:
              | float(0) %}
           {{ (price * energy) | round(2) }}
 ```
+
+If your prices are in your own currency *(1.4.0)*, use its code - `CZK`,
+`PLN` or `SEK` - as the unit instead of `EUR`.
 
 Point `sensor.CHANGE_ME_heat_pump_energy` at a kWh meter for the device - a
 smart plug's energy sensor, or a `utility_meter` helper that you reset per

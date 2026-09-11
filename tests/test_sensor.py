@@ -888,3 +888,28 @@ async def test_co2_series_without_assumptions_reports_none(hass, freezer) -> Non
 
     state = _state_for_unique_id(hass, entry, "co2_series")
     assert state.attributes["assumptions"] is None
+
+
+async def test_the_price_unit_is_whatever_currency_the_api_answers_in(hass) -> None:
+    """Nothing between the API and the sensor may assume euro.
+
+    The conversion is the API's job. What the integration owes is to pass the
+    unit through untouched.
+    """
+    entry = await _setup_entry(
+        hass,
+        extra_data={"market": "CZ", "local_currency": True},
+        summary_extra={
+            "country": "CZ",
+            "flat": {
+                **SUMMARY_PAYLOAD["flat"],
+                "current_price": 5.9365,
+                "current_price_unit": "CZK/kWh",
+            },
+        },
+    )
+
+    state = _state_for_unique_id(hass, entry, "current_price")
+
+    assert state.state == "5.9365"
+    assert state.attributes["unit_of_measurement"] == "CZK/kWh"

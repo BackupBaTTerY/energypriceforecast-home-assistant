@@ -31,6 +31,7 @@ from .api import (
     EnergyPriceForecastConnectionError,
     EnergyPriceForecastInvalidResponse,
     EnergyPriceForecastRetailUnavailable,
+    requested_currency,
 )
 from .const import (
     CONF_API_KEY,
@@ -39,6 +40,7 @@ from .const import (
     CONF_CHEAPEST_HOURS_WINDOW_HOURS,
     CONF_GREENEST_HOURS_COUNT,
     CONF_HORIZON_HOURS,
+    CONF_LOCAL_CURRENCY,
     CONF_MARKET,
     CONF_POSTAL_CODE,
     CONF_RETAIL_PRICING,
@@ -51,6 +53,7 @@ from .const import (
     DEFAULT_CHEAPEST_HOURS_WINDOW_HOURS,
     DEFAULT_GREENEST_HOURS_COUNT,
     DEFAULT_HORIZON_HOURS,
+    DEFAULT_LOCAL_CURRENCY,
     DEFAULT_UPDATE_INTERVAL_MINUTES,
     DEFAULT_WEEKEND_HOURS_COUNT,
     DEFAULT_WINDOW_HOURS,
@@ -148,6 +151,13 @@ def _schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
             vol.Optional(
                 CONF_POSTAL_CODE, default=defaults.get(CONF_POSTAL_CODE, "")
             ): TextSelector(TextSelectorConfig(type=TextSelectorType.TEXT)),
+            # A checkbox, not a currency dropdown: every market sees the same
+            # form, and a free choice would allow pairs like Germany in Swedish
+            # krona. "My market's own currency" cannot be set wrong.
+            vol.Optional(
+                CONF_LOCAL_CURRENCY,
+                default=defaults.get(CONF_LOCAL_CURRENCY, DEFAULT_LOCAL_CURRENCY),
+            ): BooleanSelector(),
             vol.Optional(
                 CONF_UPDATE_INTERVAL_MINUTES,
                 default=defaults.get(
@@ -242,6 +252,9 @@ def _normalize_input(user_input: dict[str, Any]) -> dict[str, Any]:
     else:
         normalized.pop(CONF_API_KEY, None)
     normalized[CONF_RETAIL_PRICING] = bool(normalized.get(CONF_RETAIL_PRICING, False))
+    normalized[CONF_LOCAL_CURRENCY] = bool(
+        normalized.get(CONF_LOCAL_CURRENCY, DEFAULT_LOCAL_CURRENCY)
+    )
     postal_code = str(normalized.get(CONF_POSTAL_CODE, "")).strip()
     if postal_code:
         normalized[CONF_POSTAL_CODE] = postal_code
@@ -319,6 +332,10 @@ async def _validate_input(hass: HomeAssistant, data: dict[str, Any]) -> None:
         horizon_hours=data[CONF_HORIZON_HOURS],
         window_hours=data[CONF_WINDOW_HOURS],
         api_key=data.get(CONF_API_KEY),
+        currency=requested_currency(
+            data[CONF_MARKET],
+            data.get(CONF_LOCAL_CURRENCY, DEFAULT_LOCAL_CURRENCY),
+        ),
     )
     await api.async_get_summary()
     if data[CONF_RETAIL_PRICING]:

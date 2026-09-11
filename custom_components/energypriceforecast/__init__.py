@@ -6,13 +6,14 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .api import EnergyPriceForecastApi
+from .api import EnergyPriceForecastApi, requested_currency
 from .const import (
     CONF_API_KEY,
     CONF_CHEAPEST_HOURS_COUNT,
     CONF_CHEAPEST_HOURS_START_HOUR,
     CONF_CHEAPEST_HOURS_WINDOW_HOURS,
     CONF_HORIZON_HOURS,
+    CONF_LOCAL_CURRENCY,
     CONF_MARKET,
     CONF_POSTAL_CODE,
     CONF_RETAIL_PRICING,
@@ -25,6 +26,7 @@ from .const import (
     DEFAULT_CHEAPEST_HOURS_START_HOUR,
     DEFAULT_CHEAPEST_HOURS_WINDOW_HOURS,
     DEFAULT_HORIZON_HOURS,
+    DEFAULT_LOCAL_CURRENCY,
     DEFAULT_UPDATE_INTERVAL_MINUTES,
     DEFAULT_GREENEST_HOURS_COUNT,
     DEFAULT_WEEKEND_HOURS_COUNT,
@@ -37,6 +39,12 @@ from .coordinator import EnergyPriceForecastCoordinator
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up one configured market."""
+    # An entry saved before the option existed has no such key, which reads
+    # as off: exactly the currency it was getting before.
+    currency = requested_currency(
+        entry.data[CONF_MARKET],
+        entry.data.get(CONF_LOCAL_CURRENCY, DEFAULT_LOCAL_CURRENCY),
+    )
     api = EnergyPriceForecastApi(
         session=async_get_clientsession(hass),
         base_url=DEFAULT_API_URL,
@@ -45,6 +53,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         horizon_hours=entry.data[CONF_HORIZON_HOURS],
         window_hours=entry.data[CONF_WINDOW_HOURS],
         api_key=entry.data.get(CONF_API_KEY),
+        currency=currency,
     )
     coordinator = EnergyPriceForecastCoordinator(
         hass,
@@ -70,6 +79,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         greenest_hours_count=entry.data.get(
             CONF_GREENEST_HOURS_COUNT, DEFAULT_GREENEST_HOURS_COUNT
         ),
+        currency=currency,
     )
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator

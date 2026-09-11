@@ -370,3 +370,38 @@ def test_a_missing_greenest_count_is_not_an_error() -> None:
         CONF_CHEAPEST_HOURS_WINDOW_HOURS: 24,
     }
     assert _validate_cheapest_hours_selection(data) is None
+
+
+async def test_user_flow_stores_the_local_currency_choice(hass) -> None:
+    """The checkbox is saved on the entry as a plain boolean."""
+    with patch(
+        "custom_components.energypriceforecast.config_flow._validate_input",
+        new=AsyncMock(return_value=None),
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {**BASE_USER_INPUT, "market": "CZ", "local_currency": True},
+        )
+
+    assert result["type"] is data_entry_flow.FlowResultType.CREATE_ENTRY
+    assert result["data"]["local_currency"] is True
+
+
+async def test_local_currency_is_off_unless_ticked(hass) -> None:
+    """Left alone, every market keeps the currency it had before."""
+    with patch(
+        "custom_components.energypriceforecast.config_flow._validate_input",
+        new=AsyncMock(return_value=None),
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], BASE_USER_INPUT
+        )
+
+    assert result["type"] is data_entry_flow.FlowResultType.CREATE_ENTRY
+    assert result["data"]["local_currency"] is False

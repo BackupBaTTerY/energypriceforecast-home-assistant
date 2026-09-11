@@ -9,7 +9,7 @@ NAME: Final = "Energy Price Forecast EU"
 # from. Must equal manifest.json's version - test_version.py enforces that,
 # because this drifted to 0.1.0 for ten releases and every request from
 # every user was mislabelled the whole time.
-VERSION: Final = "1.3.0"
+VERSION: Final = "1.4.0"
 DEFAULT_API_URL: Final = (
     "https://api.energypriceforecast.eu/api/v1/home-assistant/summary"
 )
@@ -37,6 +37,8 @@ CONF_WINDOW_HOURS: Final = "window_hours"
 CONF_API_KEY: Final = "api_key"
 CONF_RETAIL_PRICING: Final = "retail_pricing"
 CONF_POSTAL_CODE: Final = "postal_code"
+CONF_LOCAL_CURRENCY: Final = "local_currency"
+DEFAULT_LOCAL_CURRENCY: Final = False
 CONF_UPDATE_INTERVAL_MINUTES: Final = "update_interval_minutes"
 CONF_CHEAPEST_HOURS_COUNT: Final = "cheapest_hours_count"
 DEFAULT_CHEAPEST_HOURS_COUNT: Final = 0
@@ -84,6 +86,21 @@ PLATFORMS: Final = ["sensor", "binary_sensor"]
 RETAIL_MARKETS: Final[frozenset[str]] = frozenset(
     {"DE", "NL", "DK1", "DK2", "AT", "NO1", "NO2", "NO3", "NO4", "NO5"}
 )
+
+# Markets whose prices the API can convert from euro into their own
+# currency, at the ECB's daily reference rate. Only markets the API answers
+# in euro by default are listed: Denmark and Norway get DKK and NOK without
+# asking, so the option has nothing to change there - and must not change
+# anything, because the currency becomes part of a stored plan's key, and a
+# key that changed on upgrade would re-pick a plan halfway through its block.
+LOCAL_CURRENCY_BY_MARKET: Final[dict[str, str]] = {
+    "CZ": "CZK",
+    "PL": "PLN",
+    "SE1": "SEK",
+    "SE2": "SEK",
+    "SE3": "SEK",
+    "SE4": "SEK",
+}
 
 MARKETS: Final[dict[str, str]] = {
     "AT": "Austria",

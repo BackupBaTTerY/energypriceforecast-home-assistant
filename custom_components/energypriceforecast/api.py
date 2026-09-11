@@ -7,7 +7,7 @@ from typing import Any
 
 from aiohttp import ClientError, ClientResponseError, ClientSession
 
-from .const import VERSION
+from .const import LOCAL_CURRENCY_BY_MARKET, VERSION
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -56,6 +56,18 @@ REJECTED_API_KEY_STATES = frozenset(
 DEGRADED_API_KEY_STATES = frozenset({"lookup_failed", "rate_limited"})
 
 
+def requested_currency(market: str, local_currency: bool) -> str | None:
+    """The currency to ask the API for, or None to leave its default alone.
+
+    None whenever the option is off or the market has nothing to switch to:
+    euro markets are already in their own currency, and Denmark and Norway
+    are answered in DKK and NOK without being asked.
+    """
+    if not local_currency:
+        return None
+    return LOCAL_CURRENCY_BY_MARKET.get(str(market).upper())
+
+
 class EnergyPriceForecastApi:
     """Small asynchronous API client using Home Assistant's shared session."""
 
@@ -68,6 +80,7 @@ class EnergyPriceForecastApi:
         window_hours: int,
         api_key: str | None = None,
         prices_url: str | None = None,
+        currency: str | None = None,
     ) -> None:
         self._session = session
         self._base_url = base_url
@@ -76,6 +89,19 @@ class EnergyPriceForecastApi:
         self._horizon_hours = horizon_hours
         self._window_hours = window_hours
         self._api_key = (api_key or "").strip()
+        self._currency = (currency or "").strip().upper() or None
+
+    def _with_currency(self, params: dict[str, str]) -> dict[str, str]:
+        """Ask for the configured currency, or leave the API's default alone.
+
+        Without the parameter the API answers in the market's own default -
+        euro for most markets, DKK and NOK for Denmark and Norway - which is
+        exactly what every entry configured before this option existed got,
+        so leaving it out is what keeps those requests unchanged.
+        """
+        if self._currency:
+            params["currency"] = self._currency
+        return params
 
     async def _async_request(
         self, url: str, params: dict[str, str]
@@ -139,7 +165,9 @@ class EnergyPriceForecastApi:
         }
         if postal_code:
             params["plz"] = postal_code
-        payload = await self._async_request(self._base_url, params)
+        payload = await self._async_request(
+            self._base_url, self._with_currency(params)
+        )
 
         if payload.get("format") != "home-assistant-summary":
             raise EnergyPriceForecastInvalidResponse("Unexpected response format.")
@@ -166,7 +194,9 @@ class EnergyPriceForecastApi:
         }
         if postal_code:
             params["plz"] = postal_code
-        payload = await self._async_request(self._prices_url, params)
+        payload = await self._async_request(
+            self._prices_url, self._with_currency(params)
+        )
 
         if payload.get("format") != "home-assistant-prices":
             raise EnergyPriceForecastInvalidResponse("Unexpected response format.")

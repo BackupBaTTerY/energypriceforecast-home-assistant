@@ -45,6 +45,7 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         cheapest_hours_start_hour: int = 0,
         weekend_hours_count: int = 0,
         greenest_hours_count: int = 0,
+        currency: str | None = None,
     ) -> None:
         super().__init__(
             hass,
@@ -60,6 +61,7 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.cheapest_hours_start_hour = cheapest_hours_start_hour
         self.weekend_hours_count = weekend_hours_count
         self.greenest_hours_count = greenest_hours_count
+        self.currency = currency
         self.retail_data: dict[str, Any] | None = None
         self.retail_summary: dict[str, Any] | None = None
         self.price_series: dict[str, Any] | None = None
@@ -300,13 +302,24 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # data is back.
         plan_series = self.plan_series
         plan_price_mode = "retail" if self.retail_pricing else "base"
+        # A stored plan keeps its averages in the currency it was priced in,
+        # so the currency belongs in its key: switching from EUR to CZK must
+        # start a fresh plan rather than show a euro average next to koruna
+        # prices. It is only added when a currency was actually asked for,
+        # which keeps every key written before this option existed exactly
+        # as it was - a changed key would re-pick a plan halfway through its
+        # block. The picked hours do not move either way: the API converts a
+        # whole response with one rate, and that keeps their order.
+        plan_basis = (
+            f"{plan_price_mode}|{self.currency}" if self.currency else plan_price_mode
+        )
 
         if self.cheapest_hours_count > 0 and plan_series:
             window_start, window_end = fixed_repeating_window(
                 now, self.cheapest_hours_start_hour, self.cheapest_hours_window_hours
             )
             plan = await self._async_get_plan(
-                f"block|{plan_price_mode}|{self.cheapest_hours_count}|"
+                f"block|{plan_basis}|{self.cheapest_hours_count}|"
                 f"{self.cheapest_hours_window_hours}|{self.cheapest_hours_start_hour}",
                 window_start,
                 window_end,
@@ -325,7 +338,7 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if self.weekend_hours_count > 0 and plan_series:
             window_start, window_end = fixed_weekend_window(now)
             plan = await self._async_get_plan(
-                f"weekend|{plan_price_mode}|{self.weekend_hours_count}",
+                f"weekend|{plan_basis}|{self.weekend_hours_count}",
                 window_start,
                 window_end,
                 self.weekend_hours_count,

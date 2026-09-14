@@ -714,19 +714,25 @@ async def test_combined_window_score_keeps_the_raw_key_as_an_attribute(hass) -> 
     assert attributes["window_hours"] == 4
 
 
-def _day_ahead_slots(start_iso: str, values_by_hour: dict[int, float]) -> list[dict]:
-    """Hourly published day-ahead prices, in the shape the prices endpoint has."""
+def _day_ahead_slots(
+    start_iso: str, values_by_slot: dict[int, float], minutes: int = 60
+) -> list[dict]:
+    """Published day-ahead prices, in the shape the prices endpoint has."""
     from datetime import datetime, timedelta
 
     start = datetime.fromisoformat(start_iso.replace("Z", "+00:00"))
     return [
         {
-            "start": (start + timedelta(hours=hour)).isoformat().replace("+00:00", "Z"),
-            "end": (start + timedelta(hours=hour + 1)).isoformat().replace("+00:00", "Z"),
+            "start": (start + timedelta(minutes=minutes * slot))
+            .isoformat()
+            .replace("+00:00", "Z"),
+            "end": (start + timedelta(minutes=minutes * (slot + 1)))
+            .isoformat()
+            .replace("+00:00", "Z"),
             "value": value,
             "source": "day_ahead",
         }
-        for hour, value in sorted(values_by_hour.items())
+        for slot, value in sorted(values_by_slot.items())
     ]
 
 
@@ -767,12 +773,17 @@ async def test_combined_score_now_moves_on_at_the_quarter_hour(hass, freezer) ->
         hass,
         price_entries=_day_ahead_slots(
             "2026-08-08T00:00:00Z",
-            {h: 0.30 for h in range(24)} | {0: 0.10, 1: 0.90},
+            {q: 0.30 for q in range(96)} | {0: 0.10, 1: 0.90},
+            minutes=15,
         ),
     )
     assert float(_state_for_unique_id(hass, entry, "combined_score_now").state) == 100.0
 
-    freezer.move_to("2026-08-08T01:00:00+00:00")
+    # Only to the next quarter hour, and no further: the coordinator polls
+    # 30 minutes after setup, and firing time past 00:40 would run that poll
+    # outside the mocks - every entity unavailable, for a reason unrelated
+    # to what this test is about.
+    freezer.move_to("2026-08-08T00:15:00+00:00")
     async_fire_time_changed(hass, dt_util.utcnow())
     await hass.async_block_till_done()
 

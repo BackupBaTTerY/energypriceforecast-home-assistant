@@ -15,7 +15,10 @@ requiring YAML or JSON templates.
   of each
 - Binary sensors indicating whether a best window is active now
 - Combined price/CO2 window: when the best compromise between a low price
-  and low emissions is, and a 0-100 score for how good that compromise is
+  and low emissions is
+- **Combined score now** *(1.5.0)*: how the present ranks against the
+  published hours ahead, on price and CO2 together - a 0-100 number an
+  automation can act on
 - Raw price-series sensor with `raw_today` / `raw_tomorrow` / `raw_forecast`
   attributes (compatible with `apexcharts-card` and custom templates), plus
   Nordpool-style `average` / `min` / `max` / `price_percent_to_average`
@@ -154,7 +157,8 @@ integration depends on the ID.
 | Greenest window average CO2 | sensor | gCO2/kWh |
 | Greenest window start | sensor | timestamp |
 | Greenest window end | sensor | timestamp |
-| Combined window score | sensor | 0-100, higher is better |
+| Combined score now *(1.5.0)* | sensor | 0-100, higher is better |
+| Combined window score (deprecated) | sensor | disabled for new installs, see below |
 | Combined window start *(1.2.0)* | sensor | timestamp |
 | Combined window end *(1.2.0)* | sensor | timestamp |
 | Cheapest window remaining *(1.0.0)* | sensor | minutes |
@@ -173,28 +177,87 @@ horizon** and **Used horizon** (hours), **API-key status**, **Price source**
 "Cheapest window" here is the single *contiguous* window of the configured
 best-window duration - not the same thing as the cheapest-hours plan below.
 
-#### The combined window, and what its score means *(1.2.0)*
+#### The combined window *(1.2.0)*
 
 The cheapest window and the greenest window are rarely the same hours. The
 **combined window** is the compromise: the API searches the horizon for the
 window that scores best on price *and* CO2 intensity together, weighting the
 two equally. **Combined window start** and **end** say when it is, and
-**Combined window active** switches while it runs - those three are what an
-automation should use.
+**Combined window active** switches while it runs.
 
-**Combined window score** rates that compromise from 0 to 100, and **higher is
-better**: 100 means the window is the best available on both counts at once.
-It is a relative measure - the API normalises price and CO2 against the spread
-in the current horizon - so it answers "how good is today's best compromise",
-not "is today better than yesterday". Its attributes carry the numbers behind
-it: `average_price_value`, `average_co2_g_kwh`, `window_start`, `window_end`
-and `window_hours`.
+#### Combined score now *(1.5.0)*
 
-> Before 1.2.0 this sensor published the API's raw ranking key instead: a
-> value from 0 to 1 where **0** was the best window. It was read backwards by
-> more or less everyone. If an automation compares the score against a
-> threshold, it needs updating - the old key is still available as the
-> `raw_score` attribute.
+**Combined score now** answers a different question, and the one an
+automation can act on: how good is *this moment*, compared with the rest of
+the coming day, on price and CO2 together? It runs from 0 to 100, higher is
+better, and it reads as a share: **80 means the present stands better than
+80% of the hours ahead**. 100 is the best slot ahead, 0 the worst. It moves on
+at every quarter hour, not only when the integration polls.
+
+How it is worked out:
+
+1. **The reference** is the next 24 hours - but only as far as prices are
+   published. Tomorrow's day-ahead prices appear around 13:00, so from then on
+   the reference is a full day; just before the auction it ends at midnight.
+   Forecast prices stay out on purpose: over 30 days the frozen forecast for
+   tomorrow's early hours ran 1.5 to 4.3 ct/kWh too low in 11 of 12 markets,
+   which would have made every morning look worse than it was.
+2. **A yardstick for each quantity.** For price and for CO2 separately: the
+   median of the reference, and its typical spread - the distance from the
+   10th to the 90th percentile, so a single spike cannot set the scale. The
+   spread never counts as less than 25 gCO2/kWh or 10% of the average price,
+   so a quantity that barely moves barely counts.
+3. **A standing for every slot:** how many typical spreads its price lies
+   below the median, plus the same for its CO2 intensity.
+4. **The score** is the share of the other reference slots whose standing is
+   worse than the present's, ties counting half.
+
+An example with German numbers from September: at 14:00 the price was 16.1
+ct - almost exactly the median of 15.2 ct, a price part of -0.03 - but the grid
+ran at 167 g against a median of 427 g, a CO2 part of +0.83. Of the 23 other
+hours, 19 stood worse, so the score was 19 / 23 = **83**. Clean midday power
+earned it, not cheap power.
+
+The attributes show the workings: `price_part` and `co2_part` for the present;
+`co2_share_percent`, how much of today's ranking comes from CO2 at all;
+`price_spread` and `co2_spread_g_kwh`; and `reference_start`, `reference_end`
+and `reference_hours`.
+
+**Use it for loads that can wait**, with a threshold: "start the dishwasher
+when the score reaches 80" runs it among the better hours of what is still
+ahead. **For loads that must run every day, use a plan instead.** The
+cheapest- and cleanest-hours plans pick within a fixed daily block and never
+skip a day, while a score can keep a load waiting when the hours ahead are
+better.
+
+What it does not tell you:
+
+- **It does not compare regions.** It ranks hours within your own market only.
+  On the same September day the worst-rated hour in Norway (NO3) ran at 20 g,
+  eight times cleaner than the best-rated hour in Germany at 167 g. Compare
+  regions with **Current price** and **Current CO2 intensity**.
+- **"Combined" mixes differently by market.** In a hydro grid CO2 sits at
+  20-21 g all day, the floor makes that difference count for nothing, and the
+  score becomes a price score - `co2_share_percent` shows 0. That is right,
+  since there is no CO2 to save by shifting there, but it is worth knowing.
+- **It says nothing about how much you save.** Between the best and the worst
+  hour lay 18 ct in Sweden (SE3) and 54 ct in Germany on the same day. The
+  spreads in the attributes say which kind of day it is.
+- **CO2 is always a forecast.** Future emissions cannot be measured, so the CO2
+  half of the ranking rests on the model even where the prices are published.
+- With no published price for the present, or fewer than 4 published hours
+  ahead, the sensor is **unavailable** rather than ranking against too little.
+
+#### Combined window score (deprecated)
+
+Until 1.5.0 the integration offered **Combined window score** instead. It rated
+the combined window, and in a solar market the cheapest and the cleanest
+windows are nearly always the same midday hours - so it sat at 100 and said
+little more than that the two agree. New installs no longer get it. Existing
+installs keep it, still working and with its `raw_score` attribute, so no
+automation breaks; it will be removed in 2.0. Move automations to **Combined
+score now**, or to **Combined window active** if they act on the window
+itself.
 
 ### With retail pricing enabled
 

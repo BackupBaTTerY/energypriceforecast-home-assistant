@@ -9,7 +9,7 @@ NAME: Final = "Energy Price Forecast EU"
 # from. Must equal manifest.json's version - test_version.py enforces that,
 # because this drifted to 0.1.0 for ten releases and every request from
 # every user was mislabelled the whole time.
-VERSION: Final = "1.4.0"
+VERSION: Final = "1.5.0"
 DEFAULT_API_URL: Final = (
     "https://api.energypriceforecast.eu/api/v1/home-assistant/summary"
 )
@@ -77,6 +77,20 @@ MAX_GREENEST_HOURS_COUNT: Final = 48
 # the horizon - an internal ranking key that was exposed unchanged and read
 # backwards by everyone. Rescaled to 0..100 with 100 being best.
 COMBINED_SCORE_SCALE: Final = 100
+
+# The combined score for now (1.5.0), see scoring.py. Its reference is the
+# next 24 hours, but only as far as prices are published: over 30 days the
+# frozen forecast for tomorrow's early hours ran 1.5-4.3 ct/kWh too low in
+# 11 of 12 markets, enough to move the score by 18-24 points at noon in Norway.
+COMBINED_SCORE_REFERENCE_HOURS: Final = 24
+# Just before the auction the published prices end at midnight; fewer hours
+# than this are too few to rank the present against.
+COMBINED_SCORE_MIN_REFERENCE_HOURS: Final = 4
+# A spread below these counts as none, so a quantity that barely moves barely
+# moves the ranking. Chosen, not derived: a hydro grid sits at 20-21 g all
+# day, and without a floor a tenth of a gram swung the score by 25 points.
+COMBINED_SCORE_CO2_FLOOR_G_KWH: Final = 25.0
+COMBINED_SCORE_PRICE_FLOOR_SHARE: Final = 0.10
 
 PLATFORMS: Final = ["sensor", "binary_sensor"]
 

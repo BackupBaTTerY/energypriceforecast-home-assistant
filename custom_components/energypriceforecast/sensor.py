@@ -15,14 +15,16 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE, EntityCategory, UnitOfTime
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_track_utc_time_change
 from homeassistant.util import dt as dt_util
 
 from .const import COMBINED_SCORE_SCALE
 from .coordinator import EnergyPriceForecastCoordinator
 from .entity import EnergyPriceForecastEntity
 from .planning import duration_weighted_mean
+from .scoring import CombinedScore, combined_score_now
 
 
 def _path(data: dict[str, Any], *parts: str) -> Any:
@@ -429,6 +431,7 @@ async def async_setup_entry(
     entities.append(EnergyPriceForecastPriceSeriesSensor(coordinator, entry))
     entities.append(EnergyPriceForecastCo2SeriesSensor(coordinator, entry))
     entities.append(EnergyPriceForecastCombinedScoreSensor(coordinator, entry))
+    entities.append(EnergyPriceForecastCombinedScoreNowSensor(coordinator, entry))
     entities.append(EnergyPriceForecastQualitySensor(coordinator, entry))
     if coordinator.retail_pricing:
         entities.append(EnergyPriceForecastRetailPriceSensor(coordinator, entry))
@@ -923,6 +926,11 @@ class EnergyPriceForecastCombinedScoreSensor(
 ):
     """How good the best price-and-CO2 compromise in the horizon is, 0-100.
 
+    Deprecated in 1.5.0. In a solar market the cheapest and the cleanest
+    window are nearly always the same midday hours, so this sat at 100: it
+    measures whether the two disagree, not how good any moment is. The
+    combined score for now replaces it.
+
     The API searches the horizon for the window that is the best compromise
     between a low price and low CO2 intensity, weighting the two equally. It
     ranks candidates by normalising both against the horizon's own spread and
@@ -942,6 +950,9 @@ class EnergyPriceForecastCombinedScoreSensor(
 
     _attr_translation_key = "combined_window_score"
     _attr_icon = "mdi:scale-balance"
+    # New installs no longer get it. Existing ones keep it, so no automation
+    # breaks before it is removed in 2.0.
+    _attr_entity_registry_enabled_default = False
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_suggested_display_precision = 0
 
@@ -970,6 +981,90 @@ class EnergyPriceForecastCombinedScoreSensor(
             # is lost for anyone who was reading the old value.
             "raw_score": window.get("score"),
             "method": window.get("method"),
+        }
+
+
+def _rounded(value: float | None, digits: int) -> float | None:
+    return None if value is None else round(value, digits)
+
+
+class EnergyPriceForecastCombinedScoreNowSensor(
+    EnergyPriceForecastEntity, SensorEntity
+):
+    """How good the present is against the published hours ahead, 0-100.
+
+    The number reads as a share: 80 means the current slot stands better than
+    80% of the slots ahead, on price and CO2 intensity together. The ranking
+    itself lives in scoring.py. This entity asks for it at every quarter hour,
+    because the slot being scored changes between polls.
+
+    It scores what the user pays: the retail series when retail pricing is on,
+    the same series the plans are built on.
+    """
+
+    _attr_translation_key = "combined_score_now"
+    _attr_icon = "mdi:scale-balance"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 0
+
+    def __init__(
+        self, coordinator: EnergyPriceForecastCoordinator, entry: ConfigEntry
+    ) -> None:
+        super().__init__(coordinator, entry, "combined_score_now")
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        # Without this the state would only move when the integration polls,
+        # up to two hours after the slot it describes has ended.
+        self.async_on_remove(
+            async_track_utc_time_change(
+                self.hass,
+                self._handle_slot_change,
+                minute=(0, 15, 30, 45),
+                second=0,
+            )
+        )
+
+    @callback
+    def _handle_slot_change(self, _now: datetime) -> None:
+        self.async_write_ha_state()
+
+    def _result(self) -> CombinedScore | None:
+        prices = self.coordinator.plan_series or {}
+        co2 = self.coordinator.co2_series or {}
+        return combined_score_now(
+            prices.get("entries"), co2.get("entries"), dt_util.utcnow()
+        )
+
+    @property
+    def available(self) -> bool:
+        return super().available and self._result() is not None
+
+    @property
+    def native_value(self) -> float | None:
+        result = self._result()
+        return None if result is None else round(result.score, 1)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        result = self._result()
+        if result is None:
+            return {}
+        hours = (result.reference_end - result.reference_start).total_seconds() / 3600
+        return {
+            "price_part": round(result.price_part, 3),
+            "co2_part": _rounded(result.co2_part, 3),
+            # How much of today's ranking comes from CO2 at all: 0 in a hydro
+            # grid whose CO2 barely moves, where this is a price score.
+            "co2_share_percent": (
+                None if result.co2_share is None else round(100 * result.co2_share)
+            ),
+            "price_spread": round(result.price_spread, 4),
+            "price_unit": (self.coordinator.plan_series or {}).get("unit"),
+            "co2_spread_g_kwh": _rounded(result.co2_spread, 1),
+            "reference_start": result.reference_start.isoformat(),
+            "reference_end": result.reference_end.isoformat(),
+            "reference_hours": round(hours, 2),
         }
 
 

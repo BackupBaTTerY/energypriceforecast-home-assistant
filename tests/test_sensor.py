@@ -7,9 +7,15 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from homeassistant.helpers import entity_registry as er
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from homeassistant.util import dt as dt_util
+from pytest_homeassistant_custom_component.common import (
+    MockConfigEntry,
+    async_fire_time_changed,
+)
 
 from custom_components.energypriceforecast.sensor import (
+    EnergyPriceForecastCombinedScoreSensor,
+    _combined_score,
     _day_statistics,
     _next_planned_start,
 )
@@ -658,16 +664,30 @@ def _co2_slots(start_iso: str, values_by_hour: dict[int, float]) -> list[dict]:
     ]
 
 
-async def test_combined_score_is_rescaled_so_higher_is_better(hass) -> None:
-    """The API's 0-is-best ranking key must reach the user as 100-is-best."""
+def test_combined_window_score_is_rescaled_so_higher_is_better() -> None:
+    """The API's 0-is-best ranking key reaches the user as 100-is-best."""
+    # SUMMARY_PAYLOAD carries a raw score of 0.2, a good window.
+    assert _combined_score(SUMMARY_PAYLOAD) == pytest.approx(80.0)
+
+
+async def test_combined_window_score_is_disabled_for_new_installs(hass) -> None:
+    """Deprecated in 1.5.0: still registered, but off unless it existed before."""
     entry = await _setup_entry(hass)
 
-    # SUMMARY_PAYLOAD carries a raw score of 0.2, a good window.
-    assert _state_for_unique_id(hass, entry, "combined_window_score").state == "80.0"
+    registry = er.async_get(hass)
+    entity_id = registry.async_get_entity_id(
+        "sensor", DOMAIN, f"{entry.entry_id}_combined_window_score"
+    )
+    assert entity_id is not None
+    assert (
+        registry.async_get(entity_id).disabled_by
+        is er.RegistryEntryDisabler.INTEGRATION
+    )
+    assert hass.states.get(entity_id) is None
 
 
-async def test_combined_score_keeps_the_raw_key_as_an_attribute(hass) -> None:
-    """Nobody who read the old value loses access to it."""
+async def test_combined_window_score_keeps_the_raw_key_as_an_attribute(hass) -> None:
+    """Whoever still has the old sensor keeps every number it showed."""
     entry = await _setup_entry(
         hass,
         summary_extra={
@@ -685,11 +705,90 @@ async def test_combined_score_keeps_the_raw_key_as_an_attribute(hass) -> None:
         },
     )
 
-    state = _state_for_unique_id(hass, entry, "combined_window_score")
-    assert state.attributes["raw_score"] == 0.2
-    assert state.attributes["average_price_value"] == 0.15
-    assert state.attributes["average_co2_g_kwh"] == 250.0
-    assert state.attributes["window_hours"] == 4
+    attributes = EnergyPriceForecastCombinedScoreSensor(
+        entry.runtime_data, entry
+    ).extra_state_attributes
+    assert attributes["raw_score"] == 0.2
+    assert attributes["average_price_value"] == 0.15
+    assert attributes["average_co2_g_kwh"] == 250.0
+    assert attributes["window_hours"] == 4
+
+
+def _day_ahead_slots(start_iso: str, values_by_hour: dict[int, float]) -> list[dict]:
+    """Hourly published day-ahead prices, in the shape the prices endpoint has."""
+    from datetime import datetime, timedelta
+
+    start = datetime.fromisoformat(start_iso.replace("Z", "+00:00"))
+    return [
+        {
+            "start": (start + timedelta(hours=hour)).isoformat().replace("+00:00", "Z"),
+            "end": (start + timedelta(hours=hour + 1)).isoformat().replace("+00:00", "Z"),
+            "value": value,
+            "source": "day_ahead",
+        }
+        for hour, value in sorted(values_by_hour.items())
+    ]
+
+
+async def test_combined_score_now_ranks_the_present_slot(hass, freezer) -> None:
+    """The cheapest and cleanest slot ahead scores 100, with its workings shown."""
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-08T00:10:00+00:00")
+
+    entry = await _setup_entry(
+        hass,
+        price_entries=_day_ahead_slots(
+            "2026-08-08T00:00:00Z", {h: 0.30 for h in range(24)} | {0: 0.10}
+        ),
+        summary_extra={
+            "co2": {"available": True, "unit": "gCO2/kWh"},
+            "series": {
+                "co2": _co2_slots(
+                    "2026-08-08T00:00:00Z",
+                    {h: 400.0 for h in range(24)} | {0: 150.0},
+                )
+            },
+        },
+    )
+
+    state = _state_for_unique_id(hass, entry, "combined_score_now")
+    assert float(state.state) == 100.0
+    assert state.attributes["reference_hours"] == 24.0
+    assert state.attributes["price_unit"] == "EUR/kWh"
+    assert state.attributes["co2_part"] > 0
+
+
+async def test_combined_score_now_moves_on_at_the_quarter_hour(hass, freezer) -> None:
+    """The slot being scored changes between polls, and the state follows it."""
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-08T00:10:00+00:00")
+
+    entry = await _setup_entry(
+        hass,
+        price_entries=_day_ahead_slots(
+            "2026-08-08T00:00:00Z",
+            {h: 0.30 for h in range(24)} | {0: 0.10, 1: 0.90},
+        ),
+    )
+    assert float(_state_for_unique_id(hass, entry, "combined_score_now").state) == 100.0
+
+    freezer.move_to("2026-08-08T01:00:00+00:00")
+    async_fire_time_changed(hass, dt_util.utcnow())
+    await hass.async_block_till_done()
+
+    # No poll happened; the dearest slot of what is left is now the present.
+    assert float(_state_for_unique_id(hass, entry, "combined_score_now").state) == 0.0
+
+
+async def test_combined_score_now_is_unavailable_without_published_prices(
+    hass,
+) -> None:
+    """Forecasts alone are not ranked: they ran too low to rank against."""
+    entry = await _setup_entry(hass)
+
+    assert (
+        _state_for_unique_id(hass, entry, "combined_score_now").state == "unavailable"
+    )
 
 
 async def test_combined_window_start_end_and_active(hass, freezer) -> None:

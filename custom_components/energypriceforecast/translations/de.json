@@ -10,8 +10,10 @@
           "horizon_hours": "Gewünschter Horizont",
           "window_hours": "Dauer des besten Fensters",
           "api_key": "API-Key (optional)",
-          "retail_pricing": "Endkundenpreis (Gesamtpreis) aktivieren",
+          "retail_source": "Endkundenpreis",
           "postal_code": "Postleitzahl",
+          "retail_factor": "Faktor (eigene Formel)",
+          "retail_surcharge": "Aufschlag je kWh inkl. MwSt. (eigene Formel)",
           "local_currency": "Preise in Landeswährung anzeigen",
           "update_interval_minutes": "Aktualisierungsintervall (Minuten)",
           "cheapest_hours_count": "Günstigste Stunden je Block (0 zum Deaktivieren)",
@@ -24,8 +26,10 @@
           "horizon_hours": "Den tatsächlich erlaubten Horizont zeigt die Integration als Diagnose-Sensor an.",
           "window_hours": "Länge des günstigsten und des grünsten zusammenhängenden Zeitfensters.",
           "api_key": "Für den öffentlichen Zugang leer lassen. Der Schlüssel wird im Home-Assistant-Konfigurationseintrag gespeichert.",
-          "retail_pricing": "Ergänzt einen annahmenbasierten Gesamtpreis (Netzentgelt, Abgaben, MwSt.) zusätzlich zum Marktpreis. Nur für einige Märkte verfügbar; kein exakter Liefertarif.",
-          "postal_code": "Für Deutschland bei aktiviertem Endkundenpreis erforderlich, wird für die Netzentgelt-Ermittlung genutzt. Für andere Märkte nicht benötigt.",
+          "retail_source": "Schätzung: unser annahmenbasierter Gesamtpreis (Netzentgelt, Abgaben, MwSt.), nur für DE, NL, DK, AT und NO; Deutschland braucht eine Postleitzahl. Eigene Formel: Börsenpreis × Faktor + Aufschlag, in jedem Markt. In beiden Fällen werden die Pläne auf dem Endkundenpreis gebildet.",
+          "postal_code": "Für Deutschland nötig, wenn die Schätzung gewählt ist; dient der Netzentgelt-Ermittlung. Sonst nicht verwendet.",
+          "retail_factor": "Nur für die eigene Formel. Multipliziert den Börsenpreis, z. B. 1.21 für 21 % MwSt.",
+          "retail_surcharge": "Nur für die eigene Formel. Fester Betrag je kWh inklusive MwSt., der nach dem Faktor addiert wird, in der Einheit der Preissensoren – z. B. 0.1350 für 13,50 ct/kWh. Hierher gehören Lieferantenaufschlag, Stromsteuer und Netzentgelt je kWh. Netzentgelte, die sich mit der Tageszeit ändern, lassen sich noch nicht eintragen.",
           "local_currency": "Rechnet die Preise mit dem täglichen Referenzkurs der EZB von Euro in tschechische Kronen (CZ), polnische Złoty (PL) oder schwedische Kronen (SE1-SE4) um. Dänemark und Norwegen bekommen immer ihre eigene Währung, alle anderen Märkte bleiben in Euro. Ein Wechsel ändert die Einheit der Preissensoren, Home Assistant beginnt deren Langzeitstatistik dann neu.",
           "update_interval_minutes": "Wie oft die API abgefragt wird. Die Datenauflösung liegt bei 15 Minuten, kürzere Intervalle liefern daher selten neue Informationen.",
           "cheapest_hours_count": "Die Zeit wird in feste, lückenlose Blöcke geteilt (siehe unten), und in jedem Block werden so viele einzelne - nicht zwingend zusammenhängende - Stunden als die günstigsten ausgewählt. Gut für eine Wärmepumpe: z. B. 12 von 24 Stunden wählt an jedem Kalendertag die zwölf günstigsten Stunden. Der Plan eines Blocks wird nach seiner Erstellung nicht mehr neu gemischt, auch wenn sich die Prognose später ändert. Darf nie größer als die Blocklänge sein; sind nicht genug Prognosedaten für den vollständigen Block vorhanden, wird gar kein Plan veröffentlicht.",
@@ -43,8 +47,10 @@
           "horizon_hours": "Gewünschter Horizont",
           "window_hours": "Dauer des besten Fensters",
           "api_key": "Neuer API-Key (optional)",
-          "retail_pricing": "Endkundenpreis (Gesamtpreis) aktivieren",
+          "retail_source": "Endkundenpreis",
           "postal_code": "Postleitzahl",
+          "retail_factor": "Faktor (eigene Formel)",
+          "retail_surcharge": "Aufschlag je kWh inkl. MwSt. (eigene Formel)",
           "local_currency": "Preise in Landeswährung anzeigen",
           "update_interval_minutes": "Aktualisierungsintervall (Minuten)",
           "cheapest_hours_count": "Günstigste Stunden je Block (0 zum Deaktivieren)",
@@ -56,8 +62,10 @@
         "data_description": {
           "horizon_hours": "Den tatsächlich erlaubten Horizont zeigt die Integration als Diagnose-Sensor an.",
           "window_hours": "Länge des günstigsten und des grünsten zusammenhängenden Zeitfensters.",
-          "retail_pricing": "Ergänzt einen annahmenbasierten Gesamtpreis (Netzentgelt, Abgaben, MwSt.) zusätzlich zum Marktpreis. Nur für einige Märkte verfügbar; kein exakter Liefertarif.",
-          "postal_code": "Für Deutschland bei aktiviertem Endkundenpreis erforderlich, wird für die Netzentgelt-Ermittlung genutzt. Für andere Märkte nicht benötigt.",
+          "retail_source": "Schätzung: unser annahmenbasierter Gesamtpreis (Netzentgelt, Abgaben, MwSt.), nur für DE, NL, DK, AT und NO; Deutschland braucht eine Postleitzahl. Eigene Formel: Börsenpreis × Faktor + Aufschlag, in jedem Markt. In beiden Fällen werden die Pläne auf dem Endkundenpreis gebildet.",
+          "postal_code": "Für Deutschland nötig, wenn die Schätzung gewählt ist; dient der Netzentgelt-Ermittlung. Sonst nicht verwendet.",
+          "retail_factor": "Nur für die eigene Formel. Multipliziert den Börsenpreis, z. B. 1.21 für 21 % MwSt.",
+          "retail_surcharge": "Nur für die eigene Formel. Fester Betrag je kWh inklusive MwSt., der nach dem Faktor addiert wird, in der Einheit der Preissensoren – z. B. 0.1350 für 13,50 ct/kWh. Hierher gehören Lieferantenaufschlag, Stromsteuer und Netzentgelt je kWh. Netzentgelte, die sich mit der Tageszeit ändern, lassen sich noch nicht eintragen.",
           "local_currency": "Rechnet die Preise mit dem täglichen Referenzkurs der EZB von Euro in tschechische Kronen (CZ), polnische Złoty (PL) oder schwedische Kronen (SE1-SE4) um. Dänemark und Norwegen bekommen immer ihre eigene Währung, alle anderen Märkte bleiben in Euro. Ein Wechsel ändert die Einheit der Preissensoren, Home Assistant beginnt deren Langzeitstatistik dann neu.",
           "update_interval_minutes": "Wie oft die API abgefragt wird. Die Datenauflösung liegt bei 15 Minuten, kürzere Intervalle liefern daher selten neue Informationen.",
           "cheapest_hours_count": "Die Zeit wird in feste, lückenlose Blöcke geteilt (siehe unten), und in jedem Block werden so viele einzelne - nicht zwingend zusammenhängende - Stunden als die günstigsten ausgewählt. Gut für eine Wärmepumpe: z. B. 12 von 24 Stunden wählt an jedem Kalendertag die zwölf günstigsten Stunden. Der Plan eines Blocks wird nach seiner Erstellung nicht mehr neu gemischt, auch wenn sich die Prognose später ändert. Darf nie größer als die Blocklänge sein; sind nicht genug Prognosedaten für den vollständigen Block vorhanden, wird gar kein Plan veröffentlicht.",
@@ -73,15 +81,25 @@
       "cannot_connect": "Energy Price Forecast EU ist gerade nicht erreichbar.",
       "invalid_auth": "Der API-Key wurde abgelehnt oder ist nicht berechtigt.",
       "invalid_response": "Die API hat eine unerwartete Antwort geliefert.",
-      "retail_not_supported": "Endkundenpreise sind für diesen Markt noch nicht verfügbar.",
-      "postal_code_required": "Für Endkundenpreise in Deutschland ist eine Postleitzahl erforderlich.",
+      "retail_not_supported": "Für diesen Markt gibt es keine Schätzung. Wähle stattdessen die eigene Formel.",
+      "postal_code_required": "Die Schätzung für Deutschland braucht eine Postleitzahl.",
       "invalid_postal_code": "Bitte eine 5-stellige deutsche Postleitzahl eingeben.",
-      "retail_unavailable": "Endkundenpreise für diesen Markt bzw. diese Postleitzahl konnten nicht geprüft werden.",
+      "retail_unavailable": "Die Schätzung konnte für diesen Markt oder diese Postleitzahl nicht geprüft werden.",
+      "invalid_retail_factor": "Der Faktor muss größer als 0 sein.",
       "cheapest_hours_exceeds_window": "Die günstigsten Stunden je Block dürfen nicht größer als die Blocklänge sein.",
       "greenest_hours_exceeds_window": "Die Anzahl der saubersten Stunden darf die Blocklänge nicht überschreiten."
     },
     "abort": {
       "already_configured": "Dieser Markt ist bereits eingerichtet."
+    }
+  },
+  "selector": {
+    "retail_source": {
+      "options": {
+        "off": "Aus",
+        "estimate": "Schätzung (DE, NL, DK, AT, NO)",
+        "formula": "Eigene Formel (alle Märkte)"
+      }
     }
   },
   "entity": {

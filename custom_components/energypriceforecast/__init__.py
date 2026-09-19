@@ -16,7 +16,10 @@ from .const import (
     CONF_LOCAL_CURRENCY,
     CONF_MARKET,
     CONF_POSTAL_CODE,
+    CONF_RETAIL_FACTOR,
     CONF_RETAIL_PRICING,
+    CONF_RETAIL_SOURCE,
+    CONF_RETAIL_SURCHARGE,
     CONF_UPDATE_INTERVAL_MINUTES,
     CONF_GREENEST_HOURS_COUNT,
     CONF_WEEKEND_HOURS_COUNT,
@@ -27,12 +30,16 @@ from .const import (
     DEFAULT_CHEAPEST_HOURS_WINDOW_HOURS,
     DEFAULT_HORIZON_HOURS,
     DEFAULT_LOCAL_CURRENCY,
+    DEFAULT_RETAIL_FACTOR,
+    DEFAULT_RETAIL_SURCHARGE,
     DEFAULT_UPDATE_INTERVAL_MINUTES,
     DEFAULT_GREENEST_HOURS_COUNT,
     DEFAULT_WEEKEND_HOURS_COUNT,
     MAX_HORIZON_HOURS,
     PLATFORMS,
     PRICES_API_URL,
+    RETAIL_SOURCE_ESTIMATE,
+    RETAIL_SOURCE_OFF,
 )
 from .coordinator import EnergyPriceForecastCoordinator
 
@@ -59,7 +66,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass,
         api,
         entry_id=entry.entry_id,
-        retail_pricing=entry.data.get(CONF_RETAIL_PRICING, False),
+        retail_source=entry.data.get(CONF_RETAIL_SOURCE, RETAIL_SOURCE_OFF),
+        retail_factor=entry.data.get(CONF_RETAIL_FACTOR, DEFAULT_RETAIL_FACTOR),
+        retail_surcharge=entry.data.get(
+            CONF_RETAIL_SURCHARGE, DEFAULT_RETAIL_SURCHARGE
+        ),
         postal_code=entry.data.get(CONF_POSTAL_CODE),
         update_interval_minutes=entry.data.get(
             CONF_UPDATE_INTERVAL_MINUTES, DEFAULT_UPDATE_INTERVAL_MINUTES
@@ -104,6 +115,18 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # the reconfigure form raise on a value no longer in the dropdown.
         data[CONF_HORIZON_HOURS] = min(horizon, MAX_HORIZON_HOURS)
         hass.config_entries.async_update_entry(entry, data=data, version=2)
+    if entry.version == 2:
+        data = dict(entry.data)
+        # 1.6.0 turned the retail checkbox into a choice between the API's
+        # estimate and the user's own formula. A ticked box always meant the
+        # estimate, and that is what it becomes - nothing about the prices, the
+        # entities or the stored plans changes for whoever had it on.
+        estimate = data.pop(CONF_RETAIL_PRICING, False)
+        data.setdefault(
+            CONF_RETAIL_SOURCE,
+            RETAIL_SOURCE_ESTIMATE if estimate else RETAIL_SOURCE_OFF,
+        )
+        hass.config_entries.async_update_entry(entry, data=data, version=3)
     return True
 
 

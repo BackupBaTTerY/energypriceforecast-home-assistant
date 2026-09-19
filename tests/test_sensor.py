@@ -65,7 +65,7 @@ async def _setup_entry(
             "window_hours": 4,
             "update_interval_minutes": 30,
             "cheapest_hours_count": 0,
-            "retail_pricing": False,
+            "retail_source": "off",
             **(extra_data or {}),
         },
     )
@@ -243,7 +243,7 @@ async def test_plan_saving_sensors_report_what_the_plan_gained(hass, freezer) ->
     assert saving.attributes["unit_of_measurement"] == "%"
 
 
-async def test_plan_is_priced_on_retail_when_retail_pricing_is_on(
+async def test_plan_is_priced_on_retail_when_the_estimate_is_on(
     hass, freezer
 ) -> None:
     """With retail enabled the plan must cost and save in retail terms.
@@ -288,7 +288,7 @@ async def test_plan_is_priced_on_retail_when_retail_pricing_is_on(
             "horizon_hours": 48,
             "window_hours": 4,
             "update_interval_minutes": 30,
-            "retail_pricing": True,
+            "retail_source": "estimate",
             "postal_code": "10115",
             "cheapest_hours_count": 2,
             "cheapest_hours_window_hours": 4,
@@ -545,7 +545,7 @@ async def test_retail_price_sensor_includes_raw_series(hass, freezer) -> None:
 
     entry = await _setup_entry(
         hass,
-        extra_data={"retail_pricing": True, "postal_code": "10115"},
+        extra_data={"retail_source": "estimate", "postal_code": "10115"},
         price_entries=entries,
     )
 
@@ -560,7 +560,7 @@ async def test_optional_entities_created_when_features_enabled(hass) -> None:
     entry = await _setup_entry(
         hass,
         extra_data={
-            "retail_pricing": True,
+            "retail_source": "estimate",
             "postal_code": "10115",
             "cheapest_hours_count": 3,
         },
@@ -594,7 +594,7 @@ async def test_retail_window_sensors_use_retail_summary(hass) -> None:
 
     entry = await _setup_entry(
         hass,
-        extra_data={"retail_pricing": True, "postal_code": "10115"},
+        extra_data={"retail_source": "estimate", "postal_code": "10115"},
         retail_summary_payload=retail_summary,
     )
 
@@ -1023,3 +1023,107 @@ async def test_the_price_unit_is_whatever_currency_the_api_answers_in(hass) -> N
 
     assert state.state == "5.9365"
     assert state.attributes["unit_of_measurement"] == "CZK/kWh"
+
+
+async def test_own_formula_turns_the_base_series_into_retail_prices(
+    hass, freezer
+) -> None:
+    """The formula prices every retail entity without asking the API.
+
+    It is applied to the base series and summary the update fetches anyway,
+    so no retail request is made. The hours stay those of the day-ahead
+    price; the amounts - and with them the plan's saving - are the billed ones.
+    """
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-08T00:00:00+00:00")
+    entries = [
+        {
+            "start": f"2026-08-08T{hour:02d}:00:00Z",
+            "end": f"2026-08-08T{hour + 1:02d}:00:00Z",
+            "value": value,
+            "source": "day_ahead",
+        }
+        for hour, value in enumerate([0.10, 0.20, 0.30, 0.40])
+    ]
+    prices = AsyncMock(
+        return_value={
+            "format": "home-assistant-prices",
+            "country": "BE",
+            "unit": "EUR/kWh",
+            "entries": entries,
+        }
+    )
+    summary = AsyncMock(return_value=SUMMARY_PAYLOAD)
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="BE",
+        data={
+            "market": "BE",
+            "horizon_hours": 48,
+            "window_hours": 4,
+            "update_interval_minutes": 30,
+            "retail_source": "formula",
+            "retail_factor": 1.21,
+            "retail_surcharge": 0.1,
+            "cheapest_hours_count": 2,
+            "cheapest_hours_window_hours": 4,
+        },
+    )
+    entry.add_to_hass(hass)
+    with (
+        patch(
+            "custom_components.energypriceforecast.api.EnergyPriceForecastApi"
+            ".async_get_summary",
+            new=summary,
+        ),
+        patch(
+            "custom_components.energypriceforecast.api.EnergyPriceForecastApi"
+            ".async_get_prices",
+            new=prices,
+        ),
+    ):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    modes = [
+        call.kwargs.get("price_mode", "base")
+        for call in prices.call_args_list + summary.call_args_list
+    ]
+    assert modes
+    assert "retail" not in modes
+
+    retail = _state_for_unique_id(hass, entry, "retail_current_price")
+    # 0.10 x 1.21 + 0.10
+    assert float(retail.state) == pytest.approx(0.221)
+    assert [item["value"] for item in retail.attributes["raw_today"]] == (
+        pytest.approx([0.221, 0.342, 0.463, 0.584])
+    )
+    assert retail.attributes["retail_source"] == "formula"
+    assert retail.attributes["formula_factor"] == pytest.approx(1.21)
+    assert retail.attributes["formula_surcharge"] == pytest.approx(0.1)
+
+    # The summary's window average goes through the same formula; the base
+    # sensor next to it stays on the day-ahead price.
+    window = _state_for_unique_id(hass, entry, "retail_cheapest_window_average_price")
+    assert float(window.state) == pytest.approx(0.15 * 1.21 + 0.1)
+    base_window = _state_for_unique_id(hass, entry, "cheapest_window_average_price")
+    assert float(base_window.state) == pytest.approx(0.15)
+
+    # The same two hours as on spot, priced as billed: 0.2815 against a block
+    # average of 0.4025 is a 30.1% saving, where spot would have claimed 40%.
+    average = _state_for_unique_id(hass, entry, "cheapest_hours_average_price")
+    assert float(average.state) == pytest.approx(0.2815)
+    assert average.attributes["window_average_value"] == pytest.approx(0.4025)
+    saving = _state_for_unique_id(hass, entry, "cheapest_hours_saving")
+    assert float(saving.state) == pytest.approx(30.1, abs=0.1)
+
+
+async def test_the_estimate_says_where_its_price_comes_from(hass) -> None:
+    entry = await _setup_entry(
+        hass, extra_data={"retail_source": "estimate", "postal_code": "10115"}
+    )
+
+    retail = _state_for_unique_id(hass, entry, "retail_current_price")
+
+    assert retail.attributes["retail_source"] == "estimate"
+    assert "formula_factor" not in retail.attributes

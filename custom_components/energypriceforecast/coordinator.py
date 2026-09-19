@@ -15,13 +15,24 @@ from homeassistant.helpers.update_coordinator import (
 from homeassistant.util import dt as dt_util
 
 from .api import EnergyPriceForecastApi, EnergyPriceForecastApiError
-from .const import DEFAULT_UPDATE_INTERVAL_MINUTES, DOMAIN, NAME
+from .const import (
+    DEFAULT_RETAIL_FACTOR,
+    DEFAULT_RETAIL_SURCHARGE,
+    DEFAULT_UPDATE_INTERVAL_MINUTES,
+    DOMAIN,
+    NAME,
+    RETAIL_SOURCE_ESTIMATE,
+    RETAIL_SOURCE_FORMULA,
+    RETAIL_SOURCE_OFF,
+)
 from .planning import (
     fixed_repeating_window,
     fixed_weekend_window,
     select_cheapest_hours,
     window_is_settled,
 )
+from .retail_formula import apply_to_series, apply_to_summary
+from .retail_formula import plan_basis as formula_plan_basis
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -37,7 +48,9 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         hass: HomeAssistant,
         api: EnergyPriceForecastApi,
         entry_id: str,
-        retail_pricing: bool = False,
+        retail_source: str = RETAIL_SOURCE_OFF,
+        retail_factor: float = DEFAULT_RETAIL_FACTOR,
+        retail_surcharge: float = DEFAULT_RETAIL_SURCHARGE,
         postal_code: str | None = None,
         update_interval_minutes: int = DEFAULT_UPDATE_INTERVAL_MINUTES,
         cheapest_hours_count: int = 0,
@@ -54,7 +67,9 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             update_interval=timedelta(minutes=update_interval_minutes),
         )
         self.api = api
-        self.retail_pricing = retail_pricing
+        self.retail_source = retail_source
+        self.retail_factor = retail_factor
+        self.retail_surcharge = retail_surcharge
         self.postal_code = postal_code
         self.cheapest_hours_count = cheapest_hours_count
         self.cheapest_hours_window_hours = cheapest_hours_window_hours
@@ -82,12 +97,19 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._plan_cache: dict[str, Any] | None = None
 
     @property
+    def retail_pricing(self) -> bool:
+        """Whether there is a retail price at all, estimated or from a formula."""
+        return self.retail_source != RETAIL_SOURCE_OFF
+
+    @property
     def plan_series(self) -> dict[str, Any] | None:
         """The price series the plans are built on, and priced in.
 
-        With retail pricing enabled that is the retail series: it is what a
-        planned hour actually costs the user, and the markup is not a flat
-        offset, so it can reorder the hours as well as change the saving.
+        With retail pricing enabled that is the retail series - the API's
+        estimate, or the user's formula applied to the base series: it is
+        what a planned hour actually costs the user. The estimate's markup
+        is not a flat offset, so it can reorder the hours as well as change
+        the saving; a formula keeps the order and changes the saving.
         """
         return self.retail_data if self.retail_pricing else self.price_series
 
@@ -264,7 +286,7 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # ones would be worse than showing nothing, so this clears.
         self.co2_series = self._co2_series_from(summary)
 
-        if self.retail_pricing:
+        if self.retail_source == RETAIL_SOURCE_ESTIMATE:
             # Retail pricing is a supplementary feature: a temporary failure
             # (for example the API not offering it for this market right
             # now) should not take the core price/CO2 sensors down with it.
@@ -290,6 +312,18 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         except EnergyPriceForecastApiError as err:
             _LOGGER.warning("Price series update failed: %s", err)
 
+        if self.retail_source == RETAIL_SOURCE_FORMULA:
+            # The formula needs no request of its own: it is applied to the
+            # base series and summary this update already fetched. A failed
+            # base series leaves the previous one in place, and with it the
+            # previous retail series - the same as a failed estimate.
+            self.retail_data = apply_to_series(
+                self.price_series, self.retail_factor, self.retail_surcharge
+            )
+            self.retail_summary = apply_to_summary(
+                summary, self.retail_factor, self.retail_surcharge
+            )
+
         now = dt_util.utcnow()
 
         # Plans are built on the series the user actually pays. With retail
@@ -301,7 +335,16 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # the two, so the plan simply keeps its previous value until retail
         # data is back.
         plan_series = self.plan_series
-        plan_price_mode = "retail" if self.retail_pricing else "base"
+        if self.retail_source == RETAIL_SOURCE_FORMULA:
+            plan_price_mode = formula_plan_basis(
+                self.retail_factor, self.retail_surcharge
+            )
+        elif self.retail_source == RETAIL_SOURCE_ESTIMATE:
+            # Every plan priced on the estimate was stored under "retail"
+            # before the formula existed; keeping the word keeps those plans.
+            plan_price_mode = "retail"
+        else:
+            plan_price_mode = "base"
         # A stored plan keeps its averages in the currency it was priced in,
         # so the currency belongs in its key: switching from EUR to CZK must
         # start a fresh plan rather than show a euro average next to koruna

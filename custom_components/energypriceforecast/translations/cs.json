@@ -10,8 +10,10 @@
           "horizon_hours": "Požadovaný horizont",
           "window_hours": "Délka nejlepšího okna",
           "api_key": "API klíč (volitelný)",
-          "retail_pricing": "Povolit maloobchodní (kompletní) cenu",
+          "retail_source": "Maloobchodní cena",
           "postal_code": "PSČ",
+          "retail_factor": "Koeficient (vlastní vzorec)",
+          "retail_surcharge": "Příplatek za kWh vč. DPH (vlastní vzorec)",
           "local_currency": "Zobrazit ceny v místní měně",
           "update_interval_minutes": "Interval aktualizace (minuty)",
           "cheapest_hours_count": "Nejlevnější hodiny na blok (0 pro vypnutí)",
@@ -24,8 +26,10 @@
           "horizon_hours": "API hlásí skutečně povolený horizont jako diagnostický senzor.",
           "window_hours": "Délka nejlevnějšího a nejzelenějšího souvislého časového okna.",
           "api_key": "Ponechte prázdné pro veřejný přístup. Klíč se ukládá do konfiguračního záznamu Home Assistant.",
-          "retail_pricing": "Přidává odhadovanou kompletní cenu (poplatek za síť, poplatky, DPH) navíc k tržní ceně. Dostupné jen pro některé trhy; nejde o přesný tarif dodavatele.",
-          "postal_code": "Vyžadováno pro Německo, pokud je povolena maloobchodní cena, používá se pro vyhledání poplatku za síť. Pro ostatní trhy se nepoužívá.",
+          "retail_source": "Odhad: naše kompletní cena založená na předpokladech (poplatek za síť, poplatky, DPH), jen pro DE, NL, DK, AT a NO; Německo vyžaduje PSČ. Vlastní vzorec: burzovní cena × koeficient + příplatek, na každém trhu. V obou případech se plány sestavují podle maloobchodní ceny.",
+          "postal_code": "Nutné pro Německo, pokud je zvolen odhad; slouží k určení poplatku za síť. Jinak se nepoužívá.",
+          "retail_factor": "Jen pro vlastní vzorec. Násobí burzovní cenu, např. 1.21 pro 21 % DPH.",
+          "retail_surcharge": "Jen pro vlastní vzorec. Pevná částka za kWh včetně DPH přičtená po koeficientu, v jednotce cenových senzorů – s místní měnou v Kč/kWh, jinak v EUR/kWh. Patří sem přirážka dodavatele, daň z elektřiny a poplatky za síť za kWh. Poplatky za síť, které se mění podle denní doby, zatím zadat nelze.",
           "local_currency": "Přepočítá ceny z eur na české koruny (CZ), polské zloté (PL) nebo švédské koruny (SE1-SE4) podle denního referenčního kurzu ECB. Dánsko a Norsko dostávají vždy vlastní měnu, ostatní trhy zůstávají v eurech. Změna mění jednotku cenových senzorů, Home Assistant proto začne jejich dlouhodobé statistiky znovu.",
           "update_interval_minutes": "Jak často se API dotazuje. Rozlišení dat je 15 minut, kratší intervaly proto zřídka přinášejí nové informace.",
           "cheapest_hours_count": "Čas se rozdělí na pevné, na sebe navazující bloky (nastavte níže) a v každém bloku se jako nejlevnější vybere tolik jednotlivých - případně nesouvislých - hodin. Vhodné pro tepelné čerpadlo: např. 12 z 24 hodin vybere každý kalendářní den dvanáct nejlevnějších hodin. Jakmile je plán bloku vybrán, už se znovu nepřeskládá, i když se prognóza později změní. Nesmí být větší než délka bloku, a pokud prognóza ještě plně nepokrývá celý blok, plán se vůbec nezveřejní.",
@@ -43,8 +47,10 @@
           "horizon_hours": "Požadovaný horizont",
           "window_hours": "Délka nejlepšího okna",
           "api_key": "Nový API klíč (volitelný)",
-          "retail_pricing": "Povolit maloobchodní (kompletní) cenu",
+          "retail_source": "Maloobchodní cena",
           "postal_code": "PSČ",
+          "retail_factor": "Koeficient (vlastní vzorec)",
+          "retail_surcharge": "Příplatek za kWh vč. DPH (vlastní vzorec)",
           "local_currency": "Zobrazit ceny v místní měně",
           "update_interval_minutes": "Interval aktualizace (minuty)",
           "cheapest_hours_count": "Nejlevnější hodiny na blok (0 pro vypnutí)",
@@ -56,8 +62,10 @@
         "data_description": {
           "horizon_hours": "API hlásí skutečně povolený horizont jako diagnostický senzor.",
           "window_hours": "Délka nejlevnějšího a nejzelenějšího souvislého časového okna.",
-          "retail_pricing": "Přidává odhadovanou kompletní cenu (poplatek za síť, poplatky, DPH) navíc k tržní ceně. Dostupné jen pro některé trhy; nejde o přesný tarif dodavatele.",
-          "postal_code": "Vyžadováno pro Německo, pokud je povolena maloobchodní cena, používá se pro vyhledání poplatku za síť. Pro ostatní trhy se nepoužívá.",
+          "retail_source": "Odhad: naše kompletní cena založená na předpokladech (poplatek za síť, poplatky, DPH), jen pro DE, NL, DK, AT a NO; Německo vyžaduje PSČ. Vlastní vzorec: burzovní cena × koeficient + příplatek, na každém trhu. V obou případech se plány sestavují podle maloobchodní ceny.",
+          "postal_code": "Nutné pro Německo, pokud je zvolen odhad; slouží k určení poplatku za síť. Jinak se nepoužívá.",
+          "retail_factor": "Jen pro vlastní vzorec. Násobí burzovní cenu, např. 1.21 pro 21 % DPH.",
+          "retail_surcharge": "Jen pro vlastní vzorec. Pevná částka za kWh včetně DPH přičtená po koeficientu, v jednotce cenových senzorů – s místní měnou v Kč/kWh, jinak v EUR/kWh. Patří sem přirážka dodavatele, daň z elektřiny a poplatky za síť za kWh. Poplatky za síť, které se mění podle denní doby, zatím zadat nelze.",
           "local_currency": "Přepočítá ceny z eur na české koruny (CZ), polské zloté (PL) nebo švédské koruny (SE1-SE4) podle denního referenčního kurzu ECB. Dánsko a Norsko dostávají vždy vlastní měnu, ostatní trhy zůstávají v eurech. Změna mění jednotku cenových senzorů, Home Assistant proto začne jejich dlouhodobé statistiky znovu.",
           "update_interval_minutes": "Jak často se API dotazuje. Rozlišení dat je 15 minut, kratší intervaly proto zřídka přinášejí nové informace.",
           "cheapest_hours_count": "Čas se rozdělí na pevné, na sebe navazující bloky (nastavte níže) a v každém bloku se jako nejlevnější vybere tolik jednotlivých - případně nesouvislých - hodin. Vhodné pro tepelné čerpadlo: např. 12 z 24 hodin vybere každý kalendářní den dvanáct nejlevnějších hodin. Jakmile je plán bloku vybrán, už se znovu nepřeskládá, i když se prognóza později změní. Nesmí být větší než délka bloku, a pokud prognóza ještě plně nepokrývá celý blok, plán se vůbec nezveřejní.",
@@ -73,15 +81,25 @@
       "cannot_connect": "Nepodařilo se připojit k Energy Price Forecast EU.",
       "invalid_auth": "API klíč byl odmítnut nebo není autorizován.",
       "invalid_response": "API vrátilo neočekávanou odpověď.",
-      "retail_not_supported": "Maloobchodní ceny pro tento trh zatím nejsou k dispozici.",
-      "postal_code_required": "Pro maloobchodní ceny v Německu je vyžadováno PSČ.",
+      "retail_not_supported": "Pro tento trh není odhad k dispozici. Zvolte místo toho vlastní vzorec.",
+      "postal_code_required": "Odhad pro Německo vyžaduje PSČ.",
       "invalid_postal_code": "Zadejte 5místné německé PSČ.",
-      "retail_unavailable": "Nepodařilo se ověřit maloobchodní cenu pro tento trh nebo PSČ.",
+      "retail_unavailable": "Odhad se pro tento trh nebo PSČ nepodařilo ověřit.",
+      "invalid_retail_factor": "Koeficient musí být větší než 0.",
       "cheapest_hours_exceeds_window": "Nejlevnější hodiny na blok nesmí být větší než délka bloku.",
       "greenest_hours_exceeds_window": "Počet nejčistších hodin nesmí být větší než délka bloku."
     },
     "abort": {
       "already_configured": "Tento trh je již nakonfigurován."
+    }
+  },
+  "selector": {
+    "retail_source": {
+      "options": {
+        "off": "Vypnuto",
+        "estimate": "Odhad (DE, NL, DK, AT, NO)",
+        "formula": "Vlastní vzorec (všechny trhy)"
+      }
     }
   },
   "entity": {

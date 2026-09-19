@@ -10,8 +10,10 @@
           "horizon_hours": "Requested horizon",
           "window_hours": "Best-window duration",
           "api_key": "API key (optional)",
-          "retail_pricing": "Enable retail (all-in) pricing",
+          "retail_source": "Retail price",
           "postal_code": "Postal code",
+          "retail_factor": "Factor (own formula)",
+          "retail_surcharge": "Surcharge per kWh incl. VAT (own formula)",
           "local_currency": "Show prices in local currency",
           "update_interval_minutes": "Update interval (minutes)",
           "cheapest_hours_count": "Cheapest hours per block (0 to disable)",
@@ -24,8 +26,10 @@
           "horizon_hours": "The API reports the actually permitted horizon as a diagnostic sensor.",
           "window_hours": "Length of the cheapest and greenest continuous window.",
           "api_key": "Leave empty for public access. The key is stored in the Home Assistant config entry.",
-          "retail_pricing": "Adds an assumption-based all-in price (grid fee, levies, VAT) in addition to the market price. Only available for some markets; not an exact supplier tariff.",
-          "postal_code": "Required for Germany when retail pricing is enabled, used for the grid-fee lookup. Not used for other markets.",
+          "retail_source": "Estimate: our assumption-based all-in price (grid fee, levies, VAT), only for DE, NL, DK, AT and NO; Germany needs a postal code. Own formula: day-ahead price × factor + surcharge, in every market. Either way the plans are then built on the retail price.",
+          "postal_code": "Required for Germany when the estimate is selected; used for the grid-fee lookup. Not used otherwise.",
+          "retail_factor": "Only used with your own formula. Multiplies the day-ahead price, e.g. 1.21 for 21% VAT.",
+          "retail_surcharge": "Only used with your own formula. Fixed amount per kWh including VAT, added after the factor, in the unit of the price sensors - e.g. 0.1350 for 13.50 ct/kWh. Supplier fees, energy tax and any per-kWh grid charge belong here. Grid charges that change with the time of day cannot be entered yet.",
           "local_currency": "Converts prices from euro into Czech koruna (CZ), Polish złoty (PL) or Swedish krona (SE1-SE4) at the ECB's daily reference rate. Denmark and Norway always get their own currency; all other markets stay in euro. Switching changes the unit of the price sensors, so Home Assistant starts their long-term statistics afresh.",
           "update_interval_minutes": "How often to poll the API. Data resolution is 15 minutes, so shorter intervals rarely add new information.",
           "cheapest_hours_count": "Time is split into fixed, back-to-back blocks (set below), and this many individual - possibly non-contiguous - hours are picked as the cheapest in each block. Good for a heat pump: e.g. 12 of 24 hours picks the twelve cheapest hours every calendar day. Once a block's plan has been picked it is never reshuffled, even if the forecast later changes. Must not be greater than the block length, and no plan is published at all if the forecast does not yet fully cover the block.",
@@ -43,8 +47,10 @@
           "horizon_hours": "Requested horizon",
           "window_hours": "Best-window duration",
           "api_key": "New API key (optional)",
-          "retail_pricing": "Enable retail (all-in) pricing",
+          "retail_source": "Retail price",
           "postal_code": "Postal code",
+          "retail_factor": "Factor (own formula)",
+          "retail_surcharge": "Surcharge per kWh incl. VAT (own formula)",
           "local_currency": "Show prices in local currency",
           "update_interval_minutes": "Update interval (minutes)",
           "cheapest_hours_count": "Cheapest hours per block (0 to disable)",
@@ -56,8 +62,10 @@
         "data_description": {
           "horizon_hours": "The API reports the actually permitted horizon as a diagnostic sensor.",
           "window_hours": "Length of the cheapest and greenest continuous window.",
-          "retail_pricing": "Adds an assumption-based all-in price (grid fee, levies, VAT) in addition to the market price. Only available for some markets; not an exact supplier tariff.",
-          "postal_code": "Required for Germany when retail pricing is enabled, used for the grid-fee lookup. Not used for other markets.",
+          "retail_source": "Estimate: our assumption-based all-in price (grid fee, levies, VAT), only for DE, NL, DK, AT and NO; Germany needs a postal code. Own formula: day-ahead price × factor + surcharge, in every market. Either way the plans are then built on the retail price.",
+          "postal_code": "Required for Germany when the estimate is selected; used for the grid-fee lookup. Not used otherwise.",
+          "retail_factor": "Only used with your own formula. Multiplies the day-ahead price, e.g. 1.21 for 21% VAT.",
+          "retail_surcharge": "Only used with your own formula. Fixed amount per kWh including VAT, added after the factor, in the unit of the price sensors - e.g. 0.1350 for 13.50 ct/kWh. Supplier fees, energy tax and any per-kWh grid charge belong here. Grid charges that change with the time of day cannot be entered yet.",
           "local_currency": "Converts prices from euro into Czech koruna (CZ), Polish złoty (PL) or Swedish krona (SE1-SE4) at the ECB's daily reference rate. Denmark and Norway always get their own currency; all other markets stay in euro. Switching changes the unit of the price sensors, so Home Assistant starts their long-term statistics afresh.",
           "update_interval_minutes": "How often to poll the API. Data resolution is 15 minutes, so shorter intervals rarely add new information.",
           "cheapest_hours_count": "Time is split into fixed, back-to-back blocks (set below), and this many individual - possibly non-contiguous - hours are picked as the cheapest in each block. Good for a heat pump: e.g. 12 of 24 hours picks the twelve cheapest hours every calendar day. Once a block's plan has been picked it is never reshuffled, even if the forecast later changes. Must not be greater than the block length, and no plan is published at all if the forecast does not yet fully cover the block.",
@@ -73,15 +81,25 @@
       "cannot_connect": "Could not connect to Energy Price Forecast EU.",
       "invalid_auth": "The API key was rejected or is not authorized.",
       "invalid_response": "The API returned an unexpected response.",
-      "retail_not_supported": "Retail pricing is not available for this market yet.",
-      "postal_code_required": "A postal code is required for retail pricing in Germany.",
+      "retail_not_supported": "There is no estimate for this market. Choose your own formula instead.",
+      "postal_code_required": "The estimate for Germany needs a postal code.",
       "invalid_postal_code": "Enter a 5-digit German postal code.",
-      "retail_unavailable": "Could not verify retail pricing for this market or postal code.",
+      "retail_unavailable": "Could not verify the estimate for this market or postal code.",
+      "invalid_retail_factor": "The factor must be greater than 0.",
       "cheapest_hours_exceeds_window": "Cheapest hours per block cannot be greater than the block length.",
       "greenest_hours_exceeds_window": "The number of cleanest hours cannot be greater than the block length."
     },
     "abort": {
       "already_configured": "This market is already configured."
+    }
+  },
+  "selector": {
+    "retail_source": {
+      "options": {
+        "off": "Off",
+        "estimate": "Estimate (DE, NL, DK, AT, NO)",
+        "formula": "Own formula (all markets)"
+      }
     }
   },
   "entity": {

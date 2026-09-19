@@ -9,7 +9,7 @@ NAME: Final = "Energy Price Forecast EU"
 # from. Must equal manifest.json's version - test_version.py enforces that,
 # because this drifted to 0.1.0 for ten releases and every request from
 # every user was mislabelled the whole time.
-VERSION: Final = "1.5.0"
+VERSION: Final = "1.6.0"
 DEFAULT_API_URL: Final = (
     "https://api.energypriceforecast.eu/api/v1/home-assistant/summary"
 )
@@ -35,7 +35,32 @@ CONF_MARKET: Final = "market"
 CONF_HORIZON_HOURS: Final = "horizon_hours"
 CONF_WINDOW_HOURS: Final = "window_hours"
 CONF_API_KEY: Final = "api_key"
+# Until 1.6.0 retail pricing was a checkbox. Only the migration still reads it.
 CONF_RETAIL_PRICING: Final = "retail_pricing"
+# Where the retail price comes from: nowhere, the API's estimate, or the
+# user's own formula (day-ahead x factor + surcharge, see retail_formula.py).
+CONF_RETAIL_SOURCE: Final = "retail_source"
+RETAIL_SOURCE_OFF: Final = "off"
+RETAIL_SOURCE_ESTIMATE: Final = "estimate"
+RETAIL_SOURCE_FORMULA: Final = "formula"
+RETAIL_SOURCES: Final[tuple[str, ...]] = (
+    RETAIL_SOURCE_OFF,
+    RETAIL_SOURCE_ESTIMATE,
+    RETAIL_SOURCE_FORMULA,
+)
+CONF_RETAIL_FACTOR: Final = "retail_factor"
+DEFAULT_RETAIL_FACTOR: Final = 1.0
+# Above 0, or the order of the hours - and every plan built on it - would
+# stop meaning anything. 10 leaves room for any VAT and then some.
+MIN_RETAIL_FACTOR: Final = 0.01
+MAX_RETAIL_FACTOR: Final = 10.0
+# Per kWh including VAT, in the unit of the price sensors. Wide enough for
+# koruna and krona as well as euro, and negative for contracts with a
+# discount on the day-ahead price.
+CONF_RETAIL_SURCHARGE: Final = "retail_surcharge"
+DEFAULT_RETAIL_SURCHARGE: Final = 0.0
+MIN_RETAIL_SURCHARGE: Final = -100.0
+MAX_RETAIL_SURCHARGE: Final = 100.0
 CONF_POSTAL_CODE: Final = "postal_code"
 CONF_LOCAL_CURRENCY: Final = "local_currency"
 DEFAULT_LOCAL_CURRENCY: Final = False
@@ -95,8 +120,9 @@ COMBINED_SCORE_PRICE_FLOOR_SHARE: Final = 0.10
 PLATFORMS: Final = ["sensor", "binary_sensor"]
 
 # Markets where the API can compute an assumption-based retail (all-in)
-# price. Germany additionally requires a postal code for the grid-fee
-# lookup; the other markets use country-wide default assumptions.
+# price - the "estimate" retail source. Germany additionally requires a
+# postal code for the grid-fee lookup; the other markets use country-wide
+# default assumptions. The own formula works in every market.
 RETAIL_MARKETS: Final[frozenset[str]] = frozenset(
     {"DE", "NL", "DK1", "DK2", "AT", "NO1", "NO2", "NO3", "NO4", "NO5"}
 )

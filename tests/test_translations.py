@@ -26,6 +26,8 @@ REQUIRED_SECTIONS = (
     ("config", "step", "reconfigure", "data_description"),
     ("config", "error"),
     ("config", "abort"),
+    # The dropdown's option labels: without them the choice reads "formula".
+    ("selector", "retail_source", "options"),
     ("entity", "sensor"),
     ("entity", "binary_sensor"),
 )

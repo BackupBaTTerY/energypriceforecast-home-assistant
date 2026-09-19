@@ -10,8 +10,10 @@
           "horizon_hours": "Gewenste horizon",
           "window_hours": "Duur van het beste tijdvak",
           "api_key": "API-sleutel (optioneel)",
-          "retail_pricing": "Consumentenprijs (alles-in) inschakelen",
+          "retail_source": "Consumentenprijs",
           "postal_code": "Postcode",
+          "retail_factor": "Factor (eigen formule)",
+          "retail_surcharge": "Toeslag per kWh incl. btw (eigen formule)",
           "local_currency": "Prijzen in lokale valuta tonen",
           "update_interval_minutes": "Bijwerkinterval (minuten)",
           "cheapest_hours_count": "Goedkoopste uren per blok (0 om uit te schakelen)",
@@ -24,8 +26,10 @@
           "horizon_hours": "De API meldt de daadwerkelijk toegestane horizon als een diagnostische sensor.",
           "window_hours": "Lengte van het goedkoopste en groenste aaneengesloten tijdvak.",
           "api_key": "Laat leeg voor publieke toegang. De sleutel wordt opgeslagen in het Home Assistant-configuratie-item.",
-          "retail_pricing": "Voegt een op aannames gebaseerde alles-in prijs toe (netkosten, heffingen, btw) naast de marktprijs. Alleen beschikbaar voor sommige markten; geen exact leveringstarief.",
-          "postal_code": "Vereist voor Duitsland wanneer consumentenprijzen zijn ingeschakeld, gebruikt voor het opzoeken van netkosten. Niet gebruikt voor andere markten.",
+          "retail_source": "Schatting: onze op aannames gebaseerde alles-in prijs (netkosten, heffingen, btw), alleen voor DE, NL, DK, AT en NO; Duitsland heeft een postcode nodig. Eigen formule: beursprijs × factor + toeslag, in elke markt. In beide gevallen worden de plannen op de consumentenprijs gebaseerd.",
+          "postal_code": "Nodig voor Duitsland als de schatting is gekozen; gebruikt voor de netkosten. Anders niet gebruikt.",
+          "retail_factor": "Alleen voor de eigen formule. Vermenigvuldigt de beursprijs, bijv. 1.21 voor 21% btw.",
+          "retail_surcharge": "Alleen voor de eigen formule. Vast bedrag per kWh inclusief btw, opgeteld na de factor, in de eenheid van de prijssensoren – bijv. 0.1350 voor 13,50 ct/kWh. Hier horen de inkoopvergoeding van je leverancier, de energiebelasting en eventuele netkosten per kWh. Netkosten die met het tijdstip veranderen, kunnen nog niet worden ingevoerd.",
           "local_currency": "Rekent de prijzen met de dagelijkse referentiekoers van de ECB om van euro naar Tsjechische kronen (CZ), Poolse zloty (PL) of Zweedse kronen (SE1-SE4). Denemarken en Noorwegen krijgen altijd hun eigen valuta; alle andere markten blijven in euro. Omschakelen verandert de eenheid van de prijssensoren, waardoor Home Assistant hun langetermijnstatistieken opnieuw begint.",
           "update_interval_minutes": "Hoe vaak de API wordt bevraagd. De gegevensresolutie is 15 minuten, dus kortere intervallen leveren zelden nieuwe informatie op.",
           "cheapest_hours_count": "De tijd wordt verdeeld in vaste, aaneensluitende blokken (hieronder in te stellen), en in elk blok worden zoveel individuele - mogelijk niet-aaneengesloten - uren als goedkoopste gekozen. Handig voor een warmtepomp: bijv. 12 van 24 uur kiest elke kalenderdag de twaalf goedkoopste uren. Eenmaal gekozen wordt het plan van een blok nooit meer herschud, ook niet als de prognose later verandert. Mag nooit groter zijn dan de bloklengte, en er wordt helemaal geen plan gepubliceerd als de prognose het blok nog niet volledig dekt.",
@@ -43,8 +47,10 @@
           "horizon_hours": "Gewenste horizon",
           "window_hours": "Duur van het beste tijdvak",
           "api_key": "Nieuwe API-sleutel (optioneel)",
-          "retail_pricing": "Consumentenprijs (alles-in) inschakelen",
+          "retail_source": "Consumentenprijs",
           "postal_code": "Postcode",
+          "retail_factor": "Factor (eigen formule)",
+          "retail_surcharge": "Toeslag per kWh incl. btw (eigen formule)",
           "local_currency": "Prijzen in lokale valuta tonen",
           "update_interval_minutes": "Bijwerkinterval (minuten)",
           "cheapest_hours_count": "Goedkoopste uren per blok (0 om uit te schakelen)",
@@ -56,8 +62,10 @@
         "data_description": {
           "horizon_hours": "De API meldt de daadwerkelijk toegestane horizon als een diagnostische sensor.",
           "window_hours": "Lengte van het goedkoopste en groenste aaneengesloten tijdvak.",
-          "retail_pricing": "Voegt een op aannames gebaseerde alles-in prijs toe (netkosten, heffingen, btw) naast de marktprijs. Alleen beschikbaar voor sommige markten; geen exact leveringstarief.",
-          "postal_code": "Vereist voor Duitsland wanneer consumentenprijzen zijn ingeschakeld, gebruikt voor het opzoeken van netkosten. Niet gebruikt voor andere markten.",
+          "retail_source": "Schatting: onze op aannames gebaseerde alles-in prijs (netkosten, heffingen, btw), alleen voor DE, NL, DK, AT en NO; Duitsland heeft een postcode nodig. Eigen formule: beursprijs × factor + toeslag, in elke markt. In beide gevallen worden de plannen op de consumentenprijs gebaseerd.",
+          "postal_code": "Nodig voor Duitsland als de schatting is gekozen; gebruikt voor de netkosten. Anders niet gebruikt.",
+          "retail_factor": "Alleen voor de eigen formule. Vermenigvuldigt de beursprijs, bijv. 1.21 voor 21% btw.",
+          "retail_surcharge": "Alleen voor de eigen formule. Vast bedrag per kWh inclusief btw, opgeteld na de factor, in de eenheid van de prijssensoren – bijv. 0.1350 voor 13,50 ct/kWh. Hier horen de inkoopvergoeding van je leverancier, de energiebelasting en eventuele netkosten per kWh. Netkosten die met het tijdstip veranderen, kunnen nog niet worden ingevoerd.",
           "local_currency": "Rekent de prijzen met de dagelijkse referentiekoers van de ECB om van euro naar Tsjechische kronen (CZ), Poolse zloty (PL) of Zweedse kronen (SE1-SE4). Denemarken en Noorwegen krijgen altijd hun eigen valuta; alle andere markten blijven in euro. Omschakelen verandert de eenheid van de prijssensoren, waardoor Home Assistant hun langetermijnstatistieken opnieuw begint.",
           "update_interval_minutes": "Hoe vaak de API wordt bevraagd. De gegevensresolutie is 15 minuten, dus kortere intervallen leveren zelden nieuwe informatie op.",
           "cheapest_hours_count": "De tijd wordt verdeeld in vaste, aaneensluitende blokken (hieronder in te stellen), en in elk blok worden zoveel individuele - mogelijk niet-aaneengesloten - uren als goedkoopste gekozen. Handig voor een warmtepomp: bijv. 12 van 24 uur kiest elke kalenderdag de twaalf goedkoopste uren. Eenmaal gekozen wordt het plan van een blok nooit meer herschud, ook niet als de prognose later verandert. Mag nooit groter zijn dan de bloklengte, en er wordt helemaal geen plan gepubliceerd als de prognose het blok nog niet volledig dekt.",
@@ -73,15 +81,25 @@
       "cannot_connect": "Kan geen verbinding maken met Energy Price Forecast EU.",
       "invalid_auth": "De API-sleutel is geweigerd of niet geautoriseerd.",
       "invalid_response": "De API heeft een onverwacht antwoord gegeven.",
-      "retail_not_supported": "Consumentenprijzen zijn nog niet beschikbaar voor deze markt.",
-      "postal_code_required": "Voor consumentenprijzen in Duitsland is een postcode vereist.",
+      "retail_not_supported": "Voor deze markt is er geen schatting. Kies in plaats daarvan de eigen formule.",
+      "postal_code_required": "De schatting voor Duitsland heeft een postcode nodig.",
       "invalid_postal_code": "Voer een 5-cijferige Duitse postcode in.",
-      "retail_unavailable": "Kon de consumentenprijs voor deze markt of postcode niet verifiëren.",
+      "retail_unavailable": "De schatting kon voor deze markt of postcode niet worden gecontroleerd.",
+      "invalid_retail_factor": "De factor moet groter zijn dan 0.",
       "cheapest_hours_exceeds_window": "Goedkoopste uren per blok mag niet groter zijn dan de bloklengte.",
       "greenest_hours_exceeds_window": "Het aantal schoonste uren mag niet groter zijn dan de bloklengte."
     },
     "abort": {
       "already_configured": "Deze markt is al geconfigureerd."
+    }
+  },
+  "selector": {
+    "retail_source": {
+      "options": {
+        "off": "Uit",
+        "estimate": "Schatting (DE, NL, DK, AT, NO)",
+        "formula": "Eigen formule (alle markten)"
+      }
     }
   },
   "entity": {

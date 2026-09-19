@@ -81,7 +81,7 @@ async def _setup_entry(hass, extra_data: dict | None = None, price_entries=None)
             "window_hours": 4,
             "update_interval_minutes": 30,
             "cheapest_hours_count": 0,
-            "retail_pricing": False,
+            "retail_source": "off",
             **(extra_data or {}),
         },
     )
@@ -400,7 +400,7 @@ async def _setup_with_summary(hass, extra_data: dict, summary: dict):
             "window_hours": 4,
             "update_interval_minutes": 30,
             "cheapest_hours_count": 0,
-            "retail_pricing": False,
+            "retail_source": "off",
             **extra_data,
         },
     )
@@ -560,4 +560,120 @@ async def test_switching_currency_starts_a_fresh_plan(hass, freezer) -> None:
     # ... but priced in koruna rather than carried over from the euro plan.
     assert coordinator.cheapest_hours_window_average == pytest.approx(
         euro_average * rate
+    )
+
+
+def _block_prices_payload(prices_by_hour: dict[int, float]) -> dict:
+    return {
+        "format": "home-assistant-prices",
+        "country": "DE",
+        "currency": "EUR",
+        "unit": "EUR/kWh",
+        "entries": _full_day_entries("2026-08-12T00:00:00Z", prices_by_hour),
+    }
+
+
+async def test_a_ticked_retail_box_keeps_its_plan_key_after_the_upgrade(
+    hass, freezer
+) -> None:
+    """Upgrading to 1.6.0 must still find the plans the checkbox stored.
+
+    The ticked box becomes the estimate, and the estimate keys its plans as
+    "retail" exactly like the box did. A new word there would re-pick every
+    retail user's current block halfway through on the day of the update.
+    """
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-12T10:00:00+00:00")
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        version=2,
+        unique_id="DE",
+        data={
+            "market": "DE",
+            "horizon_hours": 48,
+            "window_hours": 4,
+            "update_interval_minutes": 30,
+            "retail_pricing": True,
+            "postal_code": "10115",
+            "cheapest_hours_count": 2,
+            "cheapest_hours_window_hours": 24,
+        },
+    )
+    entry.add_to_hass(hass)
+    payload = _block_prices_payload({h: 0.50 for h in range(24)} | {14: 0.05, 16: 0.10})
+    with (
+        patch(
+            "custom_components.energypriceforecast.api.EnergyPriceForecastApi"
+            ".async_get_summary",
+            new=AsyncMock(return_value=SUMMARY_PAYLOAD),
+        ),
+        patch(
+            "custom_components.energypriceforecast.api.EnergyPriceForecastApi"
+            ".async_get_prices",
+            new=AsyncMock(return_value=payload),
+        ),
+    ):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    assert entry.version == 3
+    assert entry.data["retail_source"] == "estimate"
+    keys = list(entry.runtime_data._plan_cache)
+    assert len(keys) == 1
+    assert keys[0].startswith("block|retail|2|24|0|")
+
+
+async def test_changing_the_formula_starts_a_fresh_plan(hass, freezer) -> None:
+    """A plan priced in one formula must not be shown after a change.
+
+    The stored plan keeps its averages in the prices it was built on, and it
+    survives the reload a reconfigure causes. With the formula outside the
+    key, the reloaded entry would find this block's plan and keep serving
+    averages the new factor and surcharge never touched.
+    """
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-12T10:00:00+00:00")
+    spot = {h: 0.50 for h in range(24)} | {14: 0.05, 16: 0.10}
+    entry = await _setup_entry(
+        hass,
+        extra_data={
+            "retail_source": "formula",
+            "retail_factor": 1.0,
+            "retail_surcharge": 0.0,
+            "cheapest_hours_count": 2,
+            "cheapest_hours_window_hours": 24,
+        },
+        price_entries=_block_prices_payload(spot)["entries"],
+    )
+    keys = list(entry.runtime_data._plan_cache)
+    assert len(keys) == 1
+    assert keys[0].startswith("block|formula|1|0|2|24|0|")
+    plain_average = entry.runtime_data.cheapest_hours_window_average
+    assert plain_average is not None
+
+    with (
+        patch(
+            "custom_components.energypriceforecast.api.EnergyPriceForecastApi"
+            ".async_get_summary",
+            new=AsyncMock(return_value=SUMMARY_PAYLOAD),
+        ),
+        patch(
+            "custom_components.energypriceforecast.api.EnergyPriceForecastApi"
+            ".async_get_prices",
+            new=AsyncMock(return_value=_block_prices_payload(spot)),
+        ),
+    ):
+        hass.config_entries.async_update_entry(
+            entry,
+            data={**entry.data, "retail_factor": 1.21, "retail_surcharge": 0.1},
+        )
+        await hass.async_block_till_done()
+
+    coordinator = entry.runtime_data
+    assert coordinator.retail_factor == pytest.approx(1.21)
+    # The same hours - a positive factor keeps their order ...
+    assert [h["start"].hour for h in coordinator.cheapest_hours] == [14, 16]
+    # ... but priced in the new formula rather than carried over.
+    assert coordinator.cheapest_hours_window_average == pytest.approx(
+        plain_average * 1.21 + 0.1
     )

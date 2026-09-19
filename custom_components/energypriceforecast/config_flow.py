@@ -43,7 +43,10 @@ from .const import (
     CONF_LOCAL_CURRENCY,
     CONF_MARKET,
     CONF_POSTAL_CODE,
+    CONF_RETAIL_FACTOR,
     CONF_RETAIL_PRICING,
+    CONF_RETAIL_SOURCE,
+    CONF_RETAIL_SURCHARGE,
     CONF_UPDATE_INTERVAL_MINUTES,
     CONF_WEEKEND_HOURS_COUNT,
     CONF_WINDOW_HOURS,
@@ -54,6 +57,8 @@ from .const import (
     DEFAULT_GREENEST_HOURS_COUNT,
     DEFAULT_HORIZON_HOURS,
     DEFAULT_LOCAL_CURRENCY,
+    DEFAULT_RETAIL_FACTOR,
+    DEFAULT_RETAIL_SURCHARGE,
     DEFAULT_UPDATE_INTERVAL_MINUTES,
     DEFAULT_WEEKEND_HOURS_COUNT,
     DEFAULT_WINDOW_HOURS,
@@ -63,12 +68,20 @@ from .const import (
     MAX_CHEAPEST_HOURS_COUNT,
     MAX_CHEAPEST_HOURS_WINDOW_HOURS,
     MAX_GREENEST_HOURS_COUNT,
+    MAX_RETAIL_FACTOR,
+    MAX_RETAIL_SURCHARGE,
     MAX_UPDATE_INTERVAL_MINUTES,
     MAX_WEEKEND_HOURS_COUNT,
     MIN_CHEAPEST_HOURS_WINDOW_HOURS,
+    MIN_RETAIL_FACTOR,
+    MIN_RETAIL_SURCHARGE,
     MIN_UPDATE_INTERVAL_MINUTES,
     PRICES_API_URL,
     RETAIL_MARKETS,
+    RETAIL_SOURCE_ESTIMATE,
+    RETAIL_SOURCE_FORMULA,
+    RETAIL_SOURCE_OFF,
+    RETAIL_SOURCES,
 )
 
 _POSTAL_CODE_RE = re.compile(r"^[0-9]{5}$")
@@ -145,12 +158,43 @@ def _schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                 TextSelectorConfig(type=TextSelectorType.PASSWORD)
             ),
             vol.Optional(
-                CONF_RETAIL_PRICING,
-                default=defaults.get(CONF_RETAIL_PRICING, False),
-            ): BooleanSelector(),
+                CONF_RETAIL_SOURCE,
+                default=defaults.get(CONF_RETAIL_SOURCE, RETAIL_SOURCE_OFF),
+            ): SelectSelector(
+                SelectSelectorConfig(
+                    options=list(RETAIL_SOURCES),
+                    translation_key=CONF_RETAIL_SOURCE,
+                    mode=SelectSelectorMode.DROPDOWN,
+                )
+            ),
             vol.Optional(
                 CONF_POSTAL_CODE, default=defaults.get(CONF_POSTAL_CODE, "")
             ): TextSelector(TextSelectorConfig(type=TextSelectorType.TEXT)),
+            # Shown to every market, like the postal code: the form cannot
+            # change with the selection above, so the descriptions say which
+            # fields belong to which source.
+            vol.Optional(
+                CONF_RETAIL_FACTOR,
+                default=defaults.get(CONF_RETAIL_FACTOR, DEFAULT_RETAIL_FACTOR),
+            ): NumberSelector(
+                NumberSelectorConfig(
+                    min=MIN_RETAIL_FACTOR,
+                    max=MAX_RETAIL_FACTOR,
+                    step=0.0001,
+                    mode=NumberSelectorMode.BOX,
+                )
+            ),
+            vol.Optional(
+                CONF_RETAIL_SURCHARGE,
+                default=defaults.get(CONF_RETAIL_SURCHARGE, DEFAULT_RETAIL_SURCHARGE),
+            ): NumberSelector(
+                NumberSelectorConfig(
+                    min=MIN_RETAIL_SURCHARGE,
+                    max=MAX_RETAIL_SURCHARGE,
+                    step=0.0001,
+                    mode=NumberSelectorMode.BOX,
+                )
+            ),
             # A checkbox, not a currency dropdown: every market sees the same
             # form, and a free choice would allow pairs like Germany in Swedish
             # krona. "My market's own currency" cannot be set wrong.
@@ -251,7 +295,18 @@ def _normalize_input(user_input: dict[str, Any]) -> dict[str, Any]:
         normalized[CONF_API_KEY] = api_key
     else:
         normalized.pop(CONF_API_KEY, None)
-    normalized[CONF_RETAIL_PRICING] = bool(normalized.get(CONF_RETAIL_PRICING, False))
+    source = str(normalized.get(CONF_RETAIL_SOURCE, RETAIL_SOURCE_OFF))
+    normalized[CONF_RETAIL_SOURCE] = (
+        source if source in RETAIL_SOURCES else RETAIL_SOURCE_OFF
+    )
+    normalized[CONF_RETAIL_FACTOR] = float(
+        normalized.get(CONF_RETAIL_FACTOR, DEFAULT_RETAIL_FACTOR)
+    )
+    normalized[CONF_RETAIL_SURCHARGE] = float(
+        normalized.get(CONF_RETAIL_SURCHARGE, DEFAULT_RETAIL_SURCHARGE)
+    )
+    # The checkbox this replaced lives on only in the migration.
+    normalized.pop(CONF_RETAIL_PRICING, None)
     normalized[CONF_LOCAL_CURRENCY] = bool(
         normalized.get(CONF_LOCAL_CURRENCY, DEFAULT_LOCAL_CURRENCY)
     )
@@ -291,7 +346,14 @@ def _validate_retail_selection(data: dict[str, Any]) -> str | None:
     Returns an error code for ``errors["base"]``, or None if the selection
     is consistent.
     """
-    if not data[CONF_RETAIL_PRICING]:
+    source = data.get(CONF_RETAIL_SOURCE, RETAIL_SOURCE_OFF)
+    if source == RETAIL_SOURCE_OFF:
+        return None
+    if source == RETAIL_SOURCE_FORMULA:
+        # Every market can use a formula. A factor of 0 or below would make
+        # every hour cost the same or turn the ranking upside down.
+        if not data.get(CONF_RETAIL_FACTOR, DEFAULT_RETAIL_FACTOR) > 0:
+            return "invalid_retail_factor"
         return None
     if data[CONF_MARKET] not in RETAIL_MARKETS:
         return "retail_not_supported"
@@ -338,7 +400,9 @@ async def _validate_input(hass: HomeAssistant, data: dict[str, Any]) -> None:
         ),
     )
     await api.async_get_summary()
-    if data[CONF_RETAIL_PRICING]:
+    # Only the estimate comes from the API and can fail there; the formula is
+    # computed from the base series the summary check above already reached.
+    if data.get(CONF_RETAIL_SOURCE) == RETAIL_SOURCE_ESTIMATE:
         try:
             await api.async_get_prices(
                 price_mode="retail", postal_code=data.get(CONF_POSTAL_CODE)
@@ -355,7 +419,9 @@ class EnergyPriceForecastConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     # 2: horizons above MAX_HORIZON_HOURS are clamped - 168 was offered for a
     #    while although the forecast never produced more than 120 hours.
-    VERSION = 2
+    # 3: the retail checkbox became a choice of source: off, the API's
+    #    estimate, or the user's own formula.
+    VERSION = 3
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None

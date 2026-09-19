@@ -20,7 +20,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_utc_time_change
 from homeassistant.util import dt as dt_util
 
-from .const import COMBINED_SCORE_SCALE
+from .const import COMBINED_SCORE_SCALE, RETAIL_SOURCE_FORMULA
 from .coordinator import EnergyPriceForecastCoordinator
 from .entity import EnergyPriceForecastEntity
 from .planning import duration_weighted_mean
@@ -536,10 +536,12 @@ class EnergyPriceForecastRetailWindowSensor(
 class EnergyPriceForecastRetailPriceSensor(
     _StickyUnitMixin, EnergyPriceForecastEntity, SensorEntity
 ):
-    """Current assumption-based retail (all-in) electricity price.
+    """Current retail (all-in) electricity price.
 
-    Only created when retail pricing was enabled during setup. Backed by
-    coordinator.retail_data rather than the shared summary response.
+    Only created when a retail source was chosen during setup: the API's
+    assumption-based estimate, or the user's own formula applied to the base
+    series. Backed by coordinator.retail_data rather than the shared summary
+    response, and it says in its attributes which of the two it shows.
     State mirrors the current retail price; raw_today/raw_tomorrow
     attributes carry the full retail series, same shape as
     EnergyPriceForecastPriceSeriesSensor but with retail values.
@@ -580,7 +582,19 @@ class EnergyPriceForecastRetailPriceSensor(
             "raw_tomorrow": tomorrow,
             "raw_forecast": _forecast_only(entries),
             **_day_statistics(today, self.native_value),
+            **self._source_attributes(),
         }
+
+    def _source_attributes(self) -> dict[str, Any]:
+        """Where the price comes from, and with a formula, which one."""
+        coordinator = self.coordinator
+        if coordinator.retail_source == RETAIL_SOURCE_FORMULA:
+            return {
+                "retail_source": RETAIL_SOURCE_FORMULA,
+                "formula_factor": coordinator.retail_factor,
+                "formula_surcharge": coordinator.retail_surcharge,
+            }
+        return {"retail_source": coordinator.retail_source}
 
 
 class EnergyPriceForecastPriceSeriesSensor(

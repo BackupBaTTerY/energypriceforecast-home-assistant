@@ -10,8 +10,10 @@
           "horizon_hours": "Horizon demandé",
           "window_hours": "Durée de la meilleure fenêtre",
           "api_key": "Clé API (optionnelle)",
-          "retail_pricing": "Activer le prix de détail (tout compris)",
+          "retail_source": "Prix de détail",
           "postal_code": "Code postal",
+          "retail_factor": "Facteur (formule personnelle)",
+          "retail_surcharge": "Supplément par kWh TTC (formule personnelle)",
           "local_currency": "Afficher les prix en monnaie locale",
           "update_interval_minutes": "Intervalle de mise à jour (minutes)",
           "cheapest_hours_count": "Heures les moins chères par bloc (0 pour désactiver)",
@@ -24,8 +26,10 @@
           "horizon_hours": "L'API indique l'horizon réellement autorisé via un capteur de diagnostic.",
           "window_hours": "Durée de la fenêtre continue la moins chère et la plus verte.",
           "api_key": "Laissez vide pour un accès public. La clé est stockée dans l'entrée de configuration de Home Assistant.",
-          "retail_pricing": "Ajoute un prix tout compris basé sur des hypothèses (frais de réseau, taxes, TVA) en plus du prix du marché. Disponible uniquement pour certains marchés ; ce n'est pas un tarif fournisseur exact.",
-          "postal_code": "Requis pour l'Allemagne lorsque le prix de détail est activé, utilisé pour déterminer les frais de réseau. Non utilisé pour les autres marchés.",
+          "retail_source": "Estimation : notre prix tout compris basé sur des hypothèses (frais de réseau, taxes, TVA), uniquement pour DE, NL, DK, AT et NO ; l'Allemagne nécessite un code postal. Formule personnelle : prix spot × facteur + supplément, dans tous les marchés. Dans les deux cas, les plans sont établis sur le prix de détail.",
+          "postal_code": "Requis pour l'Allemagne lorsque l'estimation est choisie ; sert à déterminer les frais de réseau. Sinon non utilisé.",
+          "retail_factor": "Uniquement pour la formule personnelle. Multiplie le prix spot, par ex. 1.21 pour 21 % de TVA.",
+          "retail_surcharge": "Uniquement pour la formule personnelle. Montant fixe par kWh TVA comprise, ajouté après le facteur, dans l'unité des capteurs de prix – par ex. 0.1350 pour 13,50 ct/kWh. On y met la marge du fournisseur, les taxes sur l'énergie et les frais de réseau par kWh. Les frais de réseau qui varient selon l'heure ne peuvent pas encore être saisis.",
           "local_currency": "Convertit les prix de l'euro en couronnes tchèques (CZ), zlotys polonais (PL) ou couronnes suédoises (SE1-SE4) au taux de référence quotidien de la BCE. Le Danemark et la Norvège reçoivent toujours leur propre monnaie ; les autres marchés restent en euros. Changer modifie l'unité des capteurs de prix, Home Assistant recommence donc leurs statistiques à long terme.",
           "update_interval_minutes": "Fréquence d'interrogation de l'API. La résolution des données est de 15 minutes, des intervalles plus courts apportent donc rarement de nouvelles informations.",
           "cheapest_hours_count": "Le temps est découpé en blocs fixes et contigus (à régler ci-dessous), et dans chaque bloc, ce nombre d'heures individuelles - éventuellement non consécutives - est choisi comme étant les moins chères. Utile pour une pompe à chaleur : par ex. 12 heures sur 24 sélectionne les douze heures les moins chères de chaque jour calendaire. Une fois le plan d'un bloc établi, il n'est plus jamais remanié, même si la prévision change ensuite. Ne doit jamais dépasser la longueur du bloc, et aucun plan n'est publié du tout si la prévision ne couvre pas encore entièrement le bloc.",
@@ -43,8 +47,10 @@
           "horizon_hours": "Horizon demandé",
           "window_hours": "Durée de la meilleure fenêtre",
           "api_key": "Nouvelle clé API (optionnelle)",
-          "retail_pricing": "Activer le prix de détail (tout compris)",
+          "retail_source": "Prix de détail",
           "postal_code": "Code postal",
+          "retail_factor": "Facteur (formule personnelle)",
+          "retail_surcharge": "Supplément par kWh TTC (formule personnelle)",
           "local_currency": "Afficher les prix en monnaie locale",
           "update_interval_minutes": "Intervalle de mise à jour (minutes)",
           "cheapest_hours_count": "Heures les moins chères par bloc (0 pour désactiver)",
@@ -56,8 +62,10 @@
         "data_description": {
           "horizon_hours": "L'API indique l'horizon réellement autorisé via un capteur de diagnostic.",
           "window_hours": "Durée de la fenêtre continue la moins chère et la plus verte.",
-          "retail_pricing": "Ajoute un prix tout compris basé sur des hypothèses (frais de réseau, taxes, TVA) en plus du prix du marché. Disponible uniquement pour certains marchés ; ce n'est pas un tarif fournisseur exact.",
-          "postal_code": "Requis pour l'Allemagne lorsque le prix de détail est activé, utilisé pour déterminer les frais de réseau. Non utilisé pour les autres marchés.",
+          "retail_source": "Estimation : notre prix tout compris basé sur des hypothèses (frais de réseau, taxes, TVA), uniquement pour DE, NL, DK, AT et NO ; l'Allemagne nécessite un code postal. Formule personnelle : prix spot × facteur + supplément, dans tous les marchés. Dans les deux cas, les plans sont établis sur le prix de détail.",
+          "postal_code": "Requis pour l'Allemagne lorsque l'estimation est choisie ; sert à déterminer les frais de réseau. Sinon non utilisé.",
+          "retail_factor": "Uniquement pour la formule personnelle. Multiplie le prix spot, par ex. 1.21 pour 21 % de TVA.",
+          "retail_surcharge": "Uniquement pour la formule personnelle. Montant fixe par kWh TVA comprise, ajouté après le facteur, dans l'unité des capteurs de prix – par ex. 0.1350 pour 13,50 ct/kWh. On y met la marge du fournisseur, les taxes sur l'énergie et les frais de réseau par kWh. Les frais de réseau qui varient selon l'heure ne peuvent pas encore être saisis.",
           "local_currency": "Convertit les prix de l'euro en couronnes tchèques (CZ), zlotys polonais (PL) ou couronnes suédoises (SE1-SE4) au taux de référence quotidien de la BCE. Le Danemark et la Norvège reçoivent toujours leur propre monnaie ; les autres marchés restent en euros. Changer modifie l'unité des capteurs de prix, Home Assistant recommence donc leurs statistiques à long terme.",
           "update_interval_minutes": "Fréquence d'interrogation de l'API. La résolution des données est de 15 minutes, des intervalles plus courts apportent donc rarement de nouvelles informations.",
           "cheapest_hours_count": "Le temps est découpé en blocs fixes et contigus (à régler ci-dessous), et dans chaque bloc, ce nombre d'heures individuelles - éventuellement non consécutives - est choisi comme étant les moins chères. Utile pour une pompe à chaleur : par ex. 12 heures sur 24 sélectionne les douze heures les moins chères de chaque jour calendaire. Une fois le plan d'un bloc établi, il n'est plus jamais remanié, même si la prévision change ensuite. Ne doit jamais dépasser la longueur du bloc, et aucun plan n'est publié du tout si la prévision ne couvre pas encore entièrement le bloc.",
@@ -73,15 +81,25 @@
       "cannot_connect": "Impossible de se connecter à Energy Price Forecast EU.",
       "invalid_auth": "La clé API a été rejetée ou n'est pas autorisée.",
       "invalid_response": "L'API a renvoyé une réponse inattendue.",
-      "retail_not_supported": "Le prix de détail n'est pas encore disponible pour ce marché.",
-      "postal_code_required": "Un code postal est requis pour le prix de détail en Allemagne.",
+      "retail_not_supported": "Aucune estimation n'est disponible pour ce marché. Choisissez plutôt la formule personnelle.",
+      "postal_code_required": "L'estimation pour l'Allemagne nécessite un code postal.",
       "invalid_postal_code": "Saisissez un code postal allemand à 5 chiffres.",
-      "retail_unavailable": "Impossible de vérifier le prix de détail pour ce marché ou ce code postal.",
+      "retail_unavailable": "L'estimation n'a pas pu être vérifiée pour ce marché ou ce code postal.",
+      "invalid_retail_factor": "Le facteur doit être supérieur à 0.",
       "cheapest_hours_exceeds_window": "Les heures les moins chères par bloc ne peuvent pas dépasser la longueur du bloc.",
       "greenest_hours_exceeds_window": "Le nombre d'heures les plus propres ne peut pas dépasser la durée du bloc."
     },
     "abort": {
       "already_configured": "Ce marché est déjà configuré."
+    }
+  },
+  "selector": {
+    "retail_source": {
+      "options": {
+        "off": "Désactivé",
+        "estimate": "Estimation (DE, NL, DK, AT, NO)",
+        "formula": "Formule personnelle (tous les marchés)"
+      }
     }
   },
   "entity": {

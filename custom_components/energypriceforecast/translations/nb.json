@@ -10,8 +10,10 @@
           "horizon_hours": "Ønsket horisont",
           "window_hours": "Varighet på beste tidsvindu",
           "api_key": "API-nøkkel (valgfritt)",
-          "retail_pricing": "Aktiver forbrukerpris (alt inkludert)",
+          "retail_source": "Forbrukerpris",
           "postal_code": "Postnummer",
+          "retail_factor": "Faktor (egen formel)",
+          "retail_surcharge": "Påslag per kWh inkl. mva. (egen formel)",
           "local_currency": "Vis priser i nasjonal valuta",
           "update_interval_minutes": "Oppdateringsintervall (minutter)",
           "cheapest_hours_count": "Billigste timer per blokk (0 for å deaktivere)",
@@ -24,8 +26,10 @@
           "horizon_hours": "API-et rapporterer den faktisk tillatte horisonten som en diagnostikksensor.",
           "window_hours": "Lengden på det billigste og grønneste sammenhengende tidsvinduet.",
           "api_key": "La stå tomt for offentlig tilgang. Nøkkelen lagres i Home Assistants konfigurasjonsoppføring.",
-          "retail_pricing": "Legger til en antagelsesbasert alt-inkludert-pris (nettleie, avgifter, mva.) i tillegg til markedsprisen. Kun tilgjengelig for enkelte markeder; ikke en eksakt leverandørtariff.",
-          "postal_code": "Kreves for Tyskland når forbrukerpris er aktivert, brukes til oppslag av nettleie. Brukes ikke for andre markeder.",
+          "retail_source": "Estimat: vår antagelsesbaserte alt-inkludert-pris (nettleie, avgifter, mva.), kun for DE, NL, DK, AT og NO; Tyskland krever postnummer. Egen formel: spotpris × faktor + påslag, i alle markeder. I begge tilfeller bygges planene på forbrukerprisen.",
+          "postal_code": "Påkrevd for Tyskland når estimatet er valgt; brukes til å finne nettleien. Ellers ikke brukt.",
+          "retail_factor": "Kun for egen formel. Ganger spotprisen, f.eks. 1.25 for 25 % mva.",
+          "retail_surcharge": "Kun for egen formel. Fast beløp per kWh inklusive mva., lagt til etter faktoren, i prissensorenes enhet (NOK/kWh) – f.eks. 0.55 for 55 øre/kWh. Her hører leverandørpåslag, elavgift og energiledd i nettleien hjemme. Nettleie som varierer med tid på døgnet kan ikke legges inn ennå.",
           "local_currency": "Regner om prisene fra euro til tsjekkiske kroner (CZ), polske zloty (PL) eller svenske kroner (SE1-SE4) med ECBs daglige referansekurs. Danmark og Norge får alltid sin egen valuta; alle andre markeder forblir i euro. Et bytte endrer enheten til prissensorene, så Home Assistant starter langtidsstatistikken deres på nytt.",
           "update_interval_minutes": "Hvor ofte API-et spørres. Dataoppløsningen er 15 minutter, så kortere intervaller gir sjelden ny informasjon.",
           "cheapest_hours_count": "Tiden deles opp i faste, sammenhengende blokker (angis nedenfor), og i hver blokk velges så mange enkelttimer - eventuelt ikke sammenhengende - som de billigste. Bra for en varmepumpe: f.eks. velger 12 av 24 timer de tolv billigste timene hver kalenderdag. Når en blokks plan først er valgt, blir den aldri stokket om igjen, selv om prognosen senere endrer seg. Må aldri være større enn blokklengden, og ingen plan publiseres i det hele tatt hvis prognosen ennå ikke dekker hele blokken.",
@@ -43,8 +47,10 @@
           "horizon_hours": "Ønsket horisont",
           "window_hours": "Varighet på beste tidsvindu",
           "api_key": "Ny API-nøkkel (valgfritt)",
-          "retail_pricing": "Aktiver forbrukerpris (alt inkludert)",
+          "retail_source": "Forbrukerpris",
           "postal_code": "Postnummer",
+          "retail_factor": "Faktor (egen formel)",
+          "retail_surcharge": "Påslag per kWh inkl. mva. (egen formel)",
           "local_currency": "Vis priser i nasjonal valuta",
           "update_interval_minutes": "Oppdateringsintervall (minutter)",
           "cheapest_hours_count": "Billigste timer per blokk (0 for å deaktivere)",
@@ -56,8 +62,10 @@
         "data_description": {
           "horizon_hours": "API-et rapporterer den faktisk tillatte horisonten som en diagnostikksensor.",
           "window_hours": "Lengden på det billigste og grønneste sammenhengende tidsvinduet.",
-          "retail_pricing": "Legger til en antagelsesbasert alt-inkludert-pris (nettleie, avgifter, mva.) i tillegg til markedsprisen. Kun tilgjengelig for enkelte markeder; ikke en eksakt leverandørtariff.",
-          "postal_code": "Kreves for Tyskland når forbrukerpris er aktivert, brukes til oppslag av nettleie. Brukes ikke for andre markeder.",
+          "retail_source": "Estimat: vår antagelsesbaserte alt-inkludert-pris (nettleie, avgifter, mva.), kun for DE, NL, DK, AT og NO; Tyskland krever postnummer. Egen formel: spotpris × faktor + påslag, i alle markeder. I begge tilfeller bygges planene på forbrukerprisen.",
+          "postal_code": "Påkrevd for Tyskland når estimatet er valgt; brukes til å finne nettleien. Ellers ikke brukt.",
+          "retail_factor": "Kun for egen formel. Ganger spotprisen, f.eks. 1.25 for 25 % mva.",
+          "retail_surcharge": "Kun for egen formel. Fast beløp per kWh inklusive mva., lagt til etter faktoren, i prissensorenes enhet (NOK/kWh) – f.eks. 0.55 for 55 øre/kWh. Her hører leverandørpåslag, elavgift og energiledd i nettleien hjemme. Nettleie som varierer med tid på døgnet kan ikke legges inn ennå.",
           "local_currency": "Regner om prisene fra euro til tsjekkiske kroner (CZ), polske zloty (PL) eller svenske kroner (SE1-SE4) med ECBs daglige referansekurs. Danmark og Norge får alltid sin egen valuta; alle andre markeder forblir i euro. Et bytte endrer enheten til prissensorene, så Home Assistant starter langtidsstatistikken deres på nytt.",
           "update_interval_minutes": "Hvor ofte API-et spørres. Dataoppløsningen er 15 minutter, så kortere intervaller gir sjelden ny informasjon.",
           "cheapest_hours_count": "Tiden deles opp i faste, sammenhengende blokker (angis nedenfor), og i hver blokk velges så mange enkelttimer - eventuelt ikke sammenhengende - som de billigste. Bra for en varmepumpe: f.eks. velger 12 av 24 timer de tolv billigste timene hver kalenderdag. Når en blokks plan først er valgt, blir den aldri stokket om igjen, selv om prognosen senere endrer seg. Må aldri være større enn blokklengden, og ingen plan publiseres i det hele tatt hvis prognosen ennå ikke dekker hele blokken.",
@@ -73,15 +81,25 @@
       "cannot_connect": "Kunne ikke koble til Energy Price Forecast EU.",
       "invalid_auth": "API-nøkkelen ble avvist eller er ikke autorisert.",
       "invalid_response": "API-et returnerte et uventet svar.",
-      "retail_not_supported": "Forbrukerpriser er ikke tilgjengelig for dette markedet ennå.",
-      "postal_code_required": "Et postnummer kreves for forbrukerpriser i Tyskland.",
+      "retail_not_supported": "Det finnes ikke noe estimat for dette markedet. Velg egen formel i stedet.",
+      "postal_code_required": "Estimatet for Tyskland krever et postnummer.",
       "invalid_postal_code": "Oppgi et 5-sifret tysk postnummer.",
-      "retail_unavailable": "Kunne ikke bekrefte forbrukerprisen for dette markedet eller postnummeret.",
+      "retail_unavailable": "Estimatet kunne ikke bekreftes for dette markedet eller postnummeret.",
+      "invalid_retail_factor": "Faktoren må være større enn 0.",
       "cheapest_hours_exceeds_window": "Billigste timer per blokk kan ikke være større enn blokklengden.",
       "greenest_hours_exceeds_window": "Antallet reneste timer kan ikke være større enn blokklengden."
     },
     "abort": {
       "already_configured": "Dette markedet er allerede konfigurert."
+    }
+  },
+  "selector": {
+    "retail_source": {
+      "options": {
+        "off": "Av",
+        "estimate": "Estimat (DE, NL, DK, AT, NO)",
+        "formula": "Egen formel (alle markeder)"
+      }
     }
   },
   "entity": {

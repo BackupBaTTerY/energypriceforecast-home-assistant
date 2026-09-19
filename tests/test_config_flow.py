@@ -21,7 +21,8 @@ from custom_components.energypriceforecast.const import (
     CONF_HORIZON_HOURS,
     CONF_MARKET,
     CONF_POSTAL_CODE,
-    CONF_RETAIL_PRICING,
+    CONF_RETAIL_FACTOR,
+    CONF_RETAIL_SOURCE,
     DOMAIN,
     HORIZON_HOURS_OPTIONS,
     MAX_HORIZON_HOURS,
@@ -33,7 +34,7 @@ BASE_USER_INPUT = {
     "horizon_hours": "48",
     "window_hours": 4,
     "api_key": "",
-    "retail_pricing": False,
+    "retail_source": "off",
     "postal_code": "",
     "update_interval_minutes": 30,
     "cheapest_hours_count": 0,
@@ -59,13 +60,14 @@ async def test_user_flow(hass) -> None:
     assert result["title"] == "Energy Price Forecast EU (DE)"
     assert result["data"]["horizon_hours"] == 48
     assert "api_key" not in result["data"]
-    assert result["data"]["retail_pricing"] is False
+    assert result["data"]["retail_source"] == "off"
+    assert "retail_pricing" not in result["data"]
     assert result["data"]["update_interval_minutes"] == 30
     assert result["data"]["cheapest_hours_count"] == 0
 
 
-async def test_user_flow_rejects_retail_pricing_for_unsupported_market(hass) -> None:
-    """Retail pricing on an unsupported market fails before any API call."""
+async def test_user_flow_rejects_the_estimate_for_unsupported_market(hass) -> None:
+    """The estimate on an unsupported market fails before any API call."""
     with patch(
         "custom_components.energypriceforecast.config_flow._validate_input",
         new=AsyncMock(return_value=None),
@@ -75,7 +77,7 @@ async def test_user_flow_rejects_retail_pricing_for_unsupported_market(hass) -> 
         )
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"],
-            {**BASE_USER_INPUT, "market": "BE", "retail_pricing": True},
+            {**BASE_USER_INPUT, "market": "BE", "retail_source": "estimate"},
         )
 
     assert result["type"] is data_entry_flow.FlowResultType.FORM
@@ -83,8 +85,36 @@ async def test_user_flow_rejects_retail_pricing_for_unsupported_market(hass) -> 
     mock_validate.assert_not_called()
 
 
-async def test_user_flow_requires_postal_code_for_german_retail_pricing(hass) -> None:
-    """Germany needs a postal code before retail pricing can be validated."""
+async def test_user_flow_accepts_an_own_formula_in_any_market(hass) -> None:
+    """The formula needs no estimate, so Belgium can have a retail price too."""
+    with patch(
+        "custom_components.energypriceforecast.config_flow._validate_input",
+        new=AsyncMock(return_value=None),
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {
+                **BASE_USER_INPUT,
+                "market": "BE",
+                "retail_source": "formula",
+                "retail_factor": 1.21,
+                "retail_surcharge": 0.02,
+            },
+        )
+
+    assert result["type"] is data_entry_flow.FlowResultType.CREATE_ENTRY
+    assert result["data"]["retail_source"] == "formula"
+    assert result["data"]["retail_factor"] == pytest.approx(1.21)
+    assert result["data"]["retail_surcharge"] == pytest.approx(0.02)
+    # No postal code needed: the formula does not look up any grid fee.
+    assert "postal_code" not in result["data"]
+
+
+async def test_user_flow_requires_postal_code_for_the_german_estimate(hass) -> None:
+    """Germany needs a postal code before the estimate can be validated."""
     with patch(
         "custom_components.energypriceforecast.config_flow._validate_input",
         new=AsyncMock(return_value=None),
@@ -94,7 +124,7 @@ async def test_user_flow_requires_postal_code_for_german_retail_pricing(hass) ->
         )
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"],
-            {**BASE_USER_INPUT, "market": "DE", "retail_pricing": True},
+            {**BASE_USER_INPUT, "market": "DE", "retail_source": "estimate"},
         )
 
     assert result["type"] is data_entry_flow.FlowResultType.FORM
@@ -116,7 +146,7 @@ async def test_user_flow_rejects_malformed_postal_code(hass) -> None:
             {
                 **BASE_USER_INPUT,
                 "market": "DE",
-                "retail_pricing": True,
+                "retail_source": "estimate",
                 "postal_code": "abc",
             },
         )
@@ -140,7 +170,7 @@ async def test_user_flow_surfaces_retail_unavailable_error(hass) -> None:
             {
                 **BASE_USER_INPUT,
                 "market": "DE",
-                "retail_pricing": True,
+                "retail_source": "estimate",
                 "postal_code": "10115",
             },
         )
@@ -224,7 +254,7 @@ async def test_migration_clamps_a_withdrawn_horizon(hass) -> None:
     assert await async_migrate_entry(hass, entry)
 
     assert entry.data[CONF_HORIZON_HOURS] == MAX_HORIZON_HOURS
-    assert entry.version == 2
+    assert entry.version == 3
 
 
 async def test_migration_leaves_a_valid_horizon_alone(hass) -> None:
@@ -239,7 +269,38 @@ async def test_migration_leaves_a_valid_horizon_alone(hass) -> None:
     assert await async_migrate_entry(hass, entry)
 
     assert entry.data[CONF_HORIZON_HOURS] == 48
-    assert entry.version == 2
+    assert entry.version == 3
+
+
+@pytest.mark.parametrize("version", [1, 2])
+@pytest.mark.parametrize(
+    ("stored", "expected_source"),
+    [({"retail_pricing": True}, "estimate"), ({"retail_pricing": False}, "off"), ({}, "off")],
+)
+async def test_migration_turns_the_retail_checkbox_into_a_source(
+    hass, version, stored, expected_source
+) -> None:
+    """A ticked box always meant the estimate, and that is what it becomes.
+
+    Anything else would silently change the prices of the users who had it on,
+    or give a retail price to those who never asked for one.
+    """
+    old = {k: v for k, v in BASE_USER_INPUT.items() if k != "retail_source"}
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        version=version,
+        unique_id="DE",
+        data={**old, "postal_code": "10115", **stored},
+    )
+    entry.add_to_hass(hass)
+
+    assert await async_migrate_entry(hass, entry)
+
+    assert entry.version == 3
+    assert entry.data["retail_source"] == expected_source
+    assert "retail_pricing" not in entry.data
+    # The postal code belongs to the estimate and stays with it.
+    assert entry.data["postal_code"] == "10115"
 
 
 def test_schema_default_horizon_survives_validation_when_stored_as_int() -> None:
@@ -262,12 +323,17 @@ def test_schema_default_horizon_survives_validation_when_stored_as_int() -> None
 @pytest.mark.parametrize(
     ("data", "expected_error"),
     [
-        ({CONF_MARKET: "DE", CONF_RETAIL_PRICING: False, CONF_POSTAL_CODE: None}, None),
-        ({CONF_MARKET: "BE", CONF_RETAIL_PRICING: True, CONF_POSTAL_CODE: None}, "retail_not_supported"),
-        ({CONF_MARKET: "DE", CONF_RETAIL_PRICING: True, CONF_POSTAL_CODE: None}, "postal_code_required"),
-        ({CONF_MARKET: "DE", CONF_RETAIL_PRICING: True, CONF_POSTAL_CODE: "1234"}, "invalid_postal_code"),
-        ({CONF_MARKET: "DE", CONF_RETAIL_PRICING: True, CONF_POSTAL_CODE: "10115"}, None),
-        ({CONF_MARKET: "NL", CONF_RETAIL_PRICING: True, CONF_POSTAL_CODE: None}, None),
+        ({CONF_MARKET: "DE", CONF_RETAIL_SOURCE: "off", CONF_POSTAL_CODE: None}, None),
+        ({CONF_MARKET: "BE", CONF_RETAIL_SOURCE: "estimate", CONF_POSTAL_CODE: None}, "retail_not_supported"),
+        ({CONF_MARKET: "DE", CONF_RETAIL_SOURCE: "estimate", CONF_POSTAL_CODE: None}, "postal_code_required"),
+        ({CONF_MARKET: "DE", CONF_RETAIL_SOURCE: "estimate", CONF_POSTAL_CODE: "1234"}, "invalid_postal_code"),
+        ({CONF_MARKET: "DE", CONF_RETAIL_SOURCE: "estimate", CONF_POSTAL_CODE: "10115"}, None),
+        ({CONF_MARKET: "NL", CONF_RETAIL_SOURCE: "estimate", CONF_POSTAL_CODE: None}, None),
+        # The formula works everywhere and needs no postal code, not even in DE.
+        ({CONF_MARKET: "BE", CONF_RETAIL_SOURCE: "formula", CONF_RETAIL_FACTOR: 1.21}, None),
+        ({CONF_MARKET: "DE", CONF_RETAIL_SOURCE: "formula", CONF_RETAIL_FACTOR: 1.19, CONF_POSTAL_CODE: None}, None),
+        ({CONF_MARKET: "CH", CONF_RETAIL_SOURCE: "formula", CONF_RETAIL_FACTOR: 0.0}, "invalid_retail_factor"),
+        ({CONF_MARKET: "NL", CONF_RETAIL_SOURCE: "formula", CONF_RETAIL_FACTOR: -1.21}, "invalid_retail_factor"),
     ],
 )
 def test_validate_retail_selection(data, expected_error) -> None:

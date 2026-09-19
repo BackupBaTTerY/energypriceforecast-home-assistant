@@ -40,8 +40,10 @@ requiring YAML or JSON templates.
   loads that are only flexible on weekends, e.g. EV charging
 - Optional "cleanest hours" plan *(1.2.0)* - the same block, the same locking,
   but picked on grid CO2 intensity instead of price
-- Optional assumption-based all-in retail price for supported markets - plans
-  and savings are then computed on the price you actually pay
+- Optional retail price - our assumption-based estimate for DE, NL, DK, AT
+  and NO, or *(1.6.0)* your own formula, day-ahead × factor + surcharge, in
+  every market. Plans and savings are then computed on the price you
+  actually pay
 - Optional prices in your own currency *(1.4.0)* - Czech koruna, Polish złoty
   or Swedish krona instead of euro, at the ECB's daily reference rate
 - Configurable poll interval (15-120 minutes)
@@ -60,8 +62,10 @@ every other market, but the rolling 30-day history each market is judged
 against is still filling up. Until it holds seven days, the forecast
 quality sensors stay empty rather than report a number built on two days
 of data -- expect them around 10 September for Switzerland and 12
-September for the Italian zones. Retail pricing is not offered for either;
-they provide spot price and CO2.
+September for the Italian zones. There is no retail estimate for either;
+they provide spot price and CO2. The own retail formula *(1.6.0)* can be
+set up there like anywhere else, but read the next section before relying
+on it.
 
 ### Before you automate on price in CH or IT
 
@@ -91,8 +95,11 @@ this integration reports your *zonal* price. Over 153 days we compared
 the zonal series against a load-weighted national index built from all
 seven zones. They picked the same cheapest four-hour window on 93% of
 days, at an average cost of 0.05 ct/kWh when they disagreed. The timing
-carries; the price level does not, which is why no retail price is
-offered for Italy.
+carries; the price level does not, which is why there is no retail
+estimate for Italy. On an hourly-indexed contract the own formula *(1.6.0)*
+gets you close, with one caveat: it scales your zonal price, not the PUN.
+In Switzerland it would describe a tariff that, as far as we know, does
+not exist.
 
 ## Installation with HACS
 
@@ -269,8 +276,11 @@ itself.
 | Cheapest window end (retail) | sensor | timestamp |
 | Cheapest window active (retail) | binary sensor | on/off |
 
-These mirror the base entities but are computed on the all-in retail price, so
-the cheapest window can differ from the spot-price one.
+These mirror the base entities but are computed on the all-in retail price -
+the estimate or your own formula, see
+[Retail price](#retail-price-estimate-or-your-own-formula-160). With the
+estimate the cheapest window can differ from the spot-price one; with a
+formula it cannot, only its price does.
 
 ### With a cheapest-hours count above 0
 
@@ -374,6 +384,9 @@ comparison against another hour in the same block, nothing more.
   `price_percent_to_average` is therefore "this hour against the rest of
   today" - 100% means average, 60% means clearly cheap. It is left empty when
   that average is zero or negative, for the same reason the plan saving is.
+- **Current retail price** says where its number comes from:
+  `retail_source` is `estimate` or `formula`, and with a formula
+  `formula_factor` and `formula_surcharge` show the values in use *(1.6.0)*.
 
 **To inspect them, use Developer tools > States**, pick the entity, and read
 the attributes in the panel on the right. They will not show up in the history
@@ -427,6 +440,63 @@ same, because converting every price with one rate does not change their
 order.
 
 Switzerland stays in euro: the API does not offer francs.
+
+## Retail price: estimate or your own formula *(1.6.0)*
+
+The day-ahead price is not what you pay. Taxes, grid charges and your
+supplier's margin come on top, and they decide what a cheap hour is worth.
+Choose a source under **Retail price** when you set the integration up or
+reconfigure it:
+
+| Choice | What you get | Markets |
+|---|---|---|
+| Off | Day-ahead prices only | all |
+| Estimate | Our assumption-based all-in price: grid fee, levies, supplier markup and VAT. Germany needs a postal code for the local grid fee | DE, NL, DK1, DK2, AT, NO1-NO5 |
+| Own formula | Day-ahead price × **factor** + **surcharge** | all |
+
+**The formula** is *retail price = day-ahead price × factor + surcharge*.
+
+- **Factor** multiplies the day-ahead price. Your VAT goes here: 1.21 for
+  21%, 1.19 for 19%, 1.25 for 25%. A supplier fee charged as a percentage of
+  the exchange price goes here too - 5% on top, with 21% VAT, is
+  1.05 × 1.21 = 1.2705.
+- **Surcharge** is a fixed amount per kWh *including VAT*, added after the
+  factor, in the unit your price sensors show: EUR/kWh in most markets,
+  DKK or NOK in Denmark and Norway, CZK, PLN or SEK with
+  [local currency](#prices-in-your-own-currency-140) ticked. Energy tax, a
+  fixed supplier markup and any grid charge per kWh belong here. It may be
+  negative, for a contract that discounts the exchange price.
+
+A Dutch example: 21% VAT, 9.161 ct/kWh energy tax and a supplier markup of
+2 ct/kWh, both before VAT. Factor **1.21**, surcharge
+(0.09161 + 0.02) × 1.21 = **0.1350**. At a day-ahead price of 10 ct/kWh the
+retail price is 0.10 × 1.21 + 0.1350 = 0.256 EUR/kWh.
+
+**What it changes.** The [retail entities](#with-retail-pricing-enabled)
+appear, and the cheapest-hours and weekend plans are priced in retail terms,
+so their average price and saving match your bill. The hours they pick are
+the ones the day-ahead price would pick: a positive factor and a fixed
+surcharge cannot make one hour cheaper than another if it was not already. The saving shrinks, because the
+surcharge adds the same amount to every hour - that smaller number is the
+honest one. The formula is applied inside Home Assistant to prices the
+integration fetches anyway, so it costs no extra request.
+
+**What it cannot express yet.** Grid charges that change with the time of
+day - Denmark's Tarifmodel 3.0 with its expensive 17:00-21:00 peak, for
+example - do not fit into one fixed surcharge. Whatever you enter, the plans
+still pick the hours that are cheapest on the day-ahead price; in a Danish
+winter the peak charge can make a different hour cheaper in total, and the
+plan does not see that yet.
+
+**Estimate or formula?** The estimate needs nothing from you, but it rests
+on assumptions: a typical grid fee, a typical supplier markup. The
+formula is exactly your contract, as far as you know its numbers. Changing
+the formula later starts the current block's plan afresh in the new
+numbers, because a plan keeps the prices it was built on.
+
+**Updating from 1.5.x.** A ticked *Retail pricing* box becomes **Estimate**,
+and nothing about your prices, entities or plans changes. An unticked box
+becomes **Off**.
 
 ## Horizon
 
@@ -607,7 +677,8 @@ not money. Converting it to money needs your consumption, which this
 integration does not know; see below for how to do that yourself.
 
 **With retail pricing enabled, the plan is built and priced on the retail
-series**, not the spot price - both the hours it picks and the saving it
+series**, not the spot price. With the estimate that can move the hours it
+picks; with the estimate or your own formula it changes the saving it
 reports. That matters more than it sounds: the retail markup is a large
 addition, so the same hours look far cheaper against a spot baseline than
 against the price actually billed. On live German data, a genuine 43% retail
@@ -751,7 +822,8 @@ time slots, made for charting with the community card
 [apexcharts-card](https://github.com/RomRider/apexcharts-card) (installed
 separately via HACS): the always-on price series sensor (day-ahead/spot price)
 and, if you enabled retail pricing during setup, the current retail price
-sensor (assumption-based all-in price). Both also carry a third attribute,
+sensor (the all-in price, estimated or from your own formula). Both also
+carry a third attribute,
 `raw_forecast`: the entries beyond the published day-ahead window - the actual
 ML/weather-based forecast, richer with a longer configured horizon.
 
@@ -899,7 +971,7 @@ CO2 alongside the price.
 ```
 Help me build a Home Assistant Lovelace card that charts electricity prices from the Energy Price Forecast EU integration using the apexcharts-card custom card.
 
-The integration creates a sensor whose entity_id ends in "_price_series" (day-ahead/spot price, the exact name depends on my chosen market, for example sensor.energy_price_forecast_eu_de_price_forecast_series) and, if I enabled retail pricing, a second sensor ending in "_retail_current_price" (assumption-based all-in price) with the same attribute shape. Each sensor's state is its current price; its attributes raw_today, raw_tomorrow and raw_forecast are each a list of objects shaped like {"start": ISO8601 timestamp, "end": ISO8601 timestamp, "value": number}. raw_today/raw_tomorrow only ever cover the published day-ahead window (known prices, never estimated); raw_forecast holds only the entries beyond that window - the actual ML/weather-based forecast. The value's unit matches the market's currency (for example EUR/kWh).
+The integration creates a sensor whose entity_id ends in "_price_series" (day-ahead/spot price, the exact name depends on my chosen market, for example sensor.energy_price_forecast_eu_de_price_forecast_series) and, if I enabled retail pricing, a second sensor ending in "_retail_current_price" (all-in price, either the integration's estimate or my own formula) with the same attribute shape. Each sensor's state is its current price; its attributes raw_today, raw_tomorrow and raw_forecast are each a list of objects shaped like {"start": ISO8601 timestamp, "end": ISO8601 timestamp, "value": number}. raw_today/raw_tomorrow only ever cover the published day-ahead window (known prices, never estimated); raw_forecast holds only the entries beyond that window - the actual ML/weather-based forecast. The value's unit matches the market's currency (for example EUR/kWh).
 
 Entity IDs follow the Home Assistant language, so do not guess them from the English names above - on a German instance the price series is sensor..._preisreihe and the retail price is sensor..._aktueller_endkundenpreis. Ask me for the exact ID rather than assuming one.
 

@@ -19,7 +19,7 @@ async def test_api_key_and_postal_code_are_redacted(hass) -> None:
             "horizon_hours": 48,
             "window_hours": 4,
             "api_key": "super-secret-key",
-            "retail_pricing": True,
+            "retail_source": "estimate",
             "postal_code": "10115",
         },
     )

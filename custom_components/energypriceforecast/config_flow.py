@@ -173,6 +173,9 @@ def _schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
             # Shown to every market, like the postal code: the form cannot
             # change with the selection above, so the descriptions say which
             # fields belong to which source.
+            # Money is entered to whatever precision the contract states, and
+            # Home Assistant refuses a numeric step below 0.001: "any" is the
+            # only step that neither blocks 0.1350 nor marks it invalid.
             vol.Optional(
                 CONF_RETAIL_FACTOR,
                 default=defaults.get(CONF_RETAIL_FACTOR, DEFAULT_RETAIL_FACTOR),
@@ -180,7 +183,7 @@ def _schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                 NumberSelectorConfig(
                     min=MIN_RETAIL_FACTOR,
                     max=MAX_RETAIL_FACTOR,
-                    step=0.0001,
+                    step="any",
                     mode=NumberSelectorMode.BOX,
                 )
             ),
@@ -191,7 +194,7 @@ def _schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                 NumberSelectorConfig(
                     min=MIN_RETAIL_SURCHARGE,
                     max=MAX_RETAIL_SURCHARGE,
-                    step=0.0001,
+                    step="any",
                     mode=NumberSelectorMode.BOX,
                 )
             ),

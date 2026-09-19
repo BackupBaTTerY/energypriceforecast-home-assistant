@@ -121,7 +121,10 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # estimate and the user's own formula. A ticked box always meant the
         # estimate, and that is what it becomes - nothing about the prices, the
         # entities or the stored plans changes for whoever had it on.
-        estimate = data.pop(CONF_RETAIL_PRICING, False)
+        # The box itself stays until the next reconfigure. Nothing here reads
+        # it again, but if 1.6.0 has to be rolled back, 1.5.x still finds it
+        # and keeps the retail price on instead of dropping it without a word.
+        estimate = data.get(CONF_RETAIL_PRICING, False)
         data.setdefault(
             CONF_RETAIL_SOURCE,
             RETAIL_SOURCE_ESTIMATE if estimate else RETAIL_SOURCE_OFF,

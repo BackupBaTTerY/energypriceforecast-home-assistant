@@ -132,6 +132,50 @@ async def test_user_flow_requires_postal_code_for_the_german_estimate(hass) -> N
     mock_validate.assert_not_called()
 
 
+async def test_reconfigure_drops_the_old_retail_checkbox(hass) -> None:
+    """The first save in 1.6.0 stores the source alone, not both."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        version=3,
+        unique_id="DE",
+        data={
+            **BASE_USER_INPUT,
+            "horizon_hours": 48,
+            "retail_pricing": True,
+            "retail_source": "estimate",
+            "postal_code": "10115",
+        },
+    )
+    entry.add_to_hass(hass)
+    with (
+        patch(
+            "custom_components.energypriceforecast.config_flow._validate_input",
+            new=AsyncMock(return_value=None),
+        ),
+        patch(
+            "custom_components.energypriceforecast.async_setup_entry",
+            return_value=True,
+        ),
+    ):
+        result = await entry.start_reconfigure_flow(hass)
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {
+                **BASE_USER_INPUT,
+                "retail_source": "formula",
+                "retail_factor": 1.19,
+                "retail_surcharge": 0.25,
+            },
+        )
+        await hass.async_block_till_done()
+
+    assert result["type"] is data_entry_flow.FlowResultType.ABORT
+    assert result["reason"] == "reconfigure_successful"
+    assert entry.data["retail_source"] == "formula"
+    assert entry.data["retail_factor"] == pytest.approx(1.19)
+    assert "retail_pricing" not in entry.data
+
+
 async def test_user_flow_rejects_malformed_postal_code(hass) -> None:
     """A postal code that is not 5 digits fails validation locally."""
     with patch(
@@ -298,7 +342,9 @@ async def test_migration_turns_the_retail_checkbox_into_a_source(
 
     assert entry.version == 3
     assert entry.data["retail_source"] == expected_source
-    assert "retail_pricing" not in entry.data
+    # The box stays until the next reconfigure, so a rollback to 1.5.x
+    # still finds it; nothing in 1.6.0 reads it.
+    assert entry.data.get("retail_pricing") == stored.get("retail_pricing")
     # The postal code belongs to the estimate and stays with it.
     assert entry.data["postal_code"] == "10115"
 

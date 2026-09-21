@@ -546,7 +546,10 @@ without VAT; fixed per-kWh taxes stay in the surcharge.
 cheapest. A time-of-day charge does, and that is the point: a cheap night
 rate can make the night cheaper in total than the solar noon, even when the
 exchange price says otherwise. Measured on Danish prices with a winter
-tariff, the cheapest-hours plan moved on up to a third of the days. The
+tariff, the cheapest-hours plan moved on up to a third of the days. Only
+the plans are chosen anew: the cheapest *window* still comes from the API,
+which picks it on the exchange price, and is merely priced with the charge.
+The
 retail price sensor shows the charge it contains right now as
 `network_charge_now`. Changing the tariff starts the current block's plan
 afresh, like changing the formula.

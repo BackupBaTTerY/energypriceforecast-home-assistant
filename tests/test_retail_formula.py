@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import copy
+from datetime import datetime, timezone
 
 import pytest
 
@@ -147,3 +148,94 @@ def test_the_plan_basis_names_the_formula() -> None:
     assert plan_basis(NL_FACTOR, NL_SURCHARGE) == "formula|1.21|0.135"
     assert plan_basis(NL_FACTOR, NL_SURCHARGE) != plan_basis(NL_FACTOR, 0.14)
     assert plan_basis(1.0, 0.0) == "formula|1|0"
+
+
+class _StubTariff:
+    """A network charge of 0.10 in the evening, 0.01 at night, nothing known
+    before noon on the second day - the shape a real one has."""
+
+    def __init__(self, missing_from=None):
+        self.missing_from = missing_from
+
+    def rate_at(self, moment):
+        if self.missing_from is not None and moment >= self.missing_from:
+            return None
+        return 0.10 if moment.hour >= 17 else 0.01
+
+    def key(self):
+        return "tou|stub"
+
+
+def test_the_tariff_of_each_hour_goes_inside_the_factor() -> None:
+    """Grid charges are published without VAT, so the factor applies to them."""
+    series = _series([0.10, 0.10, 0.10])
+    series["entries"][0]["start"] = "2026-09-21T03:00:00Z"
+    series["entries"][1]["start"] = "2026-09-21T12:00:00Z"
+    series["entries"][2]["start"] = "2026-09-21T18:00:00Z"
+
+    retail = apply_to_series(series, NL_FACTOR, NL_SURCHARGE, _StubTariff())
+
+    values = [entry["value"] for entry in retail["entries"]]
+    assert values[0] == pytest.approx(1.21 * (0.10 + 0.01) + 0.1350)
+    assert values[1] == pytest.approx(1.21 * (0.10 + 0.01) + 0.1350)
+    assert values[2] == pytest.approx(1.21 * (0.10 + 0.10) + 0.1350)
+
+
+def test_an_hour_the_tariff_cannot_price_is_left_out() -> None:
+    """Better a gap the plans refuse to cover than an hour priced too low."""
+    series = _series([0.10, 0.20])
+    series["entries"][0]["start"] = "2026-09-21T03:00:00Z"
+    series["entries"][1]["start"] = "2026-09-22T03:00:00Z"
+    cutoff = datetime(2026, 9, 22, tzinfo=timezone.utc)
+
+    retail = apply_to_series(series, 1.0, 0.0, _StubTariff(missing_from=cutoff))
+
+    assert [entry["start"] for entry in retail["entries"]] == [
+        "2026-09-21T03:00:00Z"
+    ]
+
+
+def test_the_summary_prices_each_amount_with_the_hours_it_covers() -> None:
+    summary = {
+        "flat": {
+            "current_price": 0.20,
+            "cheapest_window_avg_price": 0.05,
+            "cheapest_window_start": "2026-09-21T16:00:00Z",
+            "cheapest_window_end": "2026-09-21T20:00:00Z",
+            "best_price_window_avg_price": 0.05,
+            "best_price_window_start": "2026-09-21T16:00:00Z",
+            "best_price_window_end": "2026-09-21T20:00:00Z",
+        }
+    }
+    now = datetime(2026, 9, 21, 18, tzinfo=timezone.utc)
+
+    retail = apply_to_summary(summary, 1.0, 0.0, _StubTariff(), now)
+
+    flat = retail["flat"]
+    # 18:00 is inside the evening rate.
+    assert flat["current_price"] == pytest.approx(0.30)
+    # The window runs 16:00-20:00: one hour before the evening rate starts.
+    assert flat["cheapest_window_avg_price"] == pytest.approx(
+        0.05 + (0.01 + 3 * 0.10) / 4
+    )
+    assert flat["best_price_window_avg_price"] == pytest.approx(
+        0.05 + (0.01 + 3 * 0.10) / 4
+    )
+
+
+def test_an_amount_the_tariff_cannot_price_is_cleared() -> None:
+    """Reporting it without the network charge would understate the bill."""
+    summary = {"flat": {"current_price": 0.20}}
+    now = datetime(2026, 9, 22, 18, tzinfo=timezone.utc)
+
+    retail = apply_to_summary(
+        summary, 1.0, 0.0, _StubTariff(missing_from=now), now
+    )
+
+    assert retail["flat"]["current_price"] is None
+
+
+def test_the_plan_basis_names_the_tariff_too() -> None:
+    """Changing the network tariff must start a fresh plan, like the formula."""
+    assert plan_basis(1.21, 0.135, _StubTariff()) == "formula|1.21|0.135|tou|stub"
+    assert plan_basis(1.21, 0.135) != plan_basis(1.21, 0.135, _StubTariff())

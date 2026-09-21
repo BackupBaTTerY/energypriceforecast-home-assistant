@@ -2,6 +2,70 @@
   "title": "Energy Price Forecast EU",
   "config": {
     "step": {
+      "tariff_prefill": {
+        "title": "Tag udgangspunkt i dit netselskab",
+        "description": "Vælg dit netselskab for at udfylde tidsrum og energipris fra samlingen {source}. Datoen viser, hvornår posten sidst blev tjekket - sammenlign værdierne med din egen prisliste i de næste trin. Lad feltet stå tomt for selv at indtaste det hele. Netselskaber markeret med ⚠ har sæsonbestemte eller flere særlige perioder, som kun udfyldes delvist.",
+        "data": {
+          "tou_operator": "Netselskab"
+        },
+        "data_description": {
+          "tou_operator": "Kun netselskaber i dit prisområde vises."
+        }
+      },
+      "tariff_windows": {
+        "title": "Hvornår er nettet billigt eller dyrt?",
+        "description": "Timer i markedets lokale tid, som i prislisten. Et tidsrum løber fra sin første time og op til, men ikke med, den sidste: 22 til 6 er natten. Ens timer betyder, at der ikke er et sådant tidsrum. Udfyldt fra: {prefill}",
+        "data": {
+          "tou_low_start": "Lavlast fra (time)",
+          "tou_low_end": "Lavlast til (time)",
+          "tou_peak_start": "Spidslast fra (time)",
+          "tou_peak_end": "Spidslast til (time)",
+          "tou_weekend": "Weekend",
+          "tou_winter": "Andre priser om vinteren",
+          "tou_winter_from": "Vinter fra måned",
+          "tou_winter_to": "Vinter til måned"
+        },
+        "data_description": {
+          "tou_low_start": "Start på det billigste tidsrum, f.eks. 22 eller 0.",
+          "tou_low_end": "Slut på det billigste tidsrum, f.eks. 6.",
+          "tou_peak_start": "Start på det dyreste tidsrum, f.eks. 17. Lad den være lig med slutningen for en tarif med to niveauer.",
+          "tou_peak_end": "Slut på det dyreste tidsrum, f.eks. 21.",
+          "tou_weekend": "Nogle netselskaber afregner hele weekenden til lavlast.",
+          "tou_winter": "Sæt kryds, hvis netselskabet tager mere om vinteren, som i Danmark, Sverige eller Frankrig.",
+          "tou_winter_from": "Første vintermåned, 1-12, f.eks. 11 for november.",
+          "tou_winter_to": "Sidste vintermåned inklusive, f.eks. 3 for marts. En periode hen over nytår virker."
+        }
+      },
+      "tariff_rates": {
+        "title": "Nettariffer pr. kWh",
+        "description": "Beløb i {unit}, uden moms, som i prislisten - faktoren i din formel lægger moms oveni. Kun den del, der skifter med tidspunktet, hører hjemme her; faste afgifter pr. kWh bliver i tillægget.",
+        "data": {
+          "tou_rate_low": "Lavlast",
+          "tou_rate_standard": "Højlast",
+          "tou_rate_peak": "Spidslast",
+          "tou_winter_rate_low": "Lavlast om vinteren",
+          "tou_winter_rate_standard": "Højlast om vinteren",
+          "tou_winter_rate_peak": "Spidslast om vinteren"
+        },
+        "data_description": {
+          "tou_rate_low": "Pr. kWh, uden moms.",
+          "tou_rate_standard": "Alle timer uden for lavlast- og spidslastperioden.",
+          "tou_rate_peak": "Pr. kWh, uden moms.",
+          "tou_winter_rate_low": "Pr. kWh, uden moms.",
+          "tou_winter_rate_standard": "Alle timer uden for lavlast- og spidslastperioden.",
+          "tou_winter_rate_peak": "Pr. kWh, uden moms."
+        }
+      },
+      "tariff_lookup": {
+        "title": "Din danske nettarif",
+        "description": "Offentliggøres af Energinet i Energi Data Service og opdateres dagligt, inklusive rabatter, som netselskabet bogfører separat. De fleste husstande har \"Nettarif C\".",
+        "data": {
+          "tou_tariff": "Netselskab og tarif"
+        },
+        "data_description": {
+          "tou_tariff": "Beløbene skifter med sæsonen; integrationen følger dem af sig selv."
+        }
+      },
       "user": {
         "title": "Tilføj el-pris- og CO2-prognose",
         "description": "Vælg et marked og prognosehorisonten. Offentlig adgang giver i øjeblikket op til 48 timer; en berettiget API-nøgle kan låse op til 120 timer.",
@@ -14,6 +78,7 @@
           "postal_code": "Postnummer",
           "retail_factor": "Faktor (egen formel)",
           "retail_surcharge": "Tillæg pr. kWh inkl. moms (egen formel)",
+          "tou_source": "Tidsafhængige nettariffer",
           "local_currency": "Vis priser i national valuta",
           "update_interval_minutes": "Opdateringsinterval (minutter)",
           "cheapest_hours_count": "Billigste timer pr. blok (0 for at deaktivere)",
@@ -29,7 +94,8 @@
           "retail_source": "Estimat: vores antagelsesbaserede alt-inkl.-pris (netafgift, afgifter, moms), kun for DE, NL, DK, AT og NO; Tyskland kræver et postnummer. Egen formel: spotpris × faktor + tillæg, i alle markeder. I begge tilfælde bygges planerne på detailprisen.",
           "postal_code": "Kræves for Tyskland, når estimatet er valgt; bruges til at finde netafgiften. Ellers ikke brugt.",
           "retail_factor": "Kun for den egne formel. Ganger spotprisen, f.eks. 1.25 for 25 % moms.",
-          "retail_surcharge": "Kun for den egne formel. Fast beløb pr. kWh inklusive moms, lagt til efter faktoren, i prissensorernes enhed (DKK/kWh) – f.eks. 0.85 for 85 øre/kWh. Her hører leverandørtillæg, elafgift og Energinets tariffer hjemme. Nettariffer, der skifter med tidspunktet på dagen, kan endnu ikke angives.",
+          "retail_surcharge": "Kun for den egne formel. Fast beløb pr. kWh inklusive moms, lagt til efter faktoren, i prissensorernes enhed (DKK/kWh) – f.eks. 0.85 for 85 øre/kWh. Her hører leverandørtillæg, elafgift og Energinets tariffer hjemme. Nettariffer, der skifter med tidspunktet på dagen, hører i stedet til \"Tidsafhængige nettariffer\".",
+          "tou_source": "Nettariffer, der skifter med tidspunktet på dagen, regnes med i den egne formel - dens faktor lægger moms oveni. Angiv tidsrum og beløb fra din prisliste; i Norge kan de udfyldes ud fra dit netselskab, i Danmark slås de op automatisk. Kræver \"Egen formel\" som detailpris.",
           "local_currency": "Omregner priserne fra euro til tjekkiske kroner (CZ), polske zloty (PL) eller svenske kroner (SE1-SE4) med ECB's daglige referencekurs. Danmark og Norge får altid deres egen valuta; alle andre markeder forbliver i euro. Et skift ændrer enheden for prissensorerne, så Home Assistant starter deres langtidsstatistik forfra.",
           "update_interval_minutes": "Hvor ofte API'en forespørges. Dataopløsningen er 15 minutter, så kortere intervaller giver sjældent ny information.",
           "cheapest_hours_count": "Tiden deles op i faste, sammenhængende blokke (indstilles nedenfor), og i hver blok vælges så mange enkelte - eventuelt ikke-sammenhængende - timer som de billigste. Godt til en varmepumpe: f.eks. vælger 12 ud af 24 timer de tolv billigste timer hver kalenderdag. Når en bloks plan først er valgt, bliver den aldrig blandet om igen, selv hvis prognosen senere ændrer sig. Må aldrig være større end bloklængden, og der offentliggøres slet ingen plan, hvis prognosen endnu ikke dækker hele blokken.",
@@ -51,6 +117,7 @@
           "postal_code": "Postnummer",
           "retail_factor": "Faktor (egen formel)",
           "retail_surcharge": "Tillæg pr. kWh inkl. moms (egen formel)",
+          "tou_source": "Tidsafhængige nettariffer",
           "local_currency": "Vis priser i national valuta",
           "update_interval_minutes": "Opdateringsinterval (minutter)",
           "cheapest_hours_count": "Billigste timer pr. blok (0 for at deaktivere)",
@@ -65,7 +132,8 @@
           "retail_source": "Estimat: vores antagelsesbaserede alt-inkl.-pris (netafgift, afgifter, moms), kun for DE, NL, DK, AT og NO; Tyskland kræver et postnummer. Egen formel: spotpris × faktor + tillæg, i alle markeder. I begge tilfælde bygges planerne på detailprisen.",
           "postal_code": "Kræves for Tyskland, når estimatet er valgt; bruges til at finde netafgiften. Ellers ikke brugt.",
           "retail_factor": "Kun for den egne formel. Ganger spotprisen, f.eks. 1.25 for 25 % moms.",
-          "retail_surcharge": "Kun for den egne formel. Fast beløb pr. kWh inklusive moms, lagt til efter faktoren, i prissensorernes enhed (DKK/kWh) – f.eks. 0.85 for 85 øre/kWh. Her hører leverandørtillæg, elafgift og Energinets tariffer hjemme. Nettariffer, der skifter med tidspunktet på dagen, kan endnu ikke angives.",
+          "retail_surcharge": "Kun for den egne formel. Fast beløb pr. kWh inklusive moms, lagt til efter faktoren, i prissensorernes enhed (DKK/kWh) – f.eks. 0.85 for 85 øre/kWh. Her hører leverandørtillæg, elafgift og Energinets tariffer hjemme. Nettariffer, der skifter med tidspunktet på dagen, hører i stedet til \"Tidsafhængige nettariffer\".",
+          "tou_source": "Nettariffer, der skifter med tidspunktet på dagen, regnes med i den egne formel - dens faktor lægger moms oveni. Angiv tidsrum og beløb fra din prisliste; i Norge kan de udfyldes ud fra dit netselskab, i Danmark slås de op automatisk. Kræver \"Egen formel\" som detailpris.",
           "local_currency": "Omregner priserne fra euro til tjekkiske kroner (CZ), polske zloty (PL) eller svenske kroner (SE1-SE4) med ECB's daglige referencekurs. Danmark og Norge får altid deres egen valuta; alle andre markeder forbliver i euro. Et skift ændrer enheden for prissensorerne, så Home Assistant starter deres langtidsstatistik forfra.",
           "update_interval_minutes": "Hvor ofte API'en forespørges. Dataopløsningen er 15 minutter, så kortere intervaller giver sjældent ny information.",
           "cheapest_hours_count": "Tiden deles op i faste, sammenhængende blokke (indstilles nedenfor), og i hver blok vælges så mange enkelte - eventuelt ikke-sammenhængende - timer som de billigste. Godt til en varmepumpe: f.eks. vælger 12 ud af 24 timer de tolv billigste timer hver kalenderdag. Når en bloks plan først er valgt, bliver den aldrig blandet om igen, selv hvis prognosen senere ændrer sig. Må aldrig være større end bloklængden, og der offentliggøres slet ingen plan, hvis prognosen endnu ikke dækker hele blokken.",
@@ -86,6 +154,10 @@
       "invalid_postal_code": "Indtast et 5-cifret tysk postnummer.",
       "retail_unavailable": "Estimatet kunne ikke bekræftes for dette marked eller postnummer.",
       "invalid_retail_factor": "Faktoren skal være større end 0.",
+      "tou_needs_formula": "Tidsafhængige nettariffer kræver \"Egen formel\" som detailpris - estimatet indeholder allerede sin egen nettarif.",
+      "tou_not_supported": "Opslag af nettariffen virker kun i Danmark. Angiv i stedet tidsrum og beløb.",
+      "tou_windows_overlap": "Lavlast- og spidslastperioden overlapper. Tjek timerne i din prisliste.",
+      "datahub_unavailable": "Energi Data Service kunne ikke nås. Indsend igen for at prøve en gang til.",
       "cheapest_hours_exceeds_window": "Billigste timer pr. blok må ikke være større end bloklængden.",
       "greenest_hours_exceeds_window": "Antallet af reneste timer må ikke være større end bloklængden."
     },
@@ -94,6 +166,19 @@
     }
   },
   "selector": {
+    "tou_source": {
+      "options": {
+        "off": "Fra",
+        "manual": "Angiv tidsrum og beløb",
+        "datahub": "Danmark: slå mit netselskab op"
+      }
+    },
+    "tou_weekend": {
+      "options": {
+        "like_weekday": "Som en hverdag",
+        "low": "Lavlast hele døgnet"
+      }
+    },
     "retail_source": {
       "options": {
         "off": "Fra",

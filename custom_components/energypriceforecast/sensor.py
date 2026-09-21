@@ -589,11 +589,20 @@ class EnergyPriceForecastRetailPriceSensor(
         """Where the price comes from, and with a formula, which one."""
         coordinator = self.coordinator
         if coordinator.retail_source == RETAIL_SOURCE_FORMULA:
-            return {
+            attributes: dict[str, Any] = {
                 "retail_source": RETAIL_SOURCE_FORMULA,
                 "formula_factor": coordinator.retail_factor,
                 "formula_surcharge": coordinator.retail_surcharge,
             }
+            if coordinator.tariff_expected:
+                # What the network costs right now, without VAT - the number
+                # to hold against the price sheet when the retail price looks
+                # off. None while a published table could not be loaded.
+                tariff = coordinator.tariff
+                attributes["network_charge_now"] = (
+                    tariff.rate_at(dt_util.utcnow()) if tariff is not None else None
+                )
+            return attributes
         return {"retail_source": coordinator.retail_source}
 
 

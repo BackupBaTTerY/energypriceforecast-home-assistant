@@ -2,6 +2,70 @@
   "title": "Energy Price Forecast EU",
   "config": {
     "step": {
+      "tariff_prefill": {
+        "title": "Vom Netzbetreiber ausgehen",
+        "description": "Wähle deinen Netzbetreiber, um Zeitfenster und Arbeitspreis aus der Sammlung {source} vorzubelegen. Das Datum zeigt, wann der Eintrag zuletzt geprüft wurde - vergleiche die Werte in den nächsten Schritten mit deinem Preisblatt. Leer lassen, um alles selbst einzutragen. Mit ⚠ markierte Netzbetreiber haben saisonale oder mehrere Sonderzeiten, die nur teilweise vorbelegt werden.",
+        "data": {
+          "tou_operator": "Netzbetreiber"
+        },
+        "data_description": {
+          "tou_operator": "Aufgeführt sind nur Netzbetreiber in deiner Preiszone."
+        }
+      },
+      "tariff_windows": {
+        "title": "Wann ist das Netz günstig, wann teuer?",
+        "description": "Stunden in der Ortszeit des Marktes, wie im Preisblatt. Ein Fenster reicht von seiner ersten Stunde bis vor seine letzte: 22 bis 6 ist die Nacht. Gleiche Stunden bedeuten, dass es dieses Fenster nicht gibt. Vorbelegt aus: {prefill}",
+        "data": {
+          "tou_low_start": "Niedrigtarif ab (Stunde)",
+          "tou_low_end": "Niedrigtarif bis (Stunde)",
+          "tou_peak_start": "Hochtarif ab (Stunde)",
+          "tou_peak_end": "Hochtarif bis (Stunde)",
+          "tou_weekend": "Wochenende",
+          "tou_winter": "Andere Preise im Winter",
+          "tou_winter_from": "Winter ab Monat",
+          "tou_winter_to": "Winter bis Monat"
+        },
+        "data_description": {
+          "tou_low_start": "Beginn des günstigsten Fensters, z. B. 22 oder 0.",
+          "tou_low_end": "Ende des günstigsten Fensters, z. B. 6.",
+          "tou_peak_start": "Beginn des teuersten Fensters, z. B. 17. Bei einem Tarif mit zwei Stufen gleich dem Ende lassen.",
+          "tou_peak_end": "Ende des teuersten Fensters, z. B. 21.",
+          "tou_weekend": "Manche Netzbetreiber rechnen das ganze Wochenende zum Niedrigtarif ab.",
+          "tou_winter": "Ankreuzen, wenn der Netzbetreiber im Winter mehr verlangt, wie in Dänemark, Schweden oder Frankreich.",
+          "tou_winter_from": "Erster Wintermonat, 1-12, z. B. 11 für November.",
+          "tou_winter_to": "Letzter Wintermonat einschließlich, z. B. 3 für März. Ein Zeitraum über den Jahreswechsel funktioniert."
+        }
+      },
+      "tariff_rates": {
+        "title": "Netzentgelte je kWh",
+        "description": "Beträge in {unit}, ohne MwSt., wie im Preisblatt - der Faktor deiner Formel schlägt die MwSt. auf. Hierher gehört nur der Teil, der sich mit der Tageszeit ändert; feste Abgaben je kWh bleiben im Aufschlag.",
+        "data": {
+          "tou_rate_low": "Niedrigtarif",
+          "tou_rate_standard": "Standardtarif",
+          "tou_rate_peak": "Hochtarif",
+          "tou_winter_rate_low": "Niedrigtarif im Winter",
+          "tou_winter_rate_standard": "Standardtarif im Winter",
+          "tou_winter_rate_peak": "Hochtarif im Winter"
+        },
+        "data_description": {
+          "tou_rate_low": "Je kWh, ohne MwSt.",
+          "tou_rate_standard": "Jede Stunde außerhalb von Niedrig- und Hochtarif-Fenster.",
+          "tou_rate_peak": "Je kWh, ohne MwSt.",
+          "tou_winter_rate_low": "Je kWh, ohne MwSt.",
+          "tou_winter_rate_standard": "Jede Stunde außerhalb von Niedrig- und Hochtarif-Fenster.",
+          "tou_winter_rate_peak": "Je kWh, ohne MwSt."
+        }
+      },
+      "tariff_lookup": {
+        "title": "Dein dänischer Netztarif",
+        "description": "Von Energinet in Energi Data Service veröffentlicht und einmal täglich aktualisiert, samt Rabatten, die der Netzbetreiber gesondert bucht. Die meisten Haushalte haben „Nettarif C“.",
+        "data": {
+          "tou_tariff": "Netzbetreiber und Tarif"
+        },
+        "data_description": {
+          "tou_tariff": "Die Beträge ändern sich mit der Jahreszeit; die Integration folgt ihnen von selbst."
+        }
+      },
       "user": {
         "title": "Strompreis- und CO2-Prognose hinzufügen",
         "description": "Wähle einen Markt und den Prognosehorizont. Der öffentliche Zugang liefert aktuell bis zu 48 Stunden; ein berechtigter API-Key kann bis zu 120 Stunden freischalten.",
@@ -14,6 +78,7 @@
           "postal_code": "Postleitzahl",
           "retail_factor": "Faktor (eigene Formel)",
           "retail_surcharge": "Aufschlag je kWh inkl. MwSt. (eigene Formel)",
+          "tou_source": "Zeitabhängige Netzentgelte",
           "local_currency": "Preise in Landeswährung anzeigen",
           "update_interval_minutes": "Aktualisierungsintervall (Minuten)",
           "cheapest_hours_count": "Günstigste Stunden je Block (0 zum Deaktivieren)",
@@ -29,7 +94,8 @@
           "retail_source": "Schätzung: unser annahmenbasierter Gesamtpreis (Netzentgelt, Abgaben, MwSt.), nur für DE, NL, DK, AT und NO; Deutschland braucht eine Postleitzahl. Eigene Formel: Börsenpreis × Faktor + Aufschlag, in jedem Markt. In beiden Fällen werden die Pläne auf dem Endkundenpreis gebildet.",
           "postal_code": "Für Deutschland nötig, wenn die Schätzung gewählt ist; dient der Netzentgelt-Ermittlung. Sonst nicht verwendet.",
           "retail_factor": "Nur für die eigene Formel. Multipliziert den Börsenpreis, z. B. 1.21 für 21 % MwSt.",
-          "retail_surcharge": "Nur für die eigene Formel. Fester Betrag je kWh inklusive MwSt., der nach dem Faktor addiert wird, in der Einheit der Preissensoren – z. B. 0.1350 für 13,50 ct/kWh. Hierher gehören Lieferantenaufschlag, Stromsteuer und Netzentgelt je kWh. Netzentgelte, die sich mit der Tageszeit ändern, lassen sich noch nicht eintragen.",
+          "retail_surcharge": "Nur für die eigene Formel. Fester Betrag je kWh inklusive MwSt., der nach dem Faktor addiert wird, in der Einheit der Preissensoren – z. B. 0.1350 für 13,50 ct/kWh. Hierher gehören Lieferantenaufschlag, Stromsteuer und Netzentgelt je kWh. Netzentgelte, die sich mit der Tageszeit ändern, gehören stattdessen zu „Zeitabhängige Netzentgelte“.",
+          "tou_source": "Netzentgelte, die sich mit der Tageszeit ändern, werden in der eigenen Formel mitgerechnet - deren Faktor schlägt die MwSt. darauf. Zeitfenster und Beträge aus dem Preisblatt eintragen; in Norwegen lassen sie sich vom Netzbetreiber vorbelegen, in Dänemark werden sie automatisch nachgeschlagen. Setzt „Eigene Formel“ als Endkundenpreis voraus.",
           "local_currency": "Rechnet die Preise mit dem täglichen Referenzkurs der EZB von Euro in tschechische Kronen (CZ), polnische Złoty (PL) oder schwedische Kronen (SE1-SE4) um. Dänemark und Norwegen bekommen immer ihre eigene Währung, alle anderen Märkte bleiben in Euro. Ein Wechsel ändert die Einheit der Preissensoren, Home Assistant beginnt deren Langzeitstatistik dann neu.",
           "update_interval_minutes": "Wie oft die API abgefragt wird. Die Datenauflösung liegt bei 15 Minuten, kürzere Intervalle liefern daher selten neue Informationen.",
           "cheapest_hours_count": "Die Zeit wird in feste, lückenlose Blöcke geteilt (siehe unten), und in jedem Block werden so viele einzelne - nicht zwingend zusammenhängende - Stunden als die günstigsten ausgewählt. Gut für eine Wärmepumpe: z. B. 12 von 24 Stunden wählt an jedem Kalendertag die zwölf günstigsten Stunden. Der Plan eines Blocks wird nach seiner Erstellung nicht mehr neu gemischt, auch wenn sich die Prognose später ändert. Darf nie größer als die Blocklänge sein; sind nicht genug Prognosedaten für den vollständigen Block vorhanden, wird gar kein Plan veröffentlicht.",
@@ -51,6 +117,7 @@
           "postal_code": "Postleitzahl",
           "retail_factor": "Faktor (eigene Formel)",
           "retail_surcharge": "Aufschlag je kWh inkl. MwSt. (eigene Formel)",
+          "tou_source": "Zeitabhängige Netzentgelte",
           "local_currency": "Preise in Landeswährung anzeigen",
           "update_interval_minutes": "Aktualisierungsintervall (Minuten)",
           "cheapest_hours_count": "Günstigste Stunden je Block (0 zum Deaktivieren)",
@@ -65,7 +132,8 @@
           "retail_source": "Schätzung: unser annahmenbasierter Gesamtpreis (Netzentgelt, Abgaben, MwSt.), nur für DE, NL, DK, AT und NO; Deutschland braucht eine Postleitzahl. Eigene Formel: Börsenpreis × Faktor + Aufschlag, in jedem Markt. In beiden Fällen werden die Pläne auf dem Endkundenpreis gebildet.",
           "postal_code": "Für Deutschland nötig, wenn die Schätzung gewählt ist; dient der Netzentgelt-Ermittlung. Sonst nicht verwendet.",
           "retail_factor": "Nur für die eigene Formel. Multipliziert den Börsenpreis, z. B. 1.21 für 21 % MwSt.",
-          "retail_surcharge": "Nur für die eigene Formel. Fester Betrag je kWh inklusive MwSt., der nach dem Faktor addiert wird, in der Einheit der Preissensoren – z. B. 0.1350 für 13,50 ct/kWh. Hierher gehören Lieferantenaufschlag, Stromsteuer und Netzentgelt je kWh. Netzentgelte, die sich mit der Tageszeit ändern, lassen sich noch nicht eintragen.",
+          "retail_surcharge": "Nur für die eigene Formel. Fester Betrag je kWh inklusive MwSt., der nach dem Faktor addiert wird, in der Einheit der Preissensoren – z. B. 0.1350 für 13,50 ct/kWh. Hierher gehören Lieferantenaufschlag, Stromsteuer und Netzentgelt je kWh. Netzentgelte, die sich mit der Tageszeit ändern, gehören stattdessen zu „Zeitabhängige Netzentgelte“.",
+          "tou_source": "Netzentgelte, die sich mit der Tageszeit ändern, werden in der eigenen Formel mitgerechnet - deren Faktor schlägt die MwSt. darauf. Zeitfenster und Beträge aus dem Preisblatt eintragen; in Norwegen lassen sie sich vom Netzbetreiber vorbelegen, in Dänemark werden sie automatisch nachgeschlagen. Setzt „Eigene Formel“ als Endkundenpreis voraus.",
           "local_currency": "Rechnet die Preise mit dem täglichen Referenzkurs der EZB von Euro in tschechische Kronen (CZ), polnische Złoty (PL) oder schwedische Kronen (SE1-SE4) um. Dänemark und Norwegen bekommen immer ihre eigene Währung, alle anderen Märkte bleiben in Euro. Ein Wechsel ändert die Einheit der Preissensoren, Home Assistant beginnt deren Langzeitstatistik dann neu.",
           "update_interval_minutes": "Wie oft die API abgefragt wird. Die Datenauflösung liegt bei 15 Minuten, kürzere Intervalle liefern daher selten neue Informationen.",
           "cheapest_hours_count": "Die Zeit wird in feste, lückenlose Blöcke geteilt (siehe unten), und in jedem Block werden so viele einzelne - nicht zwingend zusammenhängende - Stunden als die günstigsten ausgewählt. Gut für eine Wärmepumpe: z. B. 12 von 24 Stunden wählt an jedem Kalendertag die zwölf günstigsten Stunden. Der Plan eines Blocks wird nach seiner Erstellung nicht mehr neu gemischt, auch wenn sich die Prognose später ändert. Darf nie größer als die Blocklänge sein; sind nicht genug Prognosedaten für den vollständigen Block vorhanden, wird gar kein Plan veröffentlicht.",
@@ -86,6 +154,10 @@
       "invalid_postal_code": "Bitte eine 5-stellige deutsche Postleitzahl eingeben.",
       "retail_unavailable": "Die Schätzung konnte für diesen Markt oder diese Postleitzahl nicht geprüft werden.",
       "invalid_retail_factor": "Der Faktor muss größer als 0 sein.",
+      "tou_needs_formula": "Zeitabhängige Netzentgelte setzen „Eigene Formel“ als Endkundenpreis voraus - die Schätzung enthält bereits ein eigenes Netzentgelt.",
+      "tou_not_supported": "Den Netztarif nachschlagen geht nur in Dänemark. Trage stattdessen Zeitfenster und Beträge ein.",
+      "tou_windows_overlap": "Niedrig- und Hochtarif-Fenster überschneiden sich. Prüfe die Uhrzeiten im Preisblatt.",
+      "datahub_unavailable": "Energi Data Service war nicht erreichbar. Erneut absenden, um es noch einmal zu versuchen.",
       "cheapest_hours_exceeds_window": "Die günstigsten Stunden je Block dürfen nicht größer als die Blocklänge sein.",
       "greenest_hours_exceeds_window": "Die Anzahl der saubersten Stunden darf die Blocklänge nicht überschreiten."
     },
@@ -94,6 +166,19 @@
     }
   },
   "selector": {
+    "tou_source": {
+      "options": {
+        "off": "Aus",
+        "manual": "Zeitfenster und Beträge eintragen",
+        "datahub": "Dänemark: Netzbetreiber nachschlagen"
+      }
+    },
+    "tou_weekend": {
+      "options": {
+        "like_weekday": "Wie ein Werktag",
+        "low": "Ganztägig Niedrigtarif"
+      }
+    },
     "retail_source": {
       "options": {
         "off": "Aus",

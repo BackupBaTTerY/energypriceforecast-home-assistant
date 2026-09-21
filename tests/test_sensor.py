@@ -1127,3 +1127,44 @@ async def test_the_estimate_says_where_its_price_comes_from(hass) -> None:
 
     assert retail.attributes["retail_source"] == "estimate"
     assert "formula_factor" not in retail.attributes
+
+
+async def test_the_retail_price_shows_the_network_charge_it_contains(
+    hass, freezer
+) -> None:
+    """The number to hold against the price sheet when a price looks off."""
+    await hass.config.async_set_time_zone("UTC")
+    # 16:00 UTC is 18:00 in Germany in summer: the peak window.
+    freezer.move_to("2026-08-08T16:00:00+00:00")
+    entries = [
+        {
+            "start": f"2026-08-08T{hour:02d}:00:00Z",
+            "end": f"2026-08-08T{hour + 1:02d}:00:00Z",
+            "value": 0.10,
+            "source": "day_ahead",
+        }
+        for hour in range(24)
+    ]
+
+    entry = await _setup_entry(
+        hass,
+        extra_data={
+            "retail_source": "formula",
+            "retail_factor": 1.19,
+            "retail_surcharge": 0.1,
+            "tou_source": "manual",
+            "tou_low_start": 0,
+            "tou_low_end": 6,
+            "tou_peak_start": 17,
+            "tou_peak_end": 21,
+            "tou_weekend": "like_weekday",
+            "tou_rate_low": 0.02,
+            "tou_rate_standard": 0.07,
+            "tou_rate_peak": 0.15,
+        },
+        price_entries=entries,
+    )
+
+    retail = _state_for_unique_id(hass, entry, "retail_current_price")
+    assert retail.attributes["network_charge_now"] == pytest.approx(0.15)
+    assert float(retail.state) == pytest.approx(1.19 * (0.10 + 0.15) + 0.1)

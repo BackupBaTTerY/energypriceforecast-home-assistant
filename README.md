@@ -44,6 +44,9 @@ requiring YAML or JSON templates.
   and NO, or *(1.6.0)* your own formula, day-ahead × factor + surcharge, in
   every market. Plans and savings are then computed on the price you
   actually pay
+- Optional time-of-day grid charges *(1.7.0)* - windows and amounts from
+  your price sheet, prefilled in Norway, looked up in Denmark - so plans
+  pick the hours that are cheapest on the bill, not just on the exchange
 - Optional prices in your own currency *(1.4.0)* - Czech koruna, Polish złoty
   or Swedish krona instead of euro, at the ECB's daily reference rate
 - Configurable poll interval (15-120 minutes)
@@ -386,7 +389,9 @@ comparison against another hour in the same block, nothing more.
   that average is zero or negative, for the same reason the plan saving is.
 - **Current retail price** says where its number comes from:
   `retail_source` is `estimate` or `formula`, and with a formula
-  `formula_factor` and `formula_surcharge` show the values in use *(1.6.0)*.
+  `formula_factor` and `formula_surcharge` show the values in use *(1.6.0)*,
+  and with a time-of-day tariff `network_charge_now` the grid charge it
+  contains right now, without VAT *(1.7.0)*.
 
 **To inspect them, use Developer tools > States**, pick the entity, and read
 the attributes in the panel on the right. They will not show up in the history
@@ -481,12 +486,9 @@ surcharge adds the same amount to every hour - that smaller number is the
 honest one. The formula is applied inside Home Assistant to prices the
 integration fetches anyway, so it costs no extra request.
 
-**What it cannot express yet.** Grid charges that change with the time of
-day - Denmark's Tarifmodel 3.0 with its expensive 17:00-21:00 peak, for
-example - do not fit into one fixed surcharge. Whatever you enter, the plans
-still pick the hours that are cheapest on the day-ahead price; in a Danish
-winter the peak charge can make a different hour cheaper in total, and the
-plan does not see that yet.
+**Grid charges that change with the time of day** do not fit into one
+fixed surcharge, and they are the one thing that does move a plan to other
+hours - see [Time-of-day grid charges](#time-of-day-grid-charges-170).
 
 **Estimate or formula?** The estimate needs nothing from you, but it rests
 on assumptions: a typical grid fee, a typical supplier markup. The
@@ -497,6 +499,79 @@ numbers, because a plan keeps the prices it was built on.
 **Updating from 1.5.x.** A ticked *Retail pricing* box becomes **Estimate**,
 and nothing about your prices, entities or plans changes. An unticked box
 becomes **Off**.
+
+## Time-of-day grid charges *(1.7.0)*
+
+In much of Europe the network part of the bill no longer costs the same
+around the clock. With your own formula it can now be added hour by hour:
+
+*retail price = (day-ahead price + grid charge of this hour) × factor + surcharge*
+
+The grid charge sits inside the factor because price sheets state it
+without VAT, exactly like the day-ahead price. Choose a source under
+**Time-of-day grid charges** - it needs **Own formula** as the retail price,
+because the estimate already contains a grid fee of its own:
+
+| Choice | Where the amounts come from | Markets |
+|---|---|---|
+| Off | nowhere | all |
+| Enter windows and amounts | your grid operator's price sheet; in Norway prefilled from your operator | all |
+| Denmark: look up my grid operator | Energinet's Energi Data Service, refreshed daily | DK1, DK2 |
+
+**Who has such charges** (as of September 2026):
+
+| Market | What changes with the time of day |
+|---|---|
+| DE | Section 14a EnWG *Modul 3*: three levels with windows each grid operator sets. It applies to the whole metering point, not only the wallbox or heat pump, needs a smart meter and comes together with Modul 1 |
+| DK | Tarifmodel 3.0: night 00-06, peak 17-21, amounts change three times a year - looked up automatically |
+| NO | Energy charge (*energiledd*) by day, night and weekend at most operators - prefilled |
+| SE | *Höglasttid* on weekdays 06-22 from November to March at many operators |
+| FI | Cheaper nights and weekends at many of the 78 operators |
+| BE | Flanders: day rate Monday to Friday 07-22; Wallonia since 2026 also cheap 11-17 on every day |
+| FR | HP/HC, with TURPE 7 four seasonal slots - the hours differ from meter to meter, your bill shows yours |
+| PL | G12/G12w zones, set by each distribution operator |
+| CZ | Low and high tariff, but switched by ripple control: the operator sets and can move the times, so a fixed schedule is only an approximation |
+| AT, NL, IT, CH | Nothing to enter: a flat network charge, or no tariff that follows the exchange |
+
+**The form** has two short steps. First the windows: when the low rate
+starts and ends, when the peak rate starts and ends, whether weekends are
+charged at the low rate, and optionally which months are winter. Hours are
+the market's local time, a window runs from its first hour up to - not
+including - its last, so 22 to 6 is the night, and equal hours mean there is
+no such window. A winter from 11 to 3 crosses New Year as it should. Then
+the amounts, only for the levels and seasons you actually set, per kWh and
+without VAT; fixed per-kWh taxes stay in the surcharge.
+
+**What it changes.** Factor and surcharge never change which hour is
+cheapest. A time-of-day charge does, and that is the point: a cheap night
+rate can make the night cheaper in total than the solar noon, even when the
+exchange price says otherwise. Measured on Danish prices with a winter
+tariff, the cheapest-hours plan moved on up to a third of the days. The
+retail price sensor shows the charge it contains right now as
+`network_charge_now`. Changing the tariff starts the current block's plan
+afresh, like changing the formula.
+
+**Denmark.** Pick your grid operator and tariff - most households have
+*Nettarif C*. The list is built from the dataset itself, currently 29
+operators. Some operators book a discount as a separate record; it is
+matched by its code and added, because the sum is what you pay. The
+tariffs are published months ahead and reloaded once a day, so a failed
+reload changes nothing. If none could be loaded at all, the retail price is
+shown as unavailable rather than too low. Amounts are in DKK/kWh without
+VAT: set the factor to 1.25 and put elafgift, Energinet's tariffs and your
+supplier's margin, including VAT, into the surcharge.
+
+**Norway.** Pick your grid operator and the fields are filled in from the
+volunteer collection [fri-nettleie](https://github.com/kraftsystemet/fri-nettleie)
+(CC-BY-4.0), whose prices are stated without taxes - exactly what the
+formula needs. They are a starting point, not a live source: when this was
+written, the median entry had last been checked nine months earlier, so
+compare them with your price sheet before saving. The list shows each
+entry's date, and operators marked ⚠ have seasonal or several special
+periods that are only partly prefilled. In Nordland, Troms and Finnmark
+there is no VAT on electricity: use a factor of 1.0.
+
+**Updating from 1.6.x** changes nothing: the new option starts off.
 
 ## Horizon
 
@@ -1003,6 +1078,12 @@ Rules for your result:
 The integration sends the selected market, horizon and window duration to the
 public API. If configured, the API key is sent as a bearer token. It is stored
 inside the Home Assistant config entry and is redacted from diagnostics.
+
+With the retail estimate in Germany the postal code is sent as well, for the
+local grid fee. A Danish grid tariff *(1.7.0)* is fetched once a day from
+Energinet's Energi Data Service; the request names the grid operator and the
+tariff, nothing about you. Choosing a Norwegian grid operator during setup
+downloads the fri-nettleie collection from GitHub once; nothing is sent there.
 
 ## Support
 

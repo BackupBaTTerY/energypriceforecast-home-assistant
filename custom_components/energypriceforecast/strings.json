@@ -2,6 +2,70 @@
   "title": "Energy Price Forecast EU",
   "config": {
     "step": {
+      "tariff_prefill": {
+        "title": "Start from your grid operator",
+        "description": "Pick your grid operator to prefill its windows and energy charge from the {source} collection. The date shows when that entry was last checked - compare the values with your own price sheet in the next steps. Leave it empty to type everything in yourself. Operators marked ⚠ have seasonal or several special periods, which are only partly prefilled.",
+        "data": {
+          "tou_operator": "Grid operator"
+        },
+        "data_description": {
+          "tou_operator": "Only operators in your price area are listed."
+        }
+      },
+      "tariff_windows": {
+        "title": "When is the grid cheap or expensive?",
+        "description": "Hours in the market's local time, as on your price sheet. A window runs from its first hour up to, not including, its last: 22 to 6 is the night. Equal hours mean there is no such window. Prefilled from: {prefill}",
+        "data": {
+          "tou_low_start": "Low rate from (hour)",
+          "tou_low_end": "Low rate until (hour)",
+          "tou_peak_start": "Peak rate from (hour)",
+          "tou_peak_end": "Peak rate until (hour)",
+          "tou_weekend": "Weekends",
+          "tou_winter": "Different prices in winter",
+          "tou_winter_from": "Winter from month",
+          "tou_winter_to": "Winter until month"
+        },
+        "data_description": {
+          "tou_low_start": "Start of the cheapest window, e.g. 22 or 0.",
+          "tou_low_end": "End of the cheapest window, e.g. 6.",
+          "tou_peak_start": "Start of the most expensive window, e.g. 17. Leave it equal to the end for a tariff with two levels.",
+          "tou_peak_end": "End of the most expensive window, e.g. 21.",
+          "tou_weekend": "Some operators charge the whole weekend at the low rate.",
+          "tou_winter": "Tick if your operator charges more in winter, as in Denmark, Sweden or France.",
+          "tou_winter_from": "First winter month, 1-12, e.g. 11 for November.",
+          "tou_winter_to": "Last winter month, inclusive, e.g. 3 for March. A range across New Year works."
+        }
+      },
+      "tariff_rates": {
+        "title": "Grid charges per kWh",
+        "description": "Amounts in {unit}, without VAT, as on the price sheet - the factor of your formula adds the VAT. Only the part that changes with the time of day belongs here; fixed taxes per kWh stay in the surcharge.",
+        "data": {
+          "tou_rate_low": "Low rate",
+          "tou_rate_standard": "Standard rate",
+          "tou_rate_peak": "Peak rate",
+          "tou_winter_rate_low": "Low rate in winter",
+          "tou_winter_rate_standard": "Standard rate in winter",
+          "tou_winter_rate_peak": "Peak rate in winter"
+        },
+        "data_description": {
+          "tou_rate_low": "Per kWh, without VAT.",
+          "tou_rate_standard": "Every hour outside the low and the peak window.",
+          "tou_rate_peak": "Per kWh, without VAT.",
+          "tou_winter_rate_low": "Per kWh, without VAT.",
+          "tou_winter_rate_standard": "Every hour outside the low and the peak window.",
+          "tou_winter_rate_peak": "Per kWh, without VAT."
+        }
+      },
+      "tariff_lookup": {
+        "title": "Your Danish grid tariff",
+        "description": "Published by Energinet in Energi Data Service and updated once a day, including discounts the operator books separately. Most households have \"Nettarif C\".",
+        "data": {
+          "tou_tariff": "Grid operator and tariff"
+        },
+        "data_description": {
+          "tou_tariff": "The amounts change with the season; the integration follows them by itself."
+        }
+      },
       "user": {
         "title": "Add electricity-price and CO2 forecast",
         "description": "Choose a market and the forecast horizon. Public access currently provides up to 48 hours; an eligible API key can unlock up to 120 hours.",
@@ -14,6 +78,7 @@
           "postal_code": "Postal code",
           "retail_factor": "Factor (own formula)",
           "retail_surcharge": "Surcharge per kWh incl. VAT (own formula)",
+          "tou_source": "Time-of-day grid charges",
           "local_currency": "Show prices in local currency",
           "update_interval_minutes": "Update interval (minutes)",
           "cheapest_hours_count": "Cheapest hours per block (0 to disable)",
@@ -29,7 +94,8 @@
           "retail_source": "Estimate: our assumption-based all-in price (grid fee, levies, VAT), only for DE, NL, DK, AT and NO; Germany needs a postal code. Own formula: day-ahead price × factor + surcharge, in every market. Either way the plans are then built on the retail price.",
           "postal_code": "Required for Germany when the estimate is selected; used for the grid-fee lookup. Not used otherwise.",
           "retail_factor": "Only used with your own formula. Multiplies the day-ahead price, e.g. 1.21 for 21% VAT.",
-          "retail_surcharge": "Only used with your own formula. Fixed amount per kWh including VAT, added after the factor, in the unit of the price sensors - e.g. 0.1350 for 13.50 ct/kWh. Supplier fees, energy tax and any per-kWh grid charge belong here. Grid charges that change with the time of day cannot be entered yet.",
+          "retail_surcharge": "Only used with your own formula. Fixed amount per kWh including VAT, added after the factor, in the unit of the price sensors - e.g. 0.1350 for 13.50 ct/kWh. Supplier fees, energy tax and any per-kWh grid charge belong here. Grid charges that change with the time of day go into \"Time-of-day grid charges\" instead.",
+          "tou_source": "Grid charges that change with the time of day, priced inside your own formula - its factor adds the VAT to them. Enter the windows and amounts from your price sheet; in Norway they can be prefilled from your grid operator, in Denmark they are looked up automatically. Needs \"Own formula\" as the retail price.",
           "local_currency": "Converts prices from euro into Czech koruna (CZ), Polish złoty (PL) or Swedish krona (SE1-SE4) at the ECB's daily reference rate. Denmark and Norway always get their own currency; all other markets stay in euro. Switching changes the unit of the price sensors, so Home Assistant starts their long-term statistics afresh.",
           "update_interval_minutes": "How often to poll the API. Data resolution is 15 minutes, so shorter intervals rarely add new information.",
           "cheapest_hours_count": "Time is split into fixed, back-to-back blocks (set below), and this many individual - possibly non-contiguous - hours are picked as the cheapest in each block. Good for a heat pump: e.g. 12 of 24 hours picks the twelve cheapest hours every calendar day. Once a block's plan has been picked it is never reshuffled, even if the forecast later changes. Must not be greater than the block length, and no plan is published at all if the forecast does not yet fully cover the block.",
@@ -51,6 +117,7 @@
           "postal_code": "Postal code",
           "retail_factor": "Factor (own formula)",
           "retail_surcharge": "Surcharge per kWh incl. VAT (own formula)",
+          "tou_source": "Time-of-day grid charges",
           "local_currency": "Show prices in local currency",
           "update_interval_minutes": "Update interval (minutes)",
           "cheapest_hours_count": "Cheapest hours per block (0 to disable)",
@@ -65,7 +132,8 @@
           "retail_source": "Estimate: our assumption-based all-in price (grid fee, levies, VAT), only for DE, NL, DK, AT and NO; Germany needs a postal code. Own formula: day-ahead price × factor + surcharge, in every market. Either way the plans are then built on the retail price.",
           "postal_code": "Required for Germany when the estimate is selected; used for the grid-fee lookup. Not used otherwise.",
           "retail_factor": "Only used with your own formula. Multiplies the day-ahead price, e.g. 1.21 for 21% VAT.",
-          "retail_surcharge": "Only used with your own formula. Fixed amount per kWh including VAT, added after the factor, in the unit of the price sensors - e.g. 0.1350 for 13.50 ct/kWh. Supplier fees, energy tax and any per-kWh grid charge belong here. Grid charges that change with the time of day cannot be entered yet.",
+          "retail_surcharge": "Only used with your own formula. Fixed amount per kWh including VAT, added after the factor, in the unit of the price sensors - e.g. 0.1350 for 13.50 ct/kWh. Supplier fees, energy tax and any per-kWh grid charge belong here. Grid charges that change with the time of day go into \"Time-of-day grid charges\" instead.",
+          "tou_source": "Grid charges that change with the time of day, priced inside your own formula - its factor adds the VAT to them. Enter the windows and amounts from your price sheet; in Norway they can be prefilled from your grid operator, in Denmark they are looked up automatically. Needs \"Own formula\" as the retail price.",
           "local_currency": "Converts prices from euro into Czech koruna (CZ), Polish złoty (PL) or Swedish krona (SE1-SE4) at the ECB's daily reference rate. Denmark and Norway always get their own currency; all other markets stay in euro. Switching changes the unit of the price sensors, so Home Assistant starts their long-term statistics afresh.",
           "update_interval_minutes": "How often to poll the API. Data resolution is 15 minutes, so shorter intervals rarely add new information.",
           "cheapest_hours_count": "Time is split into fixed, back-to-back blocks (set below), and this many individual - possibly non-contiguous - hours are picked as the cheapest in each block. Good for a heat pump: e.g. 12 of 24 hours picks the twelve cheapest hours every calendar day. Once a block's plan has been picked it is never reshuffled, even if the forecast later changes. Must not be greater than the block length, and no plan is published at all if the forecast does not yet fully cover the block.",
@@ -86,6 +154,10 @@
       "invalid_postal_code": "Enter a 5-digit German postal code.",
       "retail_unavailable": "Could not verify the estimate for this market or postal code.",
       "invalid_retail_factor": "The factor must be greater than 0.",
+      "tou_needs_formula": "Time-of-day grid charges need \"Own formula\" as the retail price - the estimate already contains a grid fee of its own.",
+      "tou_not_supported": "Looking up the grid tariff only works in Denmark. Enter the windows and amounts instead.",
+      "tou_windows_overlap": "The low and the peak window overlap. Check the hours on your price sheet.",
+      "datahub_unavailable": "Energi Data Service could not be reached. Submit again to retry.",
       "cheapest_hours_exceeds_window": "Cheapest hours per block cannot be greater than the block length.",
       "greenest_hours_exceeds_window": "The number of cleanest hours cannot be greater than the block length."
     },
@@ -94,6 +166,19 @@
     }
   },
   "selector": {
+    "tou_source": {
+      "options": {
+        "off": "Off",
+        "manual": "Enter windows and amounts",
+        "datahub": "Denmark: look up my grid operator"
+      }
+    },
+    "tou_weekend": {
+      "options": {
+        "like_weekday": "Like a weekday",
+        "low": "Low rate all day"
+      }
+    },
     "retail_source": {
       "options": {
         "off": "Off",

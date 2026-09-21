@@ -9,7 +9,7 @@ NAME: Final = "Energy Price Forecast EU"
 # from. Must equal manifest.json's version - test_version.py enforces that,
 # because this drifted to 0.1.0 for ten releases and every request from
 # every user was mislabelled the whole time.
-VERSION: Final = "1.6.0"
+VERSION: Final = "1.7.0"
 DEFAULT_API_URL: Final = (
     "https://api.energypriceforecast.eu/api/v1/home-assistant/summary"
 )
@@ -61,6 +61,60 @@ CONF_RETAIL_SURCHARGE: Final = "retail_surcharge"
 DEFAULT_RETAIL_SURCHARGE: Final = 0.0
 MIN_RETAIL_SURCHARGE: Final = -100.0
 MAX_RETAIL_SURCHARGE: Final = 100.0
+
+# Grid charges that change with the time of day, new in 1.7.0. They belong
+# inside the factor, because a price sheet states them without VAT - see
+# time_of_use.py, which also lists which markets have them.
+CONF_TOU_SOURCE: Final = "tou_source"
+TOU_SOURCE_OFF: Final = "off"
+TOU_SOURCE_MANUAL: Final = "manual"
+# Denmark is the one market that publishes every operator's tariff in
+# machine-readable form, so there it can be looked up instead of typed.
+TOU_SOURCE_DATAHUB: Final = "datahub"
+TOU_SOURCES: Final[tuple[str, ...]] = (
+    TOU_SOURCE_OFF,
+    TOU_SOURCE_MANUAL,
+    TOU_SOURCE_DATAHUB,
+)
+# Where the published Danish tariffs apply, and where the Norwegian
+# collection can prefill the fields the user then checks.
+DATAHUB_MARKETS: Final[frozenset[str]] = frozenset({"DK1", "DK2"})
+PREFILL_MARKETS: Final[frozenset[str]] = frozenset(
+    {"NO1", "NO2", "NO3", "NO4", "NO5"}
+)
+
+CONF_TOU_LOW_START: Final = "tou_low_start"
+CONF_TOU_LOW_END: Final = "tou_low_end"
+CONF_TOU_PEAK_START: Final = "tou_peak_start"
+CONF_TOU_PEAK_END: Final = "tou_peak_end"
+CONF_TOU_WEEKEND: Final = "tou_weekend"
+CONF_TOU_RATE_LOW: Final = "tou_rate_low"
+CONF_TOU_RATE_STANDARD: Final = "tou_rate_standard"
+CONF_TOU_RATE_PEAK: Final = "tou_rate_peak"
+CONF_TOU_WINTER: Final = "tou_winter"
+CONF_TOU_WINTER_FROM: Final = "tou_winter_from"
+CONF_TOU_WINTER_TO: Final = "tou_winter_to"
+CONF_TOU_WINTER_RATE_LOW: Final = "tou_winter_rate_low"
+CONF_TOU_WINTER_RATE_STANDARD: Final = "tou_winter_rate_standard"
+CONF_TOU_WINTER_RATE_PEAK: Final = "tou_winter_rate_peak"
+CONF_TOU_TARIFF: Final = "tou_tariff"
+# Only asked in the dialog, never stored: which Norwegian operator's
+# collected tariff the fields should start from.
+CONF_TOU_OPERATOR: Final = "tou_operator"
+
+# Per kWh, without VAT, in the unit of the price sensors. A network charge
+# is never negative, but a discount the operator books separately can be,
+# and Danish operators do exactly that.
+MIN_TOU_RATE: Final = -10.0
+MAX_TOU_RATE: Final = 10.0
+DEFAULT_TOU_WINTER_FROM: Final = 11
+DEFAULT_TOU_WINTER_TO: Final = 3
+
+# A tariff window is stated in the market's own clock, not in the clock of
+# whoever configured Home Assistant. Every market this integration serves is
+# on Central European Time; Finland is the one hour ahead of it.
+MARKET_TIME_ZONES: Final[dict[str, str]] = {"FI": "Europe/Helsinki"}
+DEFAULT_TIME_ZONE: Final = "Europe/Brussels"
 CONF_POSTAL_CODE: Final = "postal_code"
 CONF_LOCAL_CURRENCY: Final = "local_currency"
 DEFAULT_LOCAL_CURRENCY: Final = False

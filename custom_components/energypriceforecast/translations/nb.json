@@ -2,6 +2,70 @@
   "title": "Energy Price Forecast EU",
   "config": {
     "step": {
+      "tariff_prefill": {
+        "title": "Ta utgangspunkt i netteieren din",
+        "description": "Velg netteieren din for å fylle ut tidsrom og energiledd fra samlingen {source}. Datoen viser når oppføringen sist ble sjekket - sammenlign verdiene med din egen prisliste i de neste stegene. La feltet stå tomt for å legge inn alt selv. Netteiere merket med ⚠ har sesongavhengige eller flere særperioder, som bare delvis fylles ut.",
+        "data": {
+          "tou_operator": "Netteier"
+        },
+        "data_description": {
+          "tou_operator": "Bare netteiere i ditt prisområde vises."
+        }
+      },
+      "tariff_windows": {
+        "title": "Når er nettet billig eller dyrt?",
+        "description": "Timer i markedets lokale tid, som i prislisten. Et tidsrom går fra første time og opp til, men ikke med, den siste: 22 til 6 er natten. Like timer betyr at det ikke finnes et slikt tidsrom. Utfylt fra: {prefill}",
+        "data": {
+          "tou_low_start": "Lav pris fra (time)",
+          "tou_low_end": "Lav pris til (time)",
+          "tou_peak_start": "Topplast fra (time)",
+          "tou_peak_end": "Topplast til (time)",
+          "tou_weekend": "Helg",
+          "tou_winter": "Andre priser om vinteren",
+          "tou_winter_from": "Vinter fra måned",
+          "tou_winter_to": "Vinter til måned"
+        },
+        "data_description": {
+          "tou_low_start": "Start på det billigste tidsrommet, f.eks. 22 eller 0.",
+          "tou_low_end": "Slutt på det billigste tidsrommet, f.eks. 6.",
+          "tou_peak_start": "Start på det dyreste tidsrommet, f.eks. 17. La den være lik slutten for en tariff med to nivåer.",
+          "tou_peak_end": "Slutt på det dyreste tidsrommet, f.eks. 21.",
+          "tou_weekend": "Noen netteiere tar lav pris hele helgen.",
+          "tou_winter": "Kryss av hvis netteieren tar mer om vinteren, som i Danmark, Sverige eller Frankrike.",
+          "tou_winter_from": "Første vintermåned, 1-12, f.eks. 11 for november.",
+          "tou_winter_to": "Siste vintermåned, inkludert, f.eks. 3 for mars. En periode over nyttår fungerer."
+        }
+      },
+      "tariff_rates": {
+        "title": "Nettleie per kWh",
+        "description": "Beløp i {unit}, uten mva., som i prislisten - faktoren i formelen din legger mva. på. Bare den delen som varierer med tid på døgnet hører hjemme her; faste avgifter per kWh blir i påslaget.",
+        "data": {
+          "tou_rate_low": "Lav pris",
+          "tou_rate_standard": "Normalpris",
+          "tou_rate_peak": "Topplast",
+          "tou_winter_rate_low": "Lav pris om vinteren",
+          "tou_winter_rate_standard": "Normalpris om vinteren",
+          "tou_winter_rate_peak": "Topplast om vinteren"
+        },
+        "data_description": {
+          "tou_rate_low": "Per kWh, uten mva.",
+          "tou_rate_standard": "Alle timer utenfor lavpris- og topplasttidsrommet.",
+          "tou_rate_peak": "Per kWh, uten mva.",
+          "tou_winter_rate_low": "Per kWh, uten mva.",
+          "tou_winter_rate_standard": "Alle timer utenfor lavpris- og topplasttidsrommet.",
+          "tou_winter_rate_peak": "Per kWh, uten mva."
+        }
+      },
+      "tariff_lookup": {
+        "title": "Din danske nettariff",
+        "description": "Publisert av Energinet i Energi Data Service og oppdatert daglig, inkludert rabatter nettselskapet fører separat. De fleste husholdninger har «Nettarif C».",
+        "data": {
+          "tou_tariff": "Nettselskap og tariff"
+        },
+        "data_description": {
+          "tou_tariff": "Beløpene endrer seg med sesongen; integrasjonen følger dem av seg selv."
+        }
+      },
       "user": {
         "title": "Legg til strømpris- og CO2-prognose",
         "description": "Velg et marked og prognosehorisonten. Offentlig tilgang gir for øyeblikket opptil 48 timer; en kvalifisert API-nøkkel kan låse opp til 120 timer.",
@@ -14,6 +78,7 @@
           "postal_code": "Postnummer",
           "retail_factor": "Faktor (egen formel)",
           "retail_surcharge": "Påslag per kWh inkl. mva. (egen formel)",
+          "tou_source": "Tidsavhengig nettleie",
           "local_currency": "Vis priser i nasjonal valuta",
           "update_interval_minutes": "Oppdateringsintervall (minutter)",
           "cheapest_hours_count": "Billigste timer per blokk (0 for å deaktivere)",
@@ -29,7 +94,8 @@
           "retail_source": "Estimat: vår antagelsesbaserte alt-inkludert-pris (nettleie, avgifter, mva.), kun for DE, NL, DK, AT og NO; Tyskland krever postnummer. Egen formel: spotpris × faktor + påslag, i alle markeder. I begge tilfeller bygges planene på forbrukerprisen.",
           "postal_code": "Påkrevd for Tyskland når estimatet er valgt; brukes til å finne nettleien. Ellers ikke brukt.",
           "retail_factor": "Kun for egen formel. Ganger spotprisen, f.eks. 1.25 for 25 % mva.",
-          "retail_surcharge": "Kun for egen formel. Fast beløp per kWh inklusive mva., lagt til etter faktoren, i prissensorenes enhet (NOK/kWh) – f.eks. 0.55 for 55 øre/kWh. Her hører leverandørpåslag, elavgift og energiledd i nettleien hjemme. Nettleie som varierer med tid på døgnet kan ikke legges inn ennå.",
+          "retail_surcharge": "Kun for egen formel. Fast beløp per kWh inklusive mva., lagt til etter faktoren, i prissensorenes enhet (NOK/kWh) – f.eks. 0.55 for 55 øre/kWh. Her hører leverandørpåslag, elavgift og energiledd i nettleien hjemme. Nettleie som varierer med tid på døgnet, legges i stedet inn under «Tidsavhengig nettleie».",
+          "tou_source": "Nettleie som varierer med tid på døgnet, regnes med i den egne formelen - faktoren legger mva. på. Legg inn tidsrom og beløp fra prislisten din; i Norge kan de fylles ut fra netteieren din, i Danmark slås de opp automatisk. Krever «Egen formel» som forbrukerpris.",
           "local_currency": "Regner om prisene fra euro til tsjekkiske kroner (CZ), polske zloty (PL) eller svenske kroner (SE1-SE4) med ECBs daglige referansekurs. Danmark og Norge får alltid sin egen valuta; alle andre markeder forblir i euro. Et bytte endrer enheten til prissensorene, så Home Assistant starter langtidsstatistikken deres på nytt.",
           "update_interval_minutes": "Hvor ofte API-et spørres. Dataoppløsningen er 15 minutter, så kortere intervaller gir sjelden ny informasjon.",
           "cheapest_hours_count": "Tiden deles opp i faste, sammenhengende blokker (angis nedenfor), og i hver blokk velges så mange enkelttimer - eventuelt ikke sammenhengende - som de billigste. Bra for en varmepumpe: f.eks. velger 12 av 24 timer de tolv billigste timene hver kalenderdag. Når en blokks plan først er valgt, blir den aldri stokket om igjen, selv om prognosen senere endrer seg. Må aldri være større enn blokklengden, og ingen plan publiseres i det hele tatt hvis prognosen ennå ikke dekker hele blokken.",
@@ -51,6 +117,7 @@
           "postal_code": "Postnummer",
           "retail_factor": "Faktor (egen formel)",
           "retail_surcharge": "Påslag per kWh inkl. mva. (egen formel)",
+          "tou_source": "Tidsavhengig nettleie",
           "local_currency": "Vis priser i nasjonal valuta",
           "update_interval_minutes": "Oppdateringsintervall (minutter)",
           "cheapest_hours_count": "Billigste timer per blokk (0 for å deaktivere)",
@@ -65,7 +132,8 @@
           "retail_source": "Estimat: vår antagelsesbaserte alt-inkludert-pris (nettleie, avgifter, mva.), kun for DE, NL, DK, AT og NO; Tyskland krever postnummer. Egen formel: spotpris × faktor + påslag, i alle markeder. I begge tilfeller bygges planene på forbrukerprisen.",
           "postal_code": "Påkrevd for Tyskland når estimatet er valgt; brukes til å finne nettleien. Ellers ikke brukt.",
           "retail_factor": "Kun for egen formel. Ganger spotprisen, f.eks. 1.25 for 25 % mva.",
-          "retail_surcharge": "Kun for egen formel. Fast beløp per kWh inklusive mva., lagt til etter faktoren, i prissensorenes enhet (NOK/kWh) – f.eks. 0.55 for 55 øre/kWh. Her hører leverandørpåslag, elavgift og energiledd i nettleien hjemme. Nettleie som varierer med tid på døgnet kan ikke legges inn ennå.",
+          "retail_surcharge": "Kun for egen formel. Fast beløp per kWh inklusive mva., lagt til etter faktoren, i prissensorenes enhet (NOK/kWh) – f.eks. 0.55 for 55 øre/kWh. Her hører leverandørpåslag, elavgift og energiledd i nettleien hjemme. Nettleie som varierer med tid på døgnet, legges i stedet inn under «Tidsavhengig nettleie».",
+          "tou_source": "Nettleie som varierer med tid på døgnet, regnes med i den egne formelen - faktoren legger mva. på. Legg inn tidsrom og beløp fra prislisten din; i Norge kan de fylles ut fra netteieren din, i Danmark slås de opp automatisk. Krever «Egen formel» som forbrukerpris.",
           "local_currency": "Regner om prisene fra euro til tsjekkiske kroner (CZ), polske zloty (PL) eller svenske kroner (SE1-SE4) med ECBs daglige referansekurs. Danmark og Norge får alltid sin egen valuta; alle andre markeder forblir i euro. Et bytte endrer enheten til prissensorene, så Home Assistant starter langtidsstatistikken deres på nytt.",
           "update_interval_minutes": "Hvor ofte API-et spørres. Dataoppløsningen er 15 minutter, så kortere intervaller gir sjelden ny informasjon.",
           "cheapest_hours_count": "Tiden deles opp i faste, sammenhengende blokker (angis nedenfor), og i hver blokk velges så mange enkelttimer - eventuelt ikke sammenhengende - som de billigste. Bra for en varmepumpe: f.eks. velger 12 av 24 timer de tolv billigste timene hver kalenderdag. Når en blokks plan først er valgt, blir den aldri stokket om igjen, selv om prognosen senere endrer seg. Må aldri være større enn blokklengden, og ingen plan publiseres i det hele tatt hvis prognosen ennå ikke dekker hele blokken.",
@@ -86,6 +154,10 @@
       "invalid_postal_code": "Oppgi et 5-sifret tysk postnummer.",
       "retail_unavailable": "Estimatet kunne ikke bekreftes for dette markedet eller postnummeret.",
       "invalid_retail_factor": "Faktoren må være større enn 0.",
+      "tou_needs_formula": "Tidsavhengig nettleie krever «Egen formel» som forbrukerpris - estimatet inneholder allerede sin egen nettleie.",
+      "tou_not_supported": "Oppslag av nettleien fungerer bare i Danmark. Legg inn tidsrom og beløp i stedet.",
+      "tou_windows_overlap": "Lavpris- og topplasttidsrommet overlapper. Sjekk timene i prislisten din.",
+      "datahub_unavailable": "Energi Data Service kunne ikke nås. Send inn på nytt for å prøve igjen.",
       "cheapest_hours_exceeds_window": "Billigste timer per blokk kan ikke være større enn blokklengden.",
       "greenest_hours_exceeds_window": "Antallet reneste timer kan ikke være større enn blokklengden."
     },
@@ -94,6 +166,19 @@
     }
   },
   "selector": {
+    "tou_source": {
+      "options": {
+        "off": "Av",
+        "manual": "Legg inn tidsrom og beløp",
+        "datahub": "Danmark: slå opp nettselskapet mitt"
+      }
+    },
+    "tou_weekend": {
+      "options": {
+        "like_weekday": "Som en hverdag",
+        "low": "Lav pris hele døgnet"
+      }
+    },
     "retail_source": {
       "options": {
         "off": "Av",

@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+import logging
+from collections.abc import Awaitable, Callable
+from datetime import date, tzinfo
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.util import dt as dt_util
 
 from .api import EnergyPriceForecastApi, requested_currency
 from .const import (
@@ -20,6 +25,8 @@ from .const import (
     CONF_RETAIL_PRICING,
     CONF_RETAIL_SOURCE,
     CONF_RETAIL_SURCHARGE,
+    CONF_TOU_SOURCE,
+    CONF_TOU_TARIFF,
     CONF_UPDATE_INTERVAL_MINUTES,
     CONF_GREENEST_HOURS_COUNT,
     CONF_WEEKEND_HOURS_COUNT,
@@ -32,16 +39,71 @@ from .const import (
     DEFAULT_LOCAL_CURRENCY,
     DEFAULT_RETAIL_FACTOR,
     DEFAULT_RETAIL_SURCHARGE,
+    DEFAULT_TIME_ZONE,
     DEFAULT_UPDATE_INTERVAL_MINUTES,
     DEFAULT_GREENEST_HOURS_COUNT,
     DEFAULT_WEEKEND_HOURS_COUNT,
+    MARKET_TIME_ZONES,
     MAX_HORIZON_HOURS,
     PLATFORMS,
     PRICES_API_URL,
     RETAIL_SOURCE_ESTIMATE,
     RETAIL_SOURCE_OFF,
+    TOU_SOURCE_DATAHUB,
+    TOU_SOURCE_MANUAL,
+    TOU_SOURCE_OFF,
 )
 from .coordinator import EnergyPriceForecastCoordinator
+from .dk_datahub import DatahubError, async_load_rates
+from .time_of_use import HourlyTable, TariffSource, schedule_from_config
+
+_LOGGER = logging.getLogger(__name__)
+
+
+async def _async_tariff(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> tuple[
+    TariffSource | None,
+    Callable[[date], Awaitable[TariffSource | None]] | None,
+    tzinfo,
+]:
+    """The network tariff this entry prices with, and its market's clock.
+
+    A schedule the user typed in never changes on its own, so it is built
+    once here. Denmark's published tariff does change - three times a year -
+    so what is built here is a loader the coordinator calls once a day.
+    """
+    market = entry.data[CONF_MARKET]
+    zone = (
+        await dt_util.async_get_time_zone(
+            MARKET_TIME_ZONES.get(market, DEFAULT_TIME_ZONE)
+        )
+        or dt_util.UTC
+    )
+    source = entry.data.get(CONF_TOU_SOURCE, TOU_SOURCE_OFF)
+    if source == TOU_SOURCE_MANUAL:
+        return schedule_from_config(entry.data, zone), None, zone
+    if source == TOU_SOURCE_DATAHUB:
+        choice = str(entry.data.get(CONF_TOU_TARIFF) or "")
+        session = async_get_clientsession(hass)
+        horizon = int(entry.data.get(CONF_HORIZON_HOURS, DEFAULT_HORIZON_HOURS))
+        # Every hour of the forecast needs a rate, and the horizon is given
+        # in hours from now, so it can reach into the day after tomorrow.
+        days = -(-horizon // 24) + 1
+
+        async def _load(day: date) -> TariffSource | None:
+            try:
+                rates = await async_load_rates(session, choice, day, days)
+            except DatahubError as err:
+                # The tariffs are published months ahead, so the table loaded
+                # yesterday still covers today: a failed reload is a line in
+                # the log, not something the user has to act on.
+                _LOGGER.warning("Danish grid tariff could not be updated: %s", err)
+                return None
+            return HourlyTable(prices=rates, zone=zone, name=choice)
+
+        return None, _load, zone
+    return None, None, zone
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -52,6 +114,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.data[CONF_MARKET],
         entry.data.get(CONF_LOCAL_CURRENCY, DEFAULT_LOCAL_CURRENCY),
     )
+    tariff, tariff_loader, zone = await _async_tariff(hass, entry)
     api = EnergyPriceForecastApi(
         session=async_get_clientsession(hass),
         base_url=DEFAULT_API_URL,
@@ -91,6 +154,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             CONF_GREENEST_HOURS_COUNT, DEFAULT_GREENEST_HOURS_COUNT
         ),
         currency=currency,
+        tariff=tariff,
+        tariff_loader=tariff_loader,
+        zone=zone,
     )
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator

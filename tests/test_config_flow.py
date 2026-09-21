@@ -29,6 +29,12 @@ from custom_components.energypriceforecast.const import (
 )
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.energypriceforecast.dk_datahub import (
+    DatahubError,
+    DatahubTariff,
+)
+from custom_components.energypriceforecast.no_frinettleie import parse_snapshot
+
 BASE_USER_INPUT = {
     "market": "DE",
     "horizon_hours": "48",
@@ -517,3 +523,354 @@ async def test_local_currency_is_off_unless_ticked(hass) -> None:
 
     assert result["type"] is data_entry_flow.FlowResultType.CREATE_ENTRY
     assert result["data"]["local_currency"] is False
+
+
+# The formula a network tariff needs, in Germany, with a tariff to enter.
+TARIFF_INPUT = {
+    **BASE_USER_INPUT,
+    "retail_source": "formula",
+    "retail_factor": 1.19,
+    "retail_surcharge": 0.1,
+    "tou_source": "manual",
+}
+DANISH_WINDOWS = {
+    "tou_low_start": 0,
+    "tou_low_end": 6,
+    "tou_peak_start": 17,
+    "tou_peak_end": 21,
+    "tou_weekend": "like_weekday",
+    "tou_winter": True,
+    "tou_winter_from": 10,
+    "tou_winter_to": 3,
+}
+
+
+def _fields(result) -> set[str]:
+    return {str(key) for key in result["data_schema"].schema}
+
+
+async def test_a_manual_tariff_is_asked_in_two_more_steps(hass) -> None:
+    """Windows first, then exactly the amounts those windows use."""
+    with patch(
+        "custom_components.energypriceforecast.config_flow._validate_input",
+        new=AsyncMock(return_value=None),
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], TARIFF_INPUT
+        )
+        assert result["step_id"] == "tariff_windows"
+
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], DANISH_WINDOWS
+        )
+        assert result["step_id"] == "tariff_rates"
+        # A peak window and winter prices: all six amounts are asked for.
+        assert _fields(result) == {
+            "tou_rate_low",
+            "tou_rate_standard",
+            "tou_rate_peak",
+            "tou_winter_rate_low",
+            "tou_winter_rate_standard",
+            "tou_winter_rate_peak",
+        }
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {
+                "tou_rate_low": 0.0429,
+                "tou_rate_standard": 0.0644,
+                "tou_rate_peak": 0.1674,
+                "tou_winter_rate_low": 0.0653,
+                "tou_winter_rate_standard": 0.1959,
+                "tou_winter_rate_peak": 0.5877,
+            },
+        )
+
+    assert result["type"] is data_entry_flow.FlowResultType.CREATE_ENTRY
+    data = result["data"]
+    assert data["tou_source"] == "manual"
+    assert (data["tou_low_start"], data["tou_low_end"]) == (0, 6)
+    assert data["tou_winter"] is True
+    assert data["tou_winter_rate_peak"] == pytest.approx(0.5877)
+    assert "tou_tariff" not in data
+
+
+async def test_a_two_level_tariff_asks_for_two_amounts(hass) -> None:
+    """No peak window and no winter: the form does not ask for them."""
+    with patch(
+        "custom_components.energypriceforecast.config_flow._validate_input",
+        new=AsyncMock(return_value=None),
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], TARIFF_INPUT
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {
+                **DANISH_WINDOWS,
+                "tou_low_start": 22,
+                "tou_low_end": 6,
+                "tou_peak_start": 0,
+                "tou_peak_end": 0,
+                "tou_weekend": "low",
+                "tou_winter": False,
+            },
+        )
+
+    assert result["step_id"] == "tariff_rates"
+    assert _fields(result) == {"tou_rate_low", "tou_rate_standard"}
+
+
+async def test_overlapping_windows_are_sent_back(hass) -> None:
+    """An hour listed as both cheap and expensive is a misread price sheet."""
+    with patch(
+        "custom_components.energypriceforecast.config_flow._validate_input",
+        new=AsyncMock(return_value=None),
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], TARIFF_INPUT
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {**DANISH_WINDOWS, "tou_low_end": 18},
+        )
+
+    assert result["step_id"] == "tariff_windows"
+    assert result["errors"]["base"] == "tou_windows_overlap"
+
+
+@pytest.mark.parametrize(
+    ("changes", "expected_error"),
+    [
+        # The estimate has a grid fee of its own; a second would double it.
+        ({"retail_source": "estimate", "postal_code": "10115"}, "tou_needs_formula"),
+        ({"retail_source": "off"}, "tou_needs_formula"),
+        # Looking the tariff up only works where it is published.
+        ({"tou_source": "datahub"}, "tou_not_supported"),
+    ],
+)
+async def test_a_tariff_needs_the_formula_and_the_right_market(
+    hass, changes, expected_error
+) -> None:
+    with patch(
+        "custom_components.energypriceforecast.config_flow._validate_input",
+        new=AsyncMock(return_value=None),
+    ) as mock_validate:
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {**TARIFF_INPUT, **changes}
+        )
+
+    assert result["step_id"] == "user"
+    assert result["errors"]["base"] == expected_error
+    mock_validate.assert_not_called()
+
+
+async def test_denmark_looks_the_tariff_up(hass) -> None:
+    radius = DatahubTariff(
+        gln="5790000705689", owner="Radius Elnet A/S", code="DT_C_01", note="Nettarif C"
+    )
+    with (
+        patch(
+            "custom_components.energypriceforecast.config_flow._validate_input",
+            new=AsyncMock(return_value=None),
+        ),
+        patch(
+            "custom_components.energypriceforecast.config_flow"
+            ".async_list_household_tariffs",
+            new=AsyncMock(return_value=[radius]),
+        ),
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {**TARIFF_INPUT, "market": "DK1", "tou_source": "datahub"},
+        )
+        assert result["step_id"] == "tariff_lookup"
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"tou_tariff": radius.value}
+        )
+
+    assert result["type"] is data_entry_flow.FlowResultType.CREATE_ENTRY
+    assert result["data"]["tou_tariff"] == "5790000705689|DT_C_01"
+    # A looked-up tariff carries none of the typed-in fields.
+    assert "tou_rate_low" not in result["data"]
+
+
+async def test_denmark_says_when_the_list_cannot_be_fetched(hass) -> None:
+    with (
+        patch(
+            "custom_components.energypriceforecast.config_flow._validate_input",
+            new=AsyncMock(return_value=None),
+        ),
+        patch(
+            "custom_components.energypriceforecast.config_flow"
+            ".async_list_household_tariffs",
+            new=AsyncMock(side_effect=DatahubError("429")),
+        ),
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {**TARIFF_INPUT, "market": "DK1", "tou_source": "datahub"},
+        )
+
+    assert result["step_id"] == "tariff_lookup"
+    assert result["errors"]["base"] == "datahub_unavailable"
+
+
+ELVIA = """## Elvia AS
+GLN: 7080005046220 | Sist oppdatert: 2026-06-05
+Kundegrupper: husholdning, fritid
+Energiledd grunnpris: 16.99 øre/kWh (eks. avgifter)
+Energiledd unntak:
+  - Virkedag: 28.99 øre/kWh | timer 6-21 | dager: virkedag
+"""
+
+
+async def test_norway_starts_from_the_grid_operators_collected_tariff(hass) -> None:
+    """The fields arrive filled in, and the user still sees and confirms them."""
+    with (
+        patch(
+            "custom_components.energypriceforecast.config_flow._validate_input",
+            new=AsyncMock(return_value=None),
+        ),
+        patch(
+            "custom_components.energypriceforecast.config_flow.async_load_operators",
+            new=AsyncMock(return_value=parse_snapshot(ELVIA)),
+        ),
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {**TARIFF_INPUT, "market": "NO1"}
+        )
+        assert result["step_id"] == "tariff_prefill"
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"tou_operator": "7080005046220"}
+        )
+        assert result["step_id"] == "tariff_windows"
+        windows = result["data_schema"]({})
+        assert (windows["tou_low_start"], windows["tou_low_end"]) == (22, 6)
+        assert windows["tou_weekend"] == "low"
+
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], windows
+        )
+        assert result["step_id"] == "tariff_rates"
+        rates = result["data_schema"]({})
+        assert rates["tou_rate_low"] == pytest.approx(0.1699)
+        assert rates["tou_rate_standard"] == pytest.approx(0.2899)
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], rates
+        )
+
+    assert result["type"] is data_entry_flow.FlowResultType.CREATE_ENTRY
+    assert result["data"]["tou_rate_standard"] == pytest.approx(0.2899)
+
+
+async def test_norway_without_a_choice_types_everything_in(hass) -> None:
+    with (
+        patch(
+            "custom_components.energypriceforecast.config_flow._validate_input",
+            new=AsyncMock(return_value=None),
+        ),
+        patch(
+            "custom_components.energypriceforecast.config_flow.async_load_operators",
+            new=AsyncMock(return_value=parse_snapshot(ELVIA)),
+        ),
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {**TARIFF_INPUT, "market": "NO1"}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {}
+        )
+
+    assert result["step_id"] == "tariff_windows"
+    assert result["data_schema"]({})["tou_low_end"] == 0
+
+
+async def test_switching_the_tariff_off_drops_its_fields(hass) -> None:
+    """An entry must not carry amounts from a tariff it no longer uses."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        version=3,
+        unique_id="DE",
+        data={
+            **TARIFF_INPUT,
+            "horizon_hours": 48,
+            **DANISH_WINDOWS,
+            "tou_rate_low": 0.04,
+            "tou_rate_standard": 0.06,
+            "tou_rate_peak": 0.17,
+        },
+    )
+    entry.add_to_hass(hass)
+    with (
+        patch(
+            "custom_components.energypriceforecast.config_flow._validate_input",
+            new=AsyncMock(return_value=None),
+        ),
+        patch(
+            "custom_components.energypriceforecast.async_setup_entry",
+            return_value=True,
+        ),
+    ):
+        result = await entry.start_reconfigure_flow(hass)
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {**TARIFF_INPUT, "tou_source": "off"}
+        )
+        await hass.async_block_till_done()
+
+    assert result["reason"] == "reconfigure_successful"
+    assert entry.data["tou_source"] == "off"
+    assert not any(key.startswith("tou_") and key != "tou_source" for key in entry.data)
+
+
+async def test_reconfiguring_starts_from_the_stored_tariff(hass) -> None:
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        version=3,
+        unique_id="DE",
+        data={
+            **TARIFF_INPUT,
+            "horizon_hours": 48,
+            **DANISH_WINDOWS,
+            "tou_rate_low": 0.04,
+            "tou_rate_standard": 0.06,
+            "tou_rate_peak": 0.17,
+        },
+    )
+    entry.add_to_hass(hass)
+    with patch(
+        "custom_components.energypriceforecast.config_flow._validate_input",
+        new=AsyncMock(return_value=None),
+    ):
+        result = await entry.start_reconfigure_flow(hass)
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], TARIFF_INPUT
+        )
+
+    assert result["step_id"] == "tariff_windows"
+    windows = result["data_schema"]({})
+    assert (windows["tou_peak_start"], windows["tou_peak_end"]) == (17, 21)
+    assert windows["tou_winter_from"] == 10

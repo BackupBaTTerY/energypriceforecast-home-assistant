@@ -28,6 +28,15 @@ REQUIRED_SECTIONS = (
     ("config", "abort"),
     # The dropdown's option labels: without them the choice reads "formula".
     ("selector", "retail_source", "options"),
+    ("selector", "tou_source", "options"),
+    ("selector", "tou_weekend", "options"),
+    # The network tariff steps of 1.7.0: a missing label shows the raw key.
+    ("config", "step", "tariff_prefill", "data"),
+    ("config", "step", "tariff_windows", "data"),
+    ("config", "step", "tariff_windows", "data_description"),
+    ("config", "step", "tariff_rates", "data"),
+    ("config", "step", "tariff_rates", "data_description"),
+    ("config", "step", "tariff_lookup", "data"),
     ("entity", "sensor"),
     ("entity", "binary_sensor"),
 )

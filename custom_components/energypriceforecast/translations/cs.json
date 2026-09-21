@@ -2,6 +2,70 @@
   "title": "Energy Price Forecast EU",
   "config": {
     "step": {
+      "tariff_prefill": {
+        "title": "Vyjít od provozovatele sítě",
+        "description": "Vyberte provozovatele sítě a pásma a cena za energii se předvyplní ze sbírky {source}. Datum ukazuje, kdy byl záznam naposledy ověřen - v dalších krocích hodnoty porovnejte se svým ceníkem. Nechte prázdné, chcete-li vše zadat sami. Provozovatelé označení ⚠ mají sezónní nebo více zvláštních období, která se předvyplní jen částečně.",
+        "data": {
+          "tou_operator": "Provozovatel sítě"
+        },
+        "data_description": {
+          "tou_operator": "Zobrazeni jsou jen provozovatelé ve vaší cenové oblasti."
+        }
+      },
+      "tariff_windows": {
+        "title": "Kdy je síť levná a kdy drahá?",
+        "description": "Hodiny v místním čase trhu, jako v ceníku. Pásmo trvá od první hodiny do poslední, bez ní: 22 až 6 je noc. Stejné hodiny znamenají, že takové pásmo není. Předvyplněno z: {prefill}",
+        "data": {
+          "tou_low_start": "Nízký tarif od (hodina)",
+          "tou_low_end": "Nízký tarif do (hodina)",
+          "tou_peak_start": "Špičkový tarif od (hodina)",
+          "tou_peak_end": "Špičkový tarif do (hodina)",
+          "tou_weekend": "Víkend",
+          "tou_winter": "Jiné ceny v zimě",
+          "tou_winter_from": "Zima od měsíce",
+          "tou_winter_to": "Zima do měsíce"
+        },
+        "data_description": {
+          "tou_low_start": "Začátek nejlevnějšího pásma, např. 22 nebo 0.",
+          "tou_low_end": "Konec nejlevnějšího pásma, např. 6.",
+          "tou_peak_start": "Začátek nejdražšího pásma, např. 17. U tarifu se dvěma úrovněmi nechte stejné jako konec.",
+          "tou_peak_end": "Konec nejdražšího pásma, např. 21.",
+          "tou_weekend": "Někteří provozovatelé účtují celý víkend nízkým tarifem.",
+          "tou_winter": "Zaškrtněte, pokud provozovatel v zimě účtuje více, jako v Dánsku, Švédsku nebo Francii.",
+          "tou_winter_from": "První zimní měsíc, 1-12, např. 11 pro listopad.",
+          "tou_winter_to": "Poslední zimní měsíc včetně, např. 3 pro březen. Období přes přelom roku funguje."
+        }
+      },
+      "tariff_rates": {
+        "title": "Poplatky za síť za kWh",
+        "description": "Částky v {unit}, bez DPH, jako v ceníku - koeficient vašeho vzorce přičte DPH. Patří sem jen část, která se mění podle denní doby; pevné poplatky za kWh zůstávají v příplatku.",
+        "data": {
+          "tou_rate_low": "Nízký tarif",
+          "tou_rate_standard": "Standardní tarif",
+          "tou_rate_peak": "Špičkový tarif",
+          "tou_winter_rate_low": "Nízký tarif v zimě",
+          "tou_winter_rate_standard": "Standardní tarif v zimě",
+          "tou_winter_rate_peak": "Špičkový tarif v zimě"
+        },
+        "data_description": {
+          "tou_rate_low": "Za kWh, bez DPH.",
+          "tou_rate_standard": "Každá hodina mimo nízké a špičkové pásmo.",
+          "tou_rate_peak": "Za kWh, bez DPH.",
+          "tou_winter_rate_low": "Za kWh, bez DPH.",
+          "tou_winter_rate_standard": "Každá hodina mimo nízké a špičkové pásmo.",
+          "tou_winter_rate_peak": "Za kWh, bez DPH."
+        }
+      },
+      "tariff_lookup": {
+        "title": "Váš dánský tarif sítě",
+        "description": "Zveřejňuje Energinet v Energi Data Service a aktualizuje se jednou denně, včetně slev, které provozovatel účtuje zvlášť. Většina domácností má „Nettarif C“.",
+        "data": {
+          "tou_tariff": "Provozovatel a tarif"
+        },
+        "data_description": {
+          "tou_tariff": "Částky se mění podle ročního období; integrace je sleduje sama."
+        }
+      },
       "user": {
         "title": "Přidat předpověď ceny elektřiny a CO2",
         "description": "Vyberte trh a horizont předpovědi. Veřejný přístup aktuálně poskytuje až 48 hodin; oprávněný API klíč může odemknout až 120 hodin.",
@@ -14,6 +78,7 @@
           "postal_code": "PSČ",
           "retail_factor": "Koeficient (vlastní vzorec)",
           "retail_surcharge": "Příplatek za kWh vč. DPH (vlastní vzorec)",
+          "tou_source": "Poplatky za síť podle denní doby",
           "local_currency": "Zobrazit ceny v místní měně",
           "update_interval_minutes": "Interval aktualizace (minuty)",
           "cheapest_hours_count": "Nejlevnější hodiny na blok (0 pro vypnutí)",
@@ -29,7 +94,8 @@
           "retail_source": "Odhad: naše kompletní cena založená na předpokladech (poplatek za síť, poplatky, DPH), jen pro DE, NL, DK, AT a NO; Německo vyžaduje PSČ. Vlastní vzorec: burzovní cena × koeficient + příplatek, na každém trhu. V obou případech se plány sestavují podle maloobchodní ceny.",
           "postal_code": "Nutné pro Německo, pokud je zvolen odhad; slouží k určení poplatku za síť. Jinak se nepoužívá.",
           "retail_factor": "Jen pro vlastní vzorec. Násobí burzovní cenu, např. 1.21 pro 21 % DPH.",
-          "retail_surcharge": "Jen pro vlastní vzorec. Pevná částka za kWh včetně DPH přičtená po koeficientu, v jednotce cenových senzorů – s místní měnou v Kč/kWh, jinak v EUR/kWh. Patří sem přirážka dodavatele, daň z elektřiny a poplatky za síť za kWh. Poplatky za síť, které se mění podle denní doby, zatím zadat nelze.",
+          "retail_surcharge": "Jen pro vlastní vzorec. Pevná částka za kWh včetně DPH přičtená po koeficientu, v jednotce cenových senzorů – s místní měnou v Kč/kWh, jinak v EUR/kWh. Patří sem přirážka dodavatele, daň z elektřiny a poplatky za síť za kWh. Poplatky za síť, které se mění podle denní doby, patří místo toho do „Poplatky za síť podle denní doby“.",
+          "tou_source": "Poplatky za síť, které se mění podle denní doby, se započítají do vlastního vzorce - jeho koeficient k nim přičte DPH. Zadejte časová pásma a částky ze svého ceníku; v Norsku je lze předvyplnit podle provozovatele sítě, v Dánsku se vyhledají automaticky. Vyžaduje „Vlastní vzorec“ jako maloobchodní cenu.",
           "local_currency": "Přepočítá ceny z eur na české koruny (CZ), polské zloté (PL) nebo švédské koruny (SE1-SE4) podle denního referenčního kurzu ECB. Dánsko a Norsko dostávají vždy vlastní měnu, ostatní trhy zůstávají v eurech. Změna mění jednotku cenových senzorů, Home Assistant proto začne jejich dlouhodobé statistiky znovu.",
           "update_interval_minutes": "Jak často se API dotazuje. Rozlišení dat je 15 minut, kratší intervaly proto zřídka přinášejí nové informace.",
           "cheapest_hours_count": "Čas se rozdělí na pevné, na sebe navazující bloky (nastavte níže) a v každém bloku se jako nejlevnější vybere tolik jednotlivých - případně nesouvislých - hodin. Vhodné pro tepelné čerpadlo: např. 12 z 24 hodin vybere každý kalendářní den dvanáct nejlevnějších hodin. Jakmile je plán bloku vybrán, už se znovu nepřeskládá, i když se prognóza později změní. Nesmí být větší než délka bloku, a pokud prognóza ještě plně nepokrývá celý blok, plán se vůbec nezveřejní.",
@@ -51,6 +117,7 @@
           "postal_code": "PSČ",
           "retail_factor": "Koeficient (vlastní vzorec)",
           "retail_surcharge": "Příplatek za kWh vč. DPH (vlastní vzorec)",
+          "tou_source": "Poplatky za síť podle denní doby",
           "local_currency": "Zobrazit ceny v místní měně",
           "update_interval_minutes": "Interval aktualizace (minuty)",
           "cheapest_hours_count": "Nejlevnější hodiny na blok (0 pro vypnutí)",
@@ -65,7 +132,8 @@
           "retail_source": "Odhad: naše kompletní cena založená na předpokladech (poplatek za síť, poplatky, DPH), jen pro DE, NL, DK, AT a NO; Německo vyžaduje PSČ. Vlastní vzorec: burzovní cena × koeficient + příplatek, na každém trhu. V obou případech se plány sestavují podle maloobchodní ceny.",
           "postal_code": "Nutné pro Německo, pokud je zvolen odhad; slouží k určení poplatku za síť. Jinak se nepoužívá.",
           "retail_factor": "Jen pro vlastní vzorec. Násobí burzovní cenu, např. 1.21 pro 21 % DPH.",
-          "retail_surcharge": "Jen pro vlastní vzorec. Pevná částka za kWh včetně DPH přičtená po koeficientu, v jednotce cenových senzorů – s místní měnou v Kč/kWh, jinak v EUR/kWh. Patří sem přirážka dodavatele, daň z elektřiny a poplatky za síť za kWh. Poplatky za síť, které se mění podle denní doby, zatím zadat nelze.",
+          "retail_surcharge": "Jen pro vlastní vzorec. Pevná částka za kWh včetně DPH přičtená po koeficientu, v jednotce cenových senzorů – s místní měnou v Kč/kWh, jinak v EUR/kWh. Patří sem přirážka dodavatele, daň z elektřiny a poplatky za síť za kWh. Poplatky za síť, které se mění podle denní doby, patří místo toho do „Poplatky za síť podle denní doby“.",
+          "tou_source": "Poplatky za síť, které se mění podle denní doby, se započítají do vlastního vzorce - jeho koeficient k nim přičte DPH. Zadejte časová pásma a částky ze svého ceníku; v Norsku je lze předvyplnit podle provozovatele sítě, v Dánsku se vyhledají automaticky. Vyžaduje „Vlastní vzorec“ jako maloobchodní cenu.",
           "local_currency": "Přepočítá ceny z eur na české koruny (CZ), polské zloté (PL) nebo švédské koruny (SE1-SE4) podle denního referenčního kurzu ECB. Dánsko a Norsko dostávají vždy vlastní měnu, ostatní trhy zůstávají v eurech. Změna mění jednotku cenových senzorů, Home Assistant proto začne jejich dlouhodobé statistiky znovu.",
           "update_interval_minutes": "Jak často se API dotazuje. Rozlišení dat je 15 minut, kratší intervaly proto zřídka přinášejí nové informace.",
           "cheapest_hours_count": "Čas se rozdělí na pevné, na sebe navazující bloky (nastavte níže) a v každém bloku se jako nejlevnější vybere tolik jednotlivých - případně nesouvislých - hodin. Vhodné pro tepelné čerpadlo: např. 12 z 24 hodin vybere každý kalendářní den dvanáct nejlevnějších hodin. Jakmile je plán bloku vybrán, už se znovu nepřeskládá, i když se prognóza později změní. Nesmí být větší než délka bloku, a pokud prognóza ještě plně nepokrývá celý blok, plán se vůbec nezveřejní.",
@@ -86,6 +154,10 @@
       "invalid_postal_code": "Zadejte 5místné německé PSČ.",
       "retail_unavailable": "Odhad se pro tento trh nebo PSČ nepodařilo ověřit.",
       "invalid_retail_factor": "Koeficient musí být větší než 0.",
+      "tou_needs_formula": "Poplatky za síť podle denní doby vyžadují „Vlastní vzorec“ jako maloobchodní cenu - odhad už obsahuje vlastní poplatek za síť.",
+      "tou_not_supported": "Vyhledání tarifu sítě funguje jen v Dánsku. Zadejte místo toho pásma a částky.",
+      "tou_windows_overlap": "Nízké a špičkové pásmo se překrývají. Zkontrolujte hodiny ve svém ceníku.",
+      "datahub_unavailable": "Energi Data Service není dostupná. Odešlete znovu a zkuste to ještě jednou.",
       "cheapest_hours_exceeds_window": "Nejlevnější hodiny na blok nesmí být větší než délka bloku.",
       "greenest_hours_exceeds_window": "Počet nejčistších hodin nesmí být větší než délka bloku."
     },
@@ -94,6 +166,19 @@
     }
   },
   "selector": {
+    "tou_source": {
+      "options": {
+        "off": "Vypnuto",
+        "manual": "Zadat pásma a částky",
+        "datahub": "Dánsko: vyhledat provozovatele sítě"
+      }
+    },
+    "tou_weekend": {
+      "options": {
+        "like_weekday": "Jako pracovní den",
+        "low": "Celý den nízký tarif"
+      }
+    },
     "retail_source": {
       "options": {
         "off": "Vypnuto",

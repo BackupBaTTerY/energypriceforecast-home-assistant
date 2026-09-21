@@ -2,6 +2,70 @@
   "title": "Energy Price Forecast EU",
   "config": {
     "step": {
+      "tariff_prefill": {
+        "title": "Partir de votre gestionnaire de réseau",
+        "description": "Choisissez votre gestionnaire de réseau pour préremplir ses plages et son prix de l'énergie à partir de la collection {source}. La date indique la dernière vérification de cette entrée - comparez les valeurs avec votre grille tarifaire aux étapes suivantes. Laissez vide pour tout saisir vous-même. Les gestionnaires marqués ⚠ ont des périodes saisonnières ou multiples, qui ne sont que partiellement préremplies.",
+        "data": {
+          "tou_operator": "Gestionnaire de réseau"
+        },
+        "data_description": {
+          "tou_operator": "Seuls les gestionnaires de votre zone de prix sont listés."
+        }
+      },
+      "tariff_windows": {
+        "title": "Quand le réseau est-il bon marché ou cher ?",
+        "description": "Heures en heure locale du marché, comme sur votre grille tarifaire. Une plage va de sa première heure jusqu'à sa dernière, exclue : 22 à 6 est la nuit. Des heures identiques signifient qu'il n'y a pas de telle plage. Prérempli depuis : {prefill}",
+        "data": {
+          "tou_low_start": "Tarif bas à partir de (heure)",
+          "tou_low_end": "Tarif bas jusqu'à (heure)",
+          "tou_peak_start": "Tarif de pointe à partir de (heure)",
+          "tou_peak_end": "Tarif de pointe jusqu'à (heure)",
+          "tou_weekend": "Week-end",
+          "tou_winter": "Prix différents en hiver",
+          "tou_winter_from": "Hiver à partir du mois",
+          "tou_winter_to": "Hiver jusqu'au mois"
+        },
+        "data_description": {
+          "tou_low_start": "Début de la plage la moins chère, par ex. 22 ou 0.",
+          "tou_low_end": "Fin de la plage la moins chère, par ex. 6.",
+          "tou_peak_start": "Début de la plage la plus chère, par ex. 17. Laissez-la égale à la fin pour un tarif à deux niveaux.",
+          "tou_peak_end": "Fin de la plage la plus chère, par ex. 21.",
+          "tou_weekend": "Certains gestionnaires facturent tout le week-end au tarif bas.",
+          "tou_winter": "Cochez si votre gestionnaire facture davantage en hiver, comme au Danemark, en Suède ou en France.",
+          "tou_winter_from": "Premier mois d'hiver, 1-12, par ex. 11 pour novembre.",
+          "tou_winter_to": "Dernier mois d'hiver inclus, par ex. 3 pour mars. Une période à cheval sur le Nouvel An fonctionne."
+        }
+      },
+      "tariff_rates": {
+        "title": "Frais de réseau par kWh",
+        "description": "Montants en {unit}, hors TVA, comme sur la grille tarifaire - le facteur de votre formule ajoute la TVA. Seule la part qui varie selon l'heure va ici ; les taxes fixes par kWh restent dans le supplément.",
+        "data": {
+          "tou_rate_low": "Tarif bas",
+          "tou_rate_standard": "Tarif standard",
+          "tou_rate_peak": "Tarif de pointe",
+          "tou_winter_rate_low": "Tarif bas en hiver",
+          "tou_winter_rate_standard": "Tarif standard en hiver",
+          "tou_winter_rate_peak": "Tarif de pointe en hiver"
+        },
+        "data_description": {
+          "tou_rate_low": "Par kWh, hors TVA.",
+          "tou_rate_standard": "Toutes les heures hors plages basse et de pointe.",
+          "tou_rate_peak": "Par kWh, hors TVA.",
+          "tou_winter_rate_low": "Par kWh, hors TVA.",
+          "tou_winter_rate_standard": "Toutes les heures hors plages basse et de pointe.",
+          "tou_winter_rate_peak": "Par kWh, hors TVA."
+        }
+      },
+      "tariff_lookup": {
+        "title": "Votre tarif de réseau danois",
+        "description": "Publié par Energinet dans Energi Data Service et mis à jour une fois par jour, y compris les remises que le gestionnaire comptabilise à part. La plupart des ménages ont « Nettarif C ».",
+        "data": {
+          "tou_tariff": "Gestionnaire et tarif"
+        },
+        "data_description": {
+          "tou_tariff": "Les montants changent avec la saison ; l'intégration les suit d'elle-même."
+        }
+      },
       "user": {
         "title": "Ajouter une prévision de prix de l'électricité et de CO2",
         "description": "Choisissez un marché et l'horizon de prévision. L'accès public fournit actuellement jusqu'à 48 heures ; une clé API éligible peut débloquer jusqu'à 120 heures.",
@@ -14,6 +78,7 @@
           "postal_code": "Code postal",
           "retail_factor": "Facteur (formule personnelle)",
           "retail_surcharge": "Supplément par kWh TTC (formule personnelle)",
+          "tou_source": "Frais de réseau horaires",
           "local_currency": "Afficher les prix en monnaie locale",
           "update_interval_minutes": "Intervalle de mise à jour (minutes)",
           "cheapest_hours_count": "Heures les moins chères par bloc (0 pour désactiver)",
@@ -29,7 +94,8 @@
           "retail_source": "Estimation : notre prix tout compris basé sur des hypothèses (frais de réseau, taxes, TVA), uniquement pour DE, NL, DK, AT et NO ; l'Allemagne nécessite un code postal. Formule personnelle : prix spot × facteur + supplément, dans tous les marchés. Dans les deux cas, les plans sont établis sur le prix de détail.",
           "postal_code": "Requis pour l'Allemagne lorsque l'estimation est choisie ; sert à déterminer les frais de réseau. Sinon non utilisé.",
           "retail_factor": "Uniquement pour la formule personnelle. Multiplie le prix spot, par ex. 1.21 pour 21 % de TVA.",
-          "retail_surcharge": "Uniquement pour la formule personnelle. Montant fixe par kWh TVA comprise, ajouté après le facteur, dans l'unité des capteurs de prix – par ex. 0.1350 pour 13,50 ct/kWh. On y met la marge du fournisseur, les taxes sur l'énergie et les frais de réseau par kWh. Les frais de réseau qui varient selon l'heure ne peuvent pas encore être saisis.",
+          "retail_surcharge": "Uniquement pour la formule personnelle. Montant fixe par kWh TVA comprise, ajouté après le facteur, dans l'unité des capteurs de prix – par ex. 0.1350 pour 13,50 ct/kWh. On y met la marge du fournisseur, les taxes sur l'énergie et les frais de réseau par kWh. Les frais de réseau qui varient selon l'heure se saisissent plutôt dans « Frais de réseau horaires ».",
+          "tou_source": "Les frais de réseau qui varient selon l'heure sont intégrés à votre formule personnelle - son facteur y ajoute la TVA. Saisissez les plages et montants de votre grille tarifaire ; en Norvège ils peuvent être préremplis depuis votre gestionnaire de réseau, au Danemark ils sont recherchés automatiquement. Nécessite « Formule personnelle » comme prix de détail.",
           "local_currency": "Convertit les prix de l'euro en couronnes tchèques (CZ), zlotys polonais (PL) ou couronnes suédoises (SE1-SE4) au taux de référence quotidien de la BCE. Le Danemark et la Norvège reçoivent toujours leur propre monnaie ; les autres marchés restent en euros. Changer modifie l'unité des capteurs de prix, Home Assistant recommence donc leurs statistiques à long terme.",
           "update_interval_minutes": "Fréquence d'interrogation de l'API. La résolution des données est de 15 minutes, des intervalles plus courts apportent donc rarement de nouvelles informations.",
           "cheapest_hours_count": "Le temps est découpé en blocs fixes et contigus (à régler ci-dessous), et dans chaque bloc, ce nombre d'heures individuelles - éventuellement non consécutives - est choisi comme étant les moins chères. Utile pour une pompe à chaleur : par ex. 12 heures sur 24 sélectionne les douze heures les moins chères de chaque jour calendaire. Une fois le plan d'un bloc établi, il n'est plus jamais remanié, même si la prévision change ensuite. Ne doit jamais dépasser la longueur du bloc, et aucun plan n'est publié du tout si la prévision ne couvre pas encore entièrement le bloc.",
@@ -51,6 +117,7 @@
           "postal_code": "Code postal",
           "retail_factor": "Facteur (formule personnelle)",
           "retail_surcharge": "Supplément par kWh TTC (formule personnelle)",
+          "tou_source": "Frais de réseau horaires",
           "local_currency": "Afficher les prix en monnaie locale",
           "update_interval_minutes": "Intervalle de mise à jour (minutes)",
           "cheapest_hours_count": "Heures les moins chères par bloc (0 pour désactiver)",
@@ -65,7 +132,8 @@
           "retail_source": "Estimation : notre prix tout compris basé sur des hypothèses (frais de réseau, taxes, TVA), uniquement pour DE, NL, DK, AT et NO ; l'Allemagne nécessite un code postal. Formule personnelle : prix spot × facteur + supplément, dans tous les marchés. Dans les deux cas, les plans sont établis sur le prix de détail.",
           "postal_code": "Requis pour l'Allemagne lorsque l'estimation est choisie ; sert à déterminer les frais de réseau. Sinon non utilisé.",
           "retail_factor": "Uniquement pour la formule personnelle. Multiplie le prix spot, par ex. 1.21 pour 21 % de TVA.",
-          "retail_surcharge": "Uniquement pour la formule personnelle. Montant fixe par kWh TVA comprise, ajouté après le facteur, dans l'unité des capteurs de prix – par ex. 0.1350 pour 13,50 ct/kWh. On y met la marge du fournisseur, les taxes sur l'énergie et les frais de réseau par kWh. Les frais de réseau qui varient selon l'heure ne peuvent pas encore être saisis.",
+          "retail_surcharge": "Uniquement pour la formule personnelle. Montant fixe par kWh TVA comprise, ajouté après le facteur, dans l'unité des capteurs de prix – par ex. 0.1350 pour 13,50 ct/kWh. On y met la marge du fournisseur, les taxes sur l'énergie et les frais de réseau par kWh. Les frais de réseau qui varient selon l'heure se saisissent plutôt dans « Frais de réseau horaires ».",
+          "tou_source": "Les frais de réseau qui varient selon l'heure sont intégrés à votre formule personnelle - son facteur y ajoute la TVA. Saisissez les plages et montants de votre grille tarifaire ; en Norvège ils peuvent être préremplis depuis votre gestionnaire de réseau, au Danemark ils sont recherchés automatiquement. Nécessite « Formule personnelle » comme prix de détail.",
           "local_currency": "Convertit les prix de l'euro en couronnes tchèques (CZ), zlotys polonais (PL) ou couronnes suédoises (SE1-SE4) au taux de référence quotidien de la BCE. Le Danemark et la Norvège reçoivent toujours leur propre monnaie ; les autres marchés restent en euros. Changer modifie l'unité des capteurs de prix, Home Assistant recommence donc leurs statistiques à long terme.",
           "update_interval_minutes": "Fréquence d'interrogation de l'API. La résolution des données est de 15 minutes, des intervalles plus courts apportent donc rarement de nouvelles informations.",
           "cheapest_hours_count": "Le temps est découpé en blocs fixes et contigus (à régler ci-dessous), et dans chaque bloc, ce nombre d'heures individuelles - éventuellement non consécutives - est choisi comme étant les moins chères. Utile pour une pompe à chaleur : par ex. 12 heures sur 24 sélectionne les douze heures les moins chères de chaque jour calendaire. Une fois le plan d'un bloc établi, il n'est plus jamais remanié, même si la prévision change ensuite. Ne doit jamais dépasser la longueur du bloc, et aucun plan n'est publié du tout si la prévision ne couvre pas encore entièrement le bloc.",
@@ -86,6 +154,10 @@
       "invalid_postal_code": "Saisissez un code postal allemand à 5 chiffres.",
       "retail_unavailable": "L'estimation n'a pas pu être vérifiée pour ce marché ou ce code postal.",
       "invalid_retail_factor": "Le facteur doit être supérieur à 0.",
+      "tou_needs_formula": "Les frais de réseau horaires nécessitent « Formule personnelle » comme prix de détail - l'estimation contient déjà ses propres frais de réseau.",
+      "tou_not_supported": "La recherche du tarif de réseau ne fonctionne qu'au Danemark. Saisissez plutôt les plages et les montants.",
+      "tou_windows_overlap": "La plage basse et la plage de pointe se chevauchent. Vérifiez les heures sur votre grille tarifaire.",
+      "datahub_unavailable": "Energi Data Service est injoignable. Validez à nouveau pour réessayer.",
       "cheapest_hours_exceeds_window": "Les heures les moins chères par bloc ne peuvent pas dépasser la longueur du bloc.",
       "greenest_hours_exceeds_window": "Le nombre d'heures les plus propres ne peut pas dépasser la durée du bloc."
     },
@@ -94,6 +166,19 @@
     }
   },
   "selector": {
+    "tou_source": {
+      "options": {
+        "off": "Désactivé",
+        "manual": "Saisir plages et montants",
+        "datahub": "Danemark : rechercher mon gestionnaire de réseau"
+      }
+    },
+    "tou_weekend": {
+      "options": {
+        "like_weekday": "Comme un jour ouvré",
+        "low": "Tarif bas toute la journée"
+      }
+    },
     "retail_source": {
       "options": {
         "off": "Désactivé",

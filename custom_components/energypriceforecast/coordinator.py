@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+from collections.abc import Awaitable, Callable
+from datetime import date, datetime, timedelta, timezone, tzinfo
 from typing import Any
 
 from homeassistant.core import HomeAssistant
@@ -33,6 +34,7 @@ from .planning import (
 )
 from .retail_formula import apply_to_series, apply_to_summary
 from .retail_formula import plan_basis as formula_plan_basis
+from .time_of_use import TariffSource
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -59,6 +61,9 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         weekend_hours_count: int = 0,
         greenest_hours_count: int = 0,
         currency: str | None = None,
+        tariff: TariffSource | None = None,
+        tariff_loader: Callable[[date], Awaitable[TariffSource | None]] | None = None,
+        zone: tzinfo = timezone.utc,
     ) -> None:
         super().__init__(
             hass,
@@ -77,6 +82,13 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.weekend_hours_count = weekend_hours_count
         self.greenest_hours_count = greenest_hours_count
         self.currency = currency
+        # A grid charge that changes with the time of day: either the
+        # user's own schedule, which never changes on its own, or a
+        # published table reloaded once a market day - see time_of_use.py.
+        self.tariff = tariff
+        self._tariff_loader = tariff_loader
+        self._tariff_day: date | None = None
+        self.zone = zone
         self.retail_data: dict[str, Any] | None = None
         self.retail_summary: dict[str, Any] | None = None
         self.price_series: dict[str, Any] | None = None
@@ -100,6 +112,29 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def retail_pricing(self) -> bool:
         """Whether there is a retail price at all, estimated or from a formula."""
         return self.retail_source != RETAIL_SOURCE_OFF
+
+    @property
+    def tariff_expected(self) -> bool:
+        """Whether a network tariff was configured and must be priced in."""
+        return self.tariff is not None or self._tariff_loader is not None
+
+    async def _async_refresh_tariff(self, now: datetime) -> None:
+        """Reload a published tariff table once per market day.
+
+        A table covers the days ahead, so a failed reload is not urgent:
+        the previous one keeps pricing them, and a day it does not cover
+        has no rate at all rather than one from last week.
+        """
+        if self._tariff_loader is None:
+            return
+        today = now.astimezone(self.zone).date()
+        if self._tariff_day == today and self.tariff is not None:
+            return
+        loaded = await self._tariff_loader(today)
+        if loaded is None:
+            return
+        self.tariff = loaded
+        self._tariff_day = today
 
     @property
     def plan_series(self) -> dict[str, Any] | None:
@@ -312,19 +347,34 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         except EnergyPriceForecastApiError as err:
             _LOGGER.warning("Price series update failed: %s", err)
 
+        now = dt_util.utcnow()
+
         if self.retail_source == RETAIL_SOURCE_FORMULA:
             # The formula needs no request of its own: it is applied to the
             # base series and summary this update already fetched. A failed
             # base series leaves the previous one in place, and with it the
             # previous retail series - the same as a failed estimate.
-            self.retail_data = apply_to_series(
-                self.price_series, self.retail_factor, self.retail_surcharge
-            )
-            self.retail_summary = apply_to_summary(
-                summary, self.retail_factor, self.retail_surcharge
-            )
-
-        now = dt_util.utcnow()
+            await self._async_refresh_tariff(now)
+            if self.tariff_expected and self.tariff is None:
+                # A retail price without its network charge would be too
+                # low in every hour, and the plans would be priced on it.
+                # None says "not available", which the entities show.
+                self.retail_data = None
+                self.retail_summary = None
+            else:
+                self.retail_data = apply_to_series(
+                    self.price_series,
+                    self.retail_factor,
+                    self.retail_surcharge,
+                    self.tariff,
+                )
+                self.retail_summary = apply_to_summary(
+                    summary,
+                    self.retail_factor,
+                    self.retail_surcharge,
+                    self.tariff,
+                    now,
+                )
 
         # Plans are built on the series the user actually pays. With retail
         # pricing on, the spot price is neither what a planned hour costs nor
@@ -337,7 +387,7 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         plan_series = self.plan_series
         if self.retail_source == RETAIL_SOURCE_FORMULA:
             plan_price_mode = formula_plan_basis(
-                self.retail_factor, self.retail_surcharge
+                self.retail_factor, self.retail_surcharge, self.tariff
             )
         elif self.retail_source == RETAIL_SOURCE_ESTIMATE:
             # Every plan priced on the estimate was stored under "retail"

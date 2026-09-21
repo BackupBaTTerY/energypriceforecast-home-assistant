@@ -2,6 +2,70 @@
   "title": "Energy Price Forecast EU",
   "config": {
     "step": {
+      "tariff_prefill": {
+        "title": "Uitgaan van je netbeheerder",
+        "description": "Kies je netbeheerder om de tijdvakken en het energietarief in te vullen uit de verzameling {source}. De datum toont wanneer die gegevens voor het laatst zijn gecontroleerd - vergelijk ze in de volgende stappen met je eigen tariefblad. Laat leeg om alles zelf in te vullen. Netbeheerders met ⚠ hebben seizoens- of meerdere afwijkende perioden, die maar deels worden ingevuld.",
+        "data": {
+          "tou_operator": "Netbeheerder"
+        },
+        "data_description": {
+          "tou_operator": "Alleen netbeheerders in je prijsgebied worden getoond."
+        }
+      },
+      "tariff_windows": {
+        "title": "Wanneer is het net goedkoop of duur?",
+        "description": "Uren in de lokale tijd van de markt, zoals op je tariefblad. Een tijdvak loopt van het eerste uur tot, niet tot en met, het laatste: 22 tot 6 is de nacht. Gelijke uren betekenen dat er geen zo'n tijdvak is. Vooraf ingevuld uit: {prefill}",
+        "data": {
+          "tou_low_start": "Laag tarief vanaf (uur)",
+          "tou_low_end": "Laag tarief tot (uur)",
+          "tou_peak_start": "Piektarief vanaf (uur)",
+          "tou_peak_end": "Piektarief tot (uur)",
+          "tou_weekend": "Weekend",
+          "tou_winter": "Andere prijzen in de winter",
+          "tou_winter_from": "Winter vanaf maand",
+          "tou_winter_to": "Winter tot en met maand"
+        },
+        "data_description": {
+          "tou_low_start": "Begin van het goedkoopste tijdvak, bijv. 22 of 0.",
+          "tou_low_end": "Einde van het goedkoopste tijdvak, bijv. 6.",
+          "tou_peak_start": "Begin van het duurste tijdvak, bijv. 17. Laat het gelijk aan het einde voor een tarief met twee niveaus.",
+          "tou_peak_end": "Einde van het duurste tijdvak, bijv. 21.",
+          "tou_weekend": "Sommige netbeheerders rekenen het hele weekend het lage tarief.",
+          "tou_winter": "Aanvinken als je netbeheerder in de winter meer rekent, zoals in Denemarken, Zweden of Frankrijk.",
+          "tou_winter_from": "Eerste wintermaand, 1-12, bijv. 11 voor november.",
+          "tou_winter_to": "Laatste wintermaand, bijv. 3 voor maart. Een periode over de jaarwisseling werkt."
+        }
+      },
+      "tariff_rates": {
+        "title": "Netkosten per kWh",
+        "description": "Bedragen in {unit}, zonder btw, zoals op het tariefblad - de factor van je formule telt de btw erbij op. Alleen het deel dat met het tijdstip verandert hoort hier; vaste belastingen per kWh blijven in de toeslag.",
+        "data": {
+          "tou_rate_low": "Laag tarief",
+          "tou_rate_standard": "Normaal tarief",
+          "tou_rate_peak": "Piektarief",
+          "tou_winter_rate_low": "Laag tarief in de winter",
+          "tou_winter_rate_standard": "Normaal tarief in de winter",
+          "tou_winter_rate_peak": "Piektarief in de winter"
+        },
+        "data_description": {
+          "tou_rate_low": "Per kWh, zonder btw.",
+          "tou_rate_standard": "Elk uur buiten het lage en het piektijdvak.",
+          "tou_rate_peak": "Per kWh, zonder btw.",
+          "tou_winter_rate_low": "Per kWh, zonder btw.",
+          "tou_winter_rate_standard": "Elk uur buiten het lage en het piektijdvak.",
+          "tou_winter_rate_peak": "Per kWh, zonder btw."
+        }
+      },
+      "tariff_lookup": {
+        "title": "Je Deense nettarief",
+        "description": "Gepubliceerd door Energinet in Energi Data Service en dagelijks bijgewerkt, inclusief kortingen die de netbeheerder apart boekt. De meeste huishoudens hebben \"Nettarif C\".",
+        "data": {
+          "tou_tariff": "Netbeheerder en tarief"
+        },
+        "data_description": {
+          "tou_tariff": "De bedragen veranderen met het seizoen; de integratie volgt ze vanzelf."
+        }
+      },
       "user": {
         "title": "Elektriciteitsprijs- en CO2-prognose toevoegen",
         "description": "Kies een markt en de prognosehorizon. Publieke toegang biedt momenteel tot 48 uur; een gerechtigde API-sleutel kan tot 120 uur ontgrendelen.",
@@ -14,6 +78,7 @@
           "postal_code": "Postcode",
           "retail_factor": "Factor (eigen formule)",
           "retail_surcharge": "Toeslag per kWh incl. btw (eigen formule)",
+          "tou_source": "Tijdsafhankelijke netkosten",
           "local_currency": "Prijzen in lokale valuta tonen",
           "update_interval_minutes": "Bijwerkinterval (minuten)",
           "cheapest_hours_count": "Goedkoopste uren per blok (0 om uit te schakelen)",
@@ -29,7 +94,8 @@
           "retail_source": "Schatting: onze op aannames gebaseerde alles-in prijs (netkosten, heffingen, btw), alleen voor DE, NL, DK, AT en NO; Duitsland heeft een postcode nodig. Eigen formule: beursprijs × factor + toeslag, in elke markt. In beide gevallen worden de plannen op de consumentenprijs gebaseerd.",
           "postal_code": "Nodig voor Duitsland als de schatting is gekozen; gebruikt voor de netkosten. Anders niet gebruikt.",
           "retail_factor": "Alleen voor de eigen formule. Vermenigvuldigt de beursprijs, bijv. 1.21 voor 21% btw.",
-          "retail_surcharge": "Alleen voor de eigen formule. Vast bedrag per kWh inclusief btw, opgeteld na de factor, in de eenheid van de prijssensoren – bijv. 0.1350 voor 13,50 ct/kWh. Hier horen de inkoopvergoeding van je leverancier, de energiebelasting en eventuele netkosten per kWh. Netkosten die met het tijdstip veranderen, kunnen nog niet worden ingevoerd.",
+          "retail_surcharge": "Alleen voor de eigen formule. Vast bedrag per kWh inclusief btw, opgeteld na de factor, in de eenheid van de prijssensoren – bijv. 0.1350 voor 13,50 ct/kWh. Hier horen de inkoopvergoeding van je leverancier, de energiebelasting en eventuele netkosten per kWh. Netkosten die met het tijdstip veranderen, horen in plaats daarvan bij \"Tijdsafhankelijke netkosten\".",
+          "tou_source": "Netkosten die met het tijdstip veranderen, worden in je eigen formule meegerekend - de factor telt er de btw bij op. Vul de tijdvakken en bedragen van je tariefblad in; in Noorwegen kunnen ze vanuit je netbeheerder worden ingevuld, in Denemarken worden ze automatisch opgezocht. Vereist \"Eigen formule\" als consumentenprijs.",
           "local_currency": "Rekent de prijzen met de dagelijkse referentiekoers van de ECB om van euro naar Tsjechische kronen (CZ), Poolse zloty (PL) of Zweedse kronen (SE1-SE4). Denemarken en Noorwegen krijgen altijd hun eigen valuta; alle andere markten blijven in euro. Omschakelen verandert de eenheid van de prijssensoren, waardoor Home Assistant hun langetermijnstatistieken opnieuw begint.",
           "update_interval_minutes": "Hoe vaak de API wordt bevraagd. De gegevensresolutie is 15 minuten, dus kortere intervallen leveren zelden nieuwe informatie op.",
           "cheapest_hours_count": "De tijd wordt verdeeld in vaste, aaneensluitende blokken (hieronder in te stellen), en in elk blok worden zoveel individuele - mogelijk niet-aaneengesloten - uren als goedkoopste gekozen. Handig voor een warmtepomp: bijv. 12 van 24 uur kiest elke kalenderdag de twaalf goedkoopste uren. Eenmaal gekozen wordt het plan van een blok nooit meer herschud, ook niet als de prognose later verandert. Mag nooit groter zijn dan de bloklengte, en er wordt helemaal geen plan gepubliceerd als de prognose het blok nog niet volledig dekt.",
@@ -51,6 +117,7 @@
           "postal_code": "Postcode",
           "retail_factor": "Factor (eigen formule)",
           "retail_surcharge": "Toeslag per kWh incl. btw (eigen formule)",
+          "tou_source": "Tijdsafhankelijke netkosten",
           "local_currency": "Prijzen in lokale valuta tonen",
           "update_interval_minutes": "Bijwerkinterval (minuten)",
           "cheapest_hours_count": "Goedkoopste uren per blok (0 om uit te schakelen)",
@@ -65,7 +132,8 @@
           "retail_source": "Schatting: onze op aannames gebaseerde alles-in prijs (netkosten, heffingen, btw), alleen voor DE, NL, DK, AT en NO; Duitsland heeft een postcode nodig. Eigen formule: beursprijs × factor + toeslag, in elke markt. In beide gevallen worden de plannen op de consumentenprijs gebaseerd.",
           "postal_code": "Nodig voor Duitsland als de schatting is gekozen; gebruikt voor de netkosten. Anders niet gebruikt.",
           "retail_factor": "Alleen voor de eigen formule. Vermenigvuldigt de beursprijs, bijv. 1.21 voor 21% btw.",
-          "retail_surcharge": "Alleen voor de eigen formule. Vast bedrag per kWh inclusief btw, opgeteld na de factor, in de eenheid van de prijssensoren – bijv. 0.1350 voor 13,50 ct/kWh. Hier horen de inkoopvergoeding van je leverancier, de energiebelasting en eventuele netkosten per kWh. Netkosten die met het tijdstip veranderen, kunnen nog niet worden ingevoerd.",
+          "retail_surcharge": "Alleen voor de eigen formule. Vast bedrag per kWh inclusief btw, opgeteld na de factor, in de eenheid van de prijssensoren – bijv. 0.1350 voor 13,50 ct/kWh. Hier horen de inkoopvergoeding van je leverancier, de energiebelasting en eventuele netkosten per kWh. Netkosten die met het tijdstip veranderen, horen in plaats daarvan bij \"Tijdsafhankelijke netkosten\".",
+          "tou_source": "Netkosten die met het tijdstip veranderen, worden in je eigen formule meegerekend - de factor telt er de btw bij op. Vul de tijdvakken en bedragen van je tariefblad in; in Noorwegen kunnen ze vanuit je netbeheerder worden ingevuld, in Denemarken worden ze automatisch opgezocht. Vereist \"Eigen formule\" als consumentenprijs.",
           "local_currency": "Rekent de prijzen met de dagelijkse referentiekoers van de ECB om van euro naar Tsjechische kronen (CZ), Poolse zloty (PL) of Zweedse kronen (SE1-SE4). Denemarken en Noorwegen krijgen altijd hun eigen valuta; alle andere markten blijven in euro. Omschakelen verandert de eenheid van de prijssensoren, waardoor Home Assistant hun langetermijnstatistieken opnieuw begint.",
           "update_interval_minutes": "Hoe vaak de API wordt bevraagd. De gegevensresolutie is 15 minuten, dus kortere intervallen leveren zelden nieuwe informatie op.",
           "cheapest_hours_count": "De tijd wordt verdeeld in vaste, aaneensluitende blokken (hieronder in te stellen), en in elk blok worden zoveel individuele - mogelijk niet-aaneengesloten - uren als goedkoopste gekozen. Handig voor een warmtepomp: bijv. 12 van 24 uur kiest elke kalenderdag de twaalf goedkoopste uren. Eenmaal gekozen wordt het plan van een blok nooit meer herschud, ook niet als de prognose later verandert. Mag nooit groter zijn dan de bloklengte, en er wordt helemaal geen plan gepubliceerd als de prognose het blok nog niet volledig dekt.",
@@ -86,6 +154,10 @@
       "invalid_postal_code": "Voer een 5-cijferige Duitse postcode in.",
       "retail_unavailable": "De schatting kon voor deze markt of postcode niet worden gecontroleerd.",
       "invalid_retail_factor": "De factor moet groter zijn dan 0.",
+      "tou_needs_formula": "Tijdsafhankelijke netkosten vereisen \"Eigen formule\" als consumentenprijs - de schatting bevat al eigen netkosten.",
+      "tou_not_supported": "Het nettarief opzoeken werkt alleen in Denemarken. Vul in plaats daarvan de tijdvakken en bedragen in.",
+      "tou_windows_overlap": "Het lage en het piektijdvak overlappen. Controleer de uren op je tariefblad.",
+      "datahub_unavailable": "Energi Data Service was niet bereikbaar. Verstuur opnieuw om het nog eens te proberen.",
       "cheapest_hours_exceeds_window": "Goedkoopste uren per blok mag niet groter zijn dan de bloklengte.",
       "greenest_hours_exceeds_window": "Het aantal schoonste uren mag niet groter zijn dan de bloklengte."
     },
@@ -94,6 +166,19 @@
     }
   },
   "selector": {
+    "tou_source": {
+      "options": {
+        "off": "Uit",
+        "manual": "Tijdvakken en bedragen invullen",
+        "datahub": "Denemarken: mijn netbeheerder opzoeken"
+      }
+    },
+    "tou_weekend": {
+      "options": {
+        "like_weekday": "Zoals een werkdag",
+        "low": "De hele dag laag tarief"
+      }
+    },
     "retail_source": {
       "options": {
         "off": "Uit",

@@ -9,11 +9,14 @@ mocked away.
 """
 from __future__ import annotations
 
+from datetime import date
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+from custom_components.energypriceforecast.dk_datahub import DatahubError
 
 DOMAIN = "energypriceforecast"
 
@@ -677,3 +680,119 @@ async def test_changing_the_formula_starts_a_fresh_plan(hass, freezer) -> None:
     assert coordinator.cheapest_hours_window_average == pytest.approx(
         plain_average * 1.21 + 0.1
     )
+
+
+# A German two-plus-peak network tariff, typed in: cheap 00-06 local time,
+# expensive 17-21, everything else standard.
+MANUAL_TARIFF = {
+    "retail_source": "formula",
+    "retail_factor": 1.0,
+    "retail_surcharge": 0.0,
+    "tou_source": "manual",
+    "tou_low_start": 0,
+    "tou_low_end": 6,
+    "tou_peak_start": 17,
+    "tou_peak_end": 21,
+    "tou_weekend": "like_weekday",
+    "tou_rate_low": 0.01,
+    "tou_rate_standard": 0.06,
+    "tou_rate_peak": 0.17,
+}
+
+
+async def test_a_cheap_night_rate_moves_the_plan_into_the_night(hass, freezer) -> None:
+    """The reason the tariff exists: the cheapest hour on spot is not the
+    cheapest hour on the bill.
+
+    Spot is 0.10 all day except 0.08 at 10:00 UTC (noon in Germany). With a
+    network charge of 0.06 by day and 0.01 at night, noon costs 0.14 and the
+    night 0.11 - the plan has to pick the night.
+    """
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-12T00:00:00+00:00")
+    spot = {hour: 0.10 for hour in range(24)} | {10: 0.08}
+
+    entry = await _setup_entry(
+        hass,
+        extra_data={
+            **MANUAL_TARIFF,
+            "cheapest_hours_count": 1,
+            "cheapest_hours_window_hours": 24,
+        },
+        price_entries=_full_day_entries("2026-08-12T00:00:00Z", spot, "day_ahead"),
+    )
+    coordinator = entry.runtime_data
+
+    # 22:00-04:00 UTC is the German night; noon on spot would be 10:00.
+    picked = coordinator.cheapest_hours[0]["start"].hour
+    assert picked in {0, 1, 2, 3, 22, 23}
+    noon = next(
+        e for e in coordinator.retail_data["entries"]
+        if e["start"].startswith("2026-08-12T10:00")
+    )
+    assert noon["value"] == pytest.approx(0.14)
+    # A plan priced with this tariff must not survive a change of it.
+    assert "|tou|" in next(iter(coordinator._plan_cache))
+
+
+async def test_a_published_tariff_that_cannot_be_loaded_means_no_retail_price(
+    hass, freezer
+) -> None:
+    """Without its network charge the retail price would be too low in every
+    hour, and the plans would be built on it. Nothing is better than that."""
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-12T10:00:00+00:00")
+    with patch(
+        "custom_components.energypriceforecast.async_load_rates",
+        new=AsyncMock(side_effect=DatahubError("429")),
+    ):
+        entry = await _setup_entry(
+            hass,
+            extra_data={
+                "market": "DK1",
+                "retail_source": "formula",
+                "retail_factor": 1.25,
+                "retail_surcharge": 0.0,
+                "tou_source": "datahub",
+                "tou_tariff": "5790000705689|DT_C_01",
+            },
+            price_entries=_full_day_entries(
+                "2026-08-12T00:00:00Z", {hour: 0.5 for hour in range(24)}, "day_ahead"
+            ),
+        )
+
+    assert entry.runtime_data.retail_data is None
+    assert entry.runtime_data.price_series is not None
+
+
+async def test_a_published_tariff_is_added_hour_by_hour(hass, freezer) -> None:
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-12T10:00:00+00:00")
+    table = {
+        date(2026, 8, 12): tuple(0.05 if hour < 17 else 0.40 for hour in range(24)),
+        date(2026, 8, 13): tuple(0.05 for _ in range(24)),
+    }
+    with patch(
+        "custom_components.energypriceforecast.async_load_rates",
+        new=AsyncMock(return_value=table),
+    ):
+        entry = await _setup_entry(
+            hass,
+            extra_data={
+                "market": "DK1",
+                "retail_source": "formula",
+                "retail_factor": 1.25,
+                "retail_surcharge": 0.0,
+                "tou_source": "datahub",
+                "tou_tariff": "5790000705689|DT_C_01",
+            },
+            price_entries=_full_day_entries(
+                "2026-08-12T00:00:00Z", {hour: 0.5 for hour in range(24)}, "day_ahead"
+            ),
+        )
+
+    entries = entry.runtime_data.retail_data["entries"]
+    by_start = {e["start"][:16]: e["value"] for e in entries}
+    # 10:00 UTC is noon in Copenhagen: the day rate. 16:00 UTC is 18:00 there.
+    assert by_start["2026-08-12T10:00"] == pytest.approx(1.25 * (0.5 + 0.05))
+    assert by_start["2026-08-12T16:00"] == pytest.approx(1.25 * (0.5 + 0.40))

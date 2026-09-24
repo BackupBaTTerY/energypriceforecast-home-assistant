@@ -1168,3 +1168,138 @@ async def test_the_retail_price_shows_the_network_charge_it_contains(
     retail = _state_for_unique_id(hass, entry, "retail_current_price")
     assert retail.attributes["network_charge_now"] == pytest.approx(0.15)
     assert float(retail.state) == pytest.approx(1.19 * (0.10 + 0.15) + 0.1)
+
+
+# The two blocks as the API delivered them for Germany on 24 September 2026.
+HOURLY_ACCURACY = {
+    "available": True,
+    "error": None,
+    "unit": "EUR/kWh",
+    "sample_count": 720,
+    "mean_abs_error": 0.030763,
+    "median_abs_error": 0.024955,
+    "p90_abs_error": 0.058495,
+    "within_primary_share": 0.3875,
+    "within_secondary_share": 0.7222,
+    "primary_threshold": 0.02,
+    "secondary_threshold": 0.04,
+    "pearson_r": 0.8848,
+    "period_start": "2026-08-25",
+    "period_end": "2026-09-24",
+}
+CHEAPER_DAY = {
+    "available": True,
+    "error": None,
+    "unit": "EUR/kWh",
+    "evaluated_pairs": 24,
+    "correct_day_count": 20,
+    "correct_day_share": 0.8333,
+    "ready": False,
+    "minimum_ready_pairs": 30,
+    "mean_regret": 0.004194,
+    "near_optimal_share": 0.875,
+    "wrong_day_count": 4,
+    "mean_regret_when_wrong": 0.025163,
+    "median_regret_when_wrong": 0.024192,
+    "wait_decision_count": 8,
+    "wait_paid_off_count": 8,
+    "wait_backfired_count": 0,
+    "mean_saving_when_waiting": 0.064324,
+    "median_saving_when_waiting": 0.059019,
+    "comparison_horizon_hours": 48,
+    "window_hours": 4,
+    "period_start": "2026-08-31",
+    "period_end": "2026-09-23",
+}
+
+
+async def test_forecast_accuracy_reports_the_hourly_error(hass) -> None:
+    """Shares arrive as 0..1 from the API and are shown as percentages."""
+    entry = await _setup_entry(hass, summary_extra={"hourly_accuracy": HOURLY_ACCURACY})
+
+    state = _state_for_unique_id(hass, entry, "forecast_accuracy")
+
+    assert float(state.state) == pytest.approx(0.030763)
+    assert state.attributes["unit_of_measurement"] == "EUR/kWh"
+    assert state.attributes["within_primary_percent"] == pytest.approx(38.8)
+    assert state.attributes["primary_threshold"] == pytest.approx(0.02)
+    assert state.attributes["within_secondary_percent"] == pytest.approx(72.2)
+    assert state.attributes["pearson_r"] == pytest.approx(0.8848)
+    assert state.attributes["sample_count"] == 720
+
+
+async def test_forecast_accuracy_without_a_measurement(hass) -> None:
+    """A market the API cannot measure says so instead of showing a zero."""
+    entry = await _setup_entry(
+        hass,
+        summary_extra={
+            "hourly_accuracy": {"available": False, "error": "not enough history"}
+        },
+    )
+
+    state = _state_for_unique_id(hass, entry, "forecast_accuracy")
+
+    assert state.state == "unavailable"
+
+
+async def test_the_cheaper_day_share_waits_for_enough_pairs(hass) -> None:
+    """24 of 30 pairs: the attributes count, the state stays unknown.
+
+    A share out of a handful of days swings by tens of points with a single
+    wrong day, and an automation reading it would act on that noise.
+    """
+    entry = await _setup_entry(hass, summary_extra={"cheaper_day_decision": CHEAPER_DAY})
+
+    state = _state_for_unique_id(hass, entry, "cheaper_day_decision")
+
+    assert state.state == "unknown"
+    assert state.attributes["ready"] is False
+    assert state.attributes["evaluated_pairs"] == 24
+    assert state.attributes["minimum_ready_pairs"] == 30
+    # What it costs to be wrong, and what waiting was worth, are there from
+    # the first day - they are averages, not a share of a small sample.
+    assert state.attributes["mean_regret_when_wrong"] == pytest.approx(0.025163)
+    assert state.attributes["mean_saving_when_waiting"] == pytest.approx(0.064324)
+    assert state.attributes["wait_backfired_count"] == 0
+
+
+async def test_the_cheaper_day_share_appears_once_it_is_ready(hass) -> None:
+    entry = await _setup_entry(
+        hass,
+        summary_extra={
+            "cheaper_day_decision": {
+                **CHEAPER_DAY,
+                "ready": True,
+                "evaluated_pairs": 30,
+                "correct_day_count": 25,
+                "correct_day_share": 0.8333,
+            }
+        },
+    )
+
+    state = _state_for_unique_id(hass, entry, "cheaper_day_decision")
+
+    assert float(state.state) == pytest.approx(83.3)
+    assert state.attributes["unit_of_measurement"] == "%"
+    assert state.attributes["near_optimal_percent"] == pytest.approx(87.5)
+
+
+async def test_both_quality_entities_are_diagnostics(hass) -> None:
+    """They belong next to the forecast-quality entity, not on a dashboard."""
+    from homeassistant.const import EntityCategory
+
+    entry = await _setup_entry(
+        hass,
+        summary_extra={
+            "hourly_accuracy": HOURLY_ACCURACY,
+            "cheaper_day_decision": CHEAPER_DAY,
+        },
+    )
+
+    registry = er.async_get(hass)
+    for suffix in ("forecast_accuracy", "cheaper_day_decision"):
+        entity_id = registry.async_get_entity_id(
+            "sensor", DOMAIN, f"{entry.entry_id}_{suffix}"
+        )
+        assert entity_id is not None, suffix
+        assert registry.async_get(entity_id).entity_category is EntityCategory.DIAGNOSTIC

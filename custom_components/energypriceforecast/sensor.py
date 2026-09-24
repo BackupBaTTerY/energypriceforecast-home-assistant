@@ -162,6 +162,13 @@ class _StickyUnitMixin:
         return self._last_unit
 
 
+def _share_percent(share: Any) -> float | None:
+    """A share the API reports as 0..1, as a percentage for display."""
+    if not isinstance(share, (int, float)) or isinstance(share, bool):
+        return None
+    return round(share * 100, 1)
+
+
 def _day_statistics(
     today: list[dict[str, Any]], current: float | None
 ) -> dict[str, Any]:
@@ -433,6 +440,8 @@ async def async_setup_entry(
     entities.append(EnergyPriceForecastCombinedScoreSensor(coordinator, entry))
     entities.append(EnergyPriceForecastCombinedScoreNowSensor(coordinator, entry))
     entities.append(EnergyPriceForecastQualitySensor(coordinator, entry))
+    entities.append(EnergyPriceForecastAccuracySensor(coordinator, entry))
+    entities.append(EnergyPriceForecastCheaperDaySensor(coordinator, entry))
     if coordinator.retail_pricing:
         entities.append(EnergyPriceForecastRetailPriceSensor(coordinator, entry))
         entities.extend(
@@ -778,6 +787,156 @@ class EnergyPriceForecastQualitySensor(
             "within_one_hour_percent": _percent(window.get("within_one_hour_days")),
             "period_start": window.get("period_start"),
             "period_end": window.get("period_end"),
+            "error": None,
+        }
+
+
+class EnergyPriceForecastAccuracySensor(
+    _StickyUnitMixin, EnergyPriceForecastEntity, SensorEntity
+):
+    """By how much each hour of the frozen forecast missed the real price.
+
+    The forecast-quality sensor next to this one asks about a decision: did
+    the forecast point at the window that turned out cheapest. This one asks
+    about the numbers themselves, hour by hour, over the last 30 days. The
+    two can disagree in both directions - a window can be picked correctly
+    from prices that are all too high, and every price can be close while
+    the cheapest window is still missed - so neither replaces the other.
+
+    The state is the mean absolute error in the market's own currency.
+    """
+
+    _attr_translation_key = "forecast_accuracy"
+    _attr_icon = "mdi:chart-bell-curve"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 4
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(
+        self, coordinator: EnergyPriceForecastCoordinator, entry: ConfigEntry
+    ) -> None:
+        super().__init__(coordinator, entry, "forecast_accuracy")
+
+    @property
+    def _accuracy(self) -> dict[str, Any] | None:
+        block = _path(self.coordinator.data, "hourly_accuracy")
+        if not isinstance(block, dict) or not block.get("available"):
+            return None
+        return block
+
+    @property
+    def available(self) -> bool:
+        return super().available and self._accuracy is not None
+
+    @property
+    def native_value(self) -> Any:
+        block = self._accuracy
+        return block.get("mean_abs_error") if block else None
+
+    @property
+    def native_unit_of_measurement(self) -> str | None:
+        return self._sticky_unit((self._accuracy or {}).get("unit"))
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        block = self._accuracy
+        if block is None:
+            raw = _path(self.coordinator.data, "hourly_accuracy")
+            return {"error": raw.get("error") if isinstance(raw, dict) else None}
+        return {
+            "median_abs_error": block.get("median_abs_error"),
+            "p90_abs_error": block.get("p90_abs_error"),
+            # The API decides what "close" means; a card should print the
+            # threshold rather than assume it stays at two and four cents.
+            "primary_threshold": block.get("primary_threshold"),
+            "within_primary_percent": _share_percent(
+                block.get("within_primary_share")
+            ),
+            "secondary_threshold": block.get("secondary_threshold"),
+            "within_secondary_percent": _share_percent(
+                block.get("within_secondary_share")
+            ),
+            "pearson_r": block.get("pearson_r"),
+            "sample_count": block.get("sample_count"),
+            "period_start": block.get("period_start"),
+            "period_end": block.get("period_end"),
+            "error": None,
+        }
+
+
+class EnergyPriceForecastCheaperDaySensor(EnergyPriceForecastEntity, SensorEntity):
+    """How often "today or tomorrow" pointed at the cheaper of the two days.
+
+    For loads that can wait a day - the washing machine, the car on a long
+    weekend - this is the question the forecast really answers. The API
+    replays each pair of days and checks whether the day it recommended held
+    the cheaper window. The state is that share in percent.
+
+    Until the API's own ``ready`` flag turns true - thirty pairs, about a
+    month - the state stays unknown while the attributes count the pairs so
+    far. A share out of a handful of days moves by tens of points with a
+    single wrong day, and an automation reading it would act on noise.
+    """
+
+    _attr_translation_key = "cheaper_day_decision"
+    _attr_icon = "mdi:calendar-check"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_suggested_display_precision = 1
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(
+        self, coordinator: EnergyPriceForecastCoordinator, entry: ConfigEntry
+    ) -> None:
+        super().__init__(coordinator, entry, "cheaper_day_decision")
+
+    @property
+    def _decision(self) -> dict[str, Any] | None:
+        block = _path(self.coordinator.data, "cheaper_day_decision")
+        if not isinstance(block, dict) or not block.get("available"):
+            return None
+        return block
+
+    @property
+    def available(self) -> bool:
+        return super().available and self._decision is not None
+
+    @property
+    def native_value(self) -> Any:
+        block = self._decision
+        if not block or not block.get("ready"):
+            return None
+        return _share_percent(block.get("correct_day_share"))
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        block = self._decision
+        if block is None:
+            raw = _path(self.coordinator.data, "cheaper_day_decision")
+            return {"error": raw.get("error") if isinstance(raw, dict) else None}
+        return {
+            "ready": bool(block.get("ready")),
+            "evaluated_pairs": block.get("evaluated_pairs"),
+            "minimum_ready_pairs": block.get("minimum_ready_pairs"),
+            "correct_day_count": block.get("correct_day_count"),
+            "wrong_day_count": block.get("wrong_day_count"),
+            # "Near optimal" counts the days the other day would have been
+            # cheaper by so little that choosing it hardly mattered.
+            "near_optimal_percent": _share_percent(block.get("near_optimal_share")),
+            "mean_regret": block.get("mean_regret"),
+            "mean_regret_when_wrong": block.get("mean_regret_when_wrong"),
+            "median_regret_when_wrong": block.get("median_regret_when_wrong"),
+            # What waiting was worth, counting the times it backfired.
+            "wait_decision_count": block.get("wait_decision_count"),
+            "wait_paid_off_count": block.get("wait_paid_off_count"),
+            "wait_backfired_count": block.get("wait_backfired_count"),
+            "mean_saving_when_waiting": block.get("mean_saving_when_waiting"),
+            "median_saving_when_waiting": block.get("median_saving_when_waiting"),
+            "unit": block.get("unit"),
+            "comparison_horizon_hours": block.get("comparison_horizon_hours"),
+            "window_hours": block.get("window_hours"),
+            "period_start": block.get("period_start"),
+            "period_end": block.get("period_end"),
             "error": None,
         }
 

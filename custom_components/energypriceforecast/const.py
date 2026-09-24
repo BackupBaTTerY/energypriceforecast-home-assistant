@@ -9,7 +9,7 @@ NAME: Final = "Energy Price Forecast EU"
 # from. Must equal manifest.json's version - test_version.py enforces that,
 # because this drifted to 0.1.0 for ten releases and every request from
 # every user was mislabelled the whole time.
-VERSION: Final = "1.7.0"
+VERSION: Final = "1.8.0"
 DEFAULT_API_URL: Final = (
     "https://api.energypriceforecast.eu/api/v1/home-assistant/summary"
 )
@@ -111,9 +111,48 @@ DEFAULT_TOU_WINTER_FROM: Final = 11
 DEFAULT_TOU_WINTER_TO: Final = 3
 
 # A tariff window is stated in the market's own clock, not in the clock of
-# whoever configured Home Assistant. Every market this integration serves is
-# on Central European Time; Finland is the one hour ahead of it.
-MARKET_TIME_ZONES: Final[dict[str, str]] = {"FI": "Europe/Helsinki"}
+# whoever configured Home Assistant, and not every market is on Central
+# European Time: Portugal is an hour behind it, Finland, Greece, Bulgaria and
+# Romania an hour ahead. Each entry is the zone the API itself reports for
+# that market, so a window of "22 to 6" means the same hours here as on the
+# grid operator's price sheet. test_markets.py keeps the list complete.
+MARKET_TIME_ZONES: Final[dict[str, str]] = {
+    "AT": "Europe/Vienna",
+    "BE": "Europe/Brussels",
+    "BG": "Europe/Sofia",
+    "CH": "Europe/Zurich",
+    "CZ": "Europe/Prague",
+    "DE": "Europe/Berlin",
+    "DK1": "Europe/Copenhagen",
+    "DK2": "Europe/Copenhagen",
+    "ES": "Europe/Madrid",
+    "FI": "Europe/Helsinki",
+    "FR": "Europe/Paris",
+    "GR": "Europe/Athens",
+    "ITN": "Europe/Rome",
+    "IT_CNOR": "Europe/Rome",
+    "IT_CSUD": "Europe/Rome",
+    "IT_SUD": "Europe/Rome",
+    "IT_CALA": "Europe/Rome",
+    "IT_SICI": "Europe/Rome",
+    "IT_SARD": "Europe/Rome",
+    "NL": "Europe/Amsterdam",
+    "NO1": "Europe/Oslo",
+    "NO2": "Europe/Oslo",
+    "NO3": "Europe/Oslo",
+    "NO4": "Europe/Oslo",
+    "NO5": "Europe/Oslo",
+    "PL": "Europe/Warsaw",
+    "PT": "Europe/Lisbon",
+    "RO": "Europe/Bucharest",
+    "SE1": "Europe/Stockholm",
+    "SE2": "Europe/Stockholm",
+    "SE3": "Europe/Stockholm",
+    "SE4": "Europe/Stockholm",
+    "SK": "Europe/Bratislava",
+}
+# Only reached by a market added to MARKETS without a zone, which the tests
+# refuse - and by then Central European Time is the likeliest guess.
 DEFAULT_TIME_ZONE: Final = "Europe/Brussels"
 CONF_POSTAL_CODE: Final = "postal_code"
 CONF_LOCAL_CURRENCY: Final = "local_currency"
@@ -199,13 +238,16 @@ LOCAL_CURRENCY_BY_MARKET: Final[dict[str, str]] = {
 MARKETS: Final[dict[str, str]] = {
     "AT": "Austria",
     "BE": "Belgium",
+    "BG": "Bulgaria",
     "CH": "Switzerland",
     "CZ": "Czechia",
     "DE": "Germany",
     "DK1": "Denmark DK1",
     "DK2": "Denmark DK2",
+    "ES": "Spain",
     "FI": "Finland",
     "FR": "France",
+    "GR": "Greece",
     "ITN": "Italy North (ITN)",
     "IT_CNOR": "Italy Centre-North (IT_CNOR)",
     "IT_CSUD": "Italy Centre-South (IT_CSUD)",
@@ -220,8 +262,11 @@ MARKETS: Final[dict[str, str]] = {
     "NO4": "Norway NO4",
     "NO5": "Norway NO5",
     "PL": "Poland",
+    "PT": "Portugal",
+    "RO": "Romania",
     "SE1": "Sweden SE1",
     "SE2": "Sweden SE2",
     "SE3": "Sweden SE3",
     "SE4": "Sweden SE4",
+    "SK": "Slovakia",
 }

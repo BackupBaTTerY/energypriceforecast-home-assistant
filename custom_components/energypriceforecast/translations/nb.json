@@ -223,7 +223,9 @@
       "cheapest_hours_saving": {"name": "Besparelse billigste timer"},
       "weekend_hours_average_price": {"name": "Gjennomsnittspris helgeplan"},
       "weekend_hours_saving": {"name": "Besparelse helgeplan"},
-      "forecast_quality": {"name": "Prognosekvalitet"}
+      "forecast_quality": {"name": "Prognosekvalitet"},
+      "forecast_accuracy": {"name": "Prognosens nøyaktighet"},
+      "cheaper_day_decision": {"name": "Valg av den billigste dagen"}
     },
     "binary_sensor": {
       "cheapest_window_active": {"name": "Billigste tidsvindu aktivt"},

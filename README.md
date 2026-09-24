@@ -27,6 +27,9 @@ requiring YAML or JSON templates.
 - **Forecast quality**: how often the forecast actually picked the cheapest
   window, replayed against the day-ahead prices published afterwards, and what
   missing it cost - measured for your market, not claimed
+- **Forecast accuracy** and **cheaper day decision** *(1.8.0)*: by how much
+  each single hour was off, and how often "today or tomorrow" pointed at the
+  cheaper of the two days
 - Optional "cheapest hours" plan - the N cheapest individual hours of each
   fixed, repeating block (e.g. every calendar day, or every 48 hours), which
   may be non-contiguous, unlike the single best continuous window above. Once
@@ -56,19 +59,24 @@ requiring YAML or JSON templates.
 
 ## Supported markets
 
-AT, BE, CH, CZ, DE, DK1, DK2, FI, FR, NL, NO1-NO5, PL, SE1-SE4 and the
-seven Italian price zones: ITN, IT_CNOR, IT_CSUD, IT_SUD, IT_CALA,
-IT_SICI and IT_SARD.
+AT, BE, BG, CH, CZ, DE, DK1, DK2, ES, FI, FR, GR, NL, NO1-NO5, PL, PT, RO,
+SE1-SE4, SK and the seven Italian price zones: ITN, IT_CNOR, IT_CSUD,
+IT_SUD, IT_CALA, IT_SICI and IT_SARD.
 
-Switzerland and the Italian zones are new. Their forecasts run daily like
-every other market, but the rolling 30-day history each market is judged
-against is still filling up. Until it holds seven days, the forecast
-quality sensors stay empty rather than report a number built on two days
-of data -- expect them around 10 September for Switzerland and 12
-September for the Italian zones. There is no retail estimate for either;
-they provide spot price and CO2. The own retail formula *(1.6.0)* can be
-set up there like anywhere else, but read the next section before relying
-on it.
+**Bulgaria, Greece, Portugal, Romania, Slovakia and Spain are new in
+1.8.0.** Two things to know before you switch a device by them:
+
+- **Slovakia and Romania have no CO2 data.** Prices, plans and forecast
+  quality work there; the CO2 entities, the CO2 series and the
+  cleanest-hours plan stay empty, and the combined score is a price score.
+- **Their forecast quality is young.** Every market is judged against a
+  rolling 30-day history, and these have about two weeks. The numbers are
+  published as they are measured, so they currently look weaker than those
+  of markets that have been running for months.
+
+There is no retail estimate for Switzerland or the Italian zones; they
+provide spot price and CO2. The own retail formula *(1.6.0)* can be set up
+there like anywhere else, but read the next section before relying on it.
 
 ### Before you automate on price in CH or IT
 
@@ -179,10 +187,12 @@ integration depends on the ID.
 | Greenest window active | binary sensor | on/off |
 | Combined window active *(1.2.0)* | binary sensor | on/off |
 
-Plus six diagnostic entities, shown separately in the device page: **Allowed
-horizon** and **Used horizon** (hours), **API-key status**, **Price source**
-(whether the current price is a published `day_ahead` price or a `forecast`),
-**Forecast quality** *(1.0.0, see below)*, and **Last API update** (timestamp).
+Plus eight diagnostic entities, shown separately in the device page:
+**Allowed horizon** and **Used horizon** (hours), **API-key status**,
+**Price source** (whether the current price is a published `day_ahead` price
+or a `forecast`), **Forecast quality** *(1.0.0)*, **Forecast accuracy**
+*(1.8.0)* and **Cheaper day decision** *(1.8.0)* - the three measured numbers
+are explained below - and **Last API update** (timestamp).
 
 "Cheapest window" here is the single *contiguous* window of the configured
 best-window duration - not the same thing as the cheapest-hours plan below.
@@ -444,7 +454,9 @@ current block is picked once more in the new currency; the hours stay the
 same, because converting every price with one rate does not change their
 order.
 
-Switzerland stays in euro: the API does not offer francs.
+Switzerland stays in euro: the API does not offer francs. Romania is
+answered in euro too - there are no lei - and Bulgaria has been on the euro
+since January 2026.
 
 ## Retail price: estimate or your own formula *(1.6.0)*
 
@@ -681,6 +693,34 @@ you can graph it - a rising line means the forecast is getting worse.
 The counts sit in attributes: `exact_hit_days`, `within_one_hour_days`,
 `evaluated_days`, `exact_hit_percent`, `within_one_hour_percent`,
 `window_hours`, `price_basis`, `period_start`, `period_end`.
+
+### Two more numbers *(1.8.0)*
+
+**Forecast accuracy** answers a different question: not whether the right
+window was picked, but by how much each hour was off. Its state is the mean
+absolute error against the day-ahead prices published afterwards, over 30
+days, in your market's currency. The attributes add the median, the 90th
+percentile, the share of hours inside the API's two thresholds
+(`within_primary_percent` and `within_secondary_percent`, with the
+thresholds themselves next to them), the correlation `pearson_r` and the
+`sample_count`.
+
+The two entities can disagree, and in both directions: a window can be
+picked correctly from prices that are all too high, and every price can be
+close while the cheapest window is still missed. That is why they are
+separate.
+
+**Cheaper day decision** is for loads that can wait a day - the washing
+machine, the car over a long weekend. The API replays each pair of days and
+checks whether the day it recommended really held the cheaper window. The
+state is that share in percent.
+
+It stays unknown until thirty pairs are in, about a month, while the
+attributes count the progress (`evaluated_pairs`, `minimum_ready_pairs`,
+`ready`). They also say what a wrong day costs (`mean_regret_when_wrong`,
+`median_regret_when_wrong`) and what waiting was worth across every
+recommendation to wait, the ones that backfired included
+(`mean_saving_when_waiting`, `median_saving_when_waiting`).
 
 ### As a banner on your dashboard
 

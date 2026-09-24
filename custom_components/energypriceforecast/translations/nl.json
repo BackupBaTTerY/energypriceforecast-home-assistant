@@ -223,7 +223,9 @@
       "cheapest_hours_saving": {"name": "Besparing goedkoopste uren"},
       "weekend_hours_average_price": {"name": "Gemiddelde prijs weekendplan"},
       "weekend_hours_saving": {"name": "Besparing weekendplan"},
-      "forecast_quality": {"name": "Prognosekwaliteit"}
+      "forecast_quality": {"name": "Prognosekwaliteit"},
+      "forecast_accuracy": {"name": "Nauwkeurigheid van de prognose"},
+      "cheaper_day_decision": {"name": "Keuze goedkoopste dag"}
     },
     "binary_sensor": {
       "cheapest_window_active": {"name": "Goedkoopste tijdvak actief"},

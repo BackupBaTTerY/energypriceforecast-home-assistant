@@ -21,7 +21,9 @@ requiring YAML or JSON templates.
   automation can act on
 - Raw price-series sensor with `raw_today` / `raw_tomorrow` / `raw_forecast`
   attributes (compatible with `apexcharts-card` and custom templates), plus
-  Nordpool-style `average` / `min` / `max` / `price_percent_to_average`
+  Nordpool-style `average` / `min` / `max` / `price_percent_to_average`.
+  Published values already seen today remain available across updates and
+  restarts, and the current price moves at each exact quarter hour *(1.9.0)*
 - The same series for **CO2 intensity** *(1.2.0)*, so emissions can be charted
   the way prices already could
 - **Forecast quality**: how often the forecast actually picked the cheapest
@@ -373,12 +375,20 @@ comparison against another hour in the same block, nothing more.
 
 ### Attributes worth knowing
 
-- **Price forecast series** and **Current retail price** carry `raw_today`,
+- **Price forecast series** and **Current retail price** *(improved in 1.9.0)*
+  carry `raw_today`,
   `raw_tomorrow` and `raw_forecast` - lists of `{start, end, value}` slots for
-  charting (see the chart section below). `raw_today` and `raw_tomorrow` hold
-  published day-ahead prices only, so `raw_tomorrow` is **empty until
+  charting (see the chart section below). The integration retains today's
+  published slots after it has seen them as the API's rolling window moves
+  forward, including across a Home Assistant restart. During normal operation,
+  `raw_today` therefore keeps the line visible from local midnight through the
+  chart's Now marker. The cache starts fresh at local midnight. `raw_today` and
+  `raw_tomorrow` hold published day-ahead prices only, so `raw_tomorrow` is
+  **empty until
   tomorrow's prices are published** (usually early afternoon) - the estimate
   for those hours is in `raw_forecast` instead, and the two never overlap.
+  Both sensors select the current slot at every quarter hour, independently of
+  the configured API poll interval and without making an extra request.
 - **CO2 forecast series** carries the same `raw_today` / `raw_tomorrow` /
   `raw_forecast` attributes as the price series, in gCO2/kWh, so a chart card
   built for prices works by swapping the entity. CO2 is published hourly where
@@ -390,13 +400,11 @@ comparison against another hour in the same block, nothing more.
   `{start, end, average_value}`.
 - The same two price sensors also carry `average`, `min`, `max` and
   `price_percent_to_average`, named after the Nordpool integration so its
-  templates port across. **The scope differs from Nordpool's** and it matters:
-  the API does not look back past "now", so these cover today's *remaining*
-  published hours, not the calendar day. Late in the evening that is only a
-  few hours, and they say nothing about tomorrow.
-  `price_percent_to_average` is therefore "this hour against the rest of
-  today" - 100% means average, 60% means clearly cheap. It is left empty when
-  that average is zero or negative, for the same reason the plan saving is.
+  templates port across. They cover today's retained and upcoming published
+  slots, never tomorrow or forecast values. `price_percent_to_average` is
+  therefore "this quarter-hour against today's known price average" - 100%
+  means average, 60% means clearly cheap. It is left empty when that average
+  is zero or negative, for the same reason the plan saving is.
 - **Current retail price** says where its number comes from:
   `retail_source` is `estimate` or `formula`, and with a formula
   `formula_factor` and `formula_surcharge` show the values in use *(1.6.0)*,
@@ -990,7 +998,11 @@ series:
     data_generator: |
       const known = [...(entity.attributes.raw_today ?? []),
                      ...(entity.attributes.raw_tomorrow ?? [])];
-      return known.map(e => [new Date(e.start).getTime(), e.value]);
+      // raw_today retains published slots already seen today, so this line
+      // continues through the Now marker instead of starting there.
+      return known
+        .map(e => [new Date(e.start).getTime(), e.value])
+        .sort((a, b) => a[0] - b[0]);
   - entity: sensor.CHANGE_ME
     name: Forecast
     yaxis_id: price
@@ -1015,6 +1027,8 @@ series:
         .sort((a, b) => a[0] - b[0]);
 ```
 
+The known-price line includes the elapsed part of today on the left of the
+Now marker; tomorrow follows as soon as its day-ahead prices are published.
 Both series are `extend_to: false` on purpose: without it, apexcharts-card
 stretches the last value to the edge of the graph, inventing prices that were
 never forecast.
@@ -1089,7 +1103,7 @@ CO2 alongside the price.
 ```
 Help me build a Home Assistant Lovelace card that charts electricity prices from the Energy Price Forecast EU integration using the apexcharts-card custom card.
 
-The integration creates a sensor whose entity_id ends in "_price_series" (day-ahead/spot price, the exact name depends on my chosen market, for example sensor.energy_price_forecast_eu_de_price_forecast_series) and, if I enabled retail pricing, a second sensor ending in "_retail_current_price" (all-in price, either the integration's estimate or my own formula) with the same attribute shape. Each sensor's state is its current price; its attributes raw_today, raw_tomorrow and raw_forecast are each a list of objects shaped like {"start": ISO8601 timestamp, "end": ISO8601 timestamp, "value": number}. raw_today/raw_tomorrow only ever cover the published day-ahead window (known prices, never estimated); raw_forecast holds only the entries beyond that window - the actual ML/weather-based forecast. The value's unit matches the market's currency (for example EUR/kWh).
+The integration creates a sensor whose entity_id ends in "_price_series" (day-ahead/spot price, the exact name depends on my chosen market, for example sensor.energy_price_forecast_eu_de_price_forecast_series) and, if I enabled retail pricing, a second sensor ending in "_retail_current_price" (all-in price, either the integration's estimate or my own formula) with the same attribute shape. Each sensor's state is its current price; its attributes raw_today, raw_tomorrow and raw_forecast are each a list of objects shaped like {"start": ISO8601 timestamp, "end": ISO8601 timestamp, "value": number}. raw_today retains the published slots it has seen since local midnight so a chart keeps its history left of the Now marker; raw_tomorrow contains tomorrow's published prices once available. Both contain known prices, never estimates. raw_forecast holds only the entries beyond the published day-ahead window - the actual ML/weather-based forecast. The value's unit matches the market's currency (for example EUR/kWh).
 
 Entity IDs follow the Home Assistant language, so do not guess them from the English names above - on a German instance the price series is sensor..._preisreihe and the retail price is sensor..._aktueller_endkundenpreis. Ask me for the exact ID rather than assuming one.
 

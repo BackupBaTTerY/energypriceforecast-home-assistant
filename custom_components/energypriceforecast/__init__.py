@@ -128,7 +128,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator = EnergyPriceForecastCoordinator(
         hass,
         api,
-        entry_id=entry.entry_id,
+        entry=entry,
         retail_source=entry.data.get(CONF_RETAIL_SOURCE, RETAIL_SOURCE_OFF),
         retail_factor=entry.data.get(CONF_RETAIL_FACTOR, DEFAULT_RETAIL_FACTOR),
         retail_surcharge=entry.data.get(

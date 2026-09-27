@@ -153,6 +153,105 @@ async def _refresh_with_prices(hass, entry, price_entries) -> None:
     )
 
 
+async def test_price_series_retains_elapsed_day_ahead_slots(hass, freezer) -> None:
+    """A rolling API response must not erase today's left side of a chart."""
+    freezer.move_to("2026-08-12T10:11:00+00:00")
+    initial = [
+        {
+            "start": "2026-08-12T10:00:00Z",
+            "end": "2026-08-12T10:15:00Z",
+            "value": 0.10,
+            "source": "day_ahead",
+        },
+        {
+            "start": "2026-08-12T10:15:00Z",
+            "end": "2026-08-12T10:30:00Z",
+            "value": 0.20,
+            "source": "day_ahead",
+        },
+    ]
+    entry = await _setup_entry(
+        hass,
+        extra_data={"retail_source": "estimate", "postal_code": "38229"},
+        price_entries=initial,
+    )
+
+    # Drop the in-memory copy to prove the retained slot comes back from the
+    # Store, as it must after a Home Assistant restart on the same day.
+    entry.runtime_data._series_cache = None
+    entry.runtime_data.price_series = None
+    entry.runtime_data.retail_data = None
+    freezer.move_to("2026-08-12T10:26:00+00:00")
+    rolling = [
+        {
+            "start": "2026-08-12T10:15:00Z",
+            "end": "2026-08-12T10:30:00Z",
+            "value": 0.21,
+            "source": "day_ahead",
+        },
+        {
+            "start": "2026-08-12T10:30:00Z",
+            "end": "2026-08-12T10:45:00Z",
+            "value": 0.30,
+            "source": "day_ahead",
+        },
+    ]
+    await _refresh_with_prices(hass, entry, rolling)
+
+    assert [
+        (item["start"], item["value"])
+        for item in entry.runtime_data.price_series["entries"]
+    ] == [
+        ("2026-08-12T10:00:00Z", 0.10),
+        ("2026-08-12T10:15:00Z", 0.21),
+        ("2026-08-12T10:30:00Z", 0.30),
+    ]
+    assert [
+        item["start"] for item in entry.runtime_data.retail_data["entries"]
+    ] == [
+        "2026-08-12T10:00:00Z",
+        "2026-08-12T10:15:00Z",
+        "2026-08-12T10:30:00Z",
+    ]
+
+
+async def test_price_series_starts_a_fresh_cache_at_local_midnight(
+    hass, freezer
+) -> None:
+    """Yesterday's last slot must not leak into a new local calendar day."""
+    # August is UTC+2 in Germany: 21:56 UTC is still 23:56 locally.
+    freezer.move_to("2026-08-12T21:56:00+00:00")
+    entry = await _setup_entry(
+        hass,
+        price_entries=[
+            {
+                "start": "2026-08-12T21:45:00Z",
+                "end": "2026-08-12T22:00:00Z",
+                "value": 0.10,
+                "source": "day_ahead",
+            }
+        ],
+    )
+
+    freezer.move_to("2026-08-12T22:11:00+00:00")
+    await _refresh_with_prices(
+        hass,
+        entry,
+        [
+            {
+                "start": "2026-08-12T22:00:00Z",
+                "end": "2026-08-12T22:15:00Z",
+                "value": 0.20,
+                "source": "day_ahead",
+            }
+        ],
+    )
+
+    assert [item["start"] for item in entry.runtime_data.price_series["entries"]] == [
+        "2026-08-12T22:00:00Z"
+    ]
+
+
 async def test_cheapest_hours_plan_locks_and_survives_a_reshuffled_forecast(
     hass, freezer
 ) -> None:

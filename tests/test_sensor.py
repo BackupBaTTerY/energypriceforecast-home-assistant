@@ -16,6 +16,7 @@ from pytest_homeassistant_custom_component.common import (
 from custom_components.energypriceforecast.sensor import (
     EnergyPriceForecastCombinedScoreSensor,
     _combined_score,
+    _current_entry,
     _day_statistics,
     _next_planned_start,
 )
@@ -188,6 +189,29 @@ def test_day_statistics_without_data() -> None:
         "max": None,
         "price_percent_to_average": None,
     }
+
+
+def test_current_entry_uses_the_next_slot_when_retained_history_has_a_gap(
+    freezer,
+) -> None:
+    """A missing current slot must not make the sensor jump back to midnight."""
+    freezer.move_to("2026-08-08T10:20:00+00:00")
+    series = {
+        "entries": [
+            {
+                "start": "2026-08-08T00:00:00Z",
+                "end": "2026-08-08T00:15:00Z",
+                "value": 0.10,
+            },
+            {
+                "start": "2026-08-08T10:30:00Z",
+                "end": "2026-08-08T10:45:00Z",
+                "value": 0.30,
+            },
+        ]
+    }
+
+    assert _current_entry(series)["value"] == pytest.approx(0.30)
 
 
 async def test_core_sensors_are_created_without_optional_features(hass) -> None:
@@ -789,6 +813,30 @@ async def test_combined_score_now_moves_on_at_the_quarter_hour(hass, freezer) ->
 
     # No poll happened; the dearest slot of what is left is now the present.
     assert float(_state_for_unique_id(hass, entry, "combined_score_now").state) == 0.0
+
+
+async def test_price_sensors_move_on_at_the_quarter_hour(hass, freezer) -> None:
+    """Base and retail prices select the new slot without another API poll."""
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-08T00:10:00+00:00")
+    entries = _day_ahead_slots(
+        "2026-08-08T00:00:00Z", {0: 0.10, 1: 0.20}, minutes=15
+    )
+    entry = await _setup_entry(
+        hass,
+        extra_data={"retail_source": "estimate", "postal_code": "10115"},
+        price_entries=entries,
+    )
+
+    assert float(_state_for_unique_id(hass, entry, "price_series").state) == 0.10
+    assert float(_state_for_unique_id(hass, entry, "retail_current_price").state) == 0.10
+
+    freezer.move_to("2026-08-08T00:15:00+00:00")
+    async_fire_time_changed(hass, dt_util.utcnow())
+    await hass.async_block_till_done()
+
+    assert float(_state_for_unique_id(hass, entry, "price_series").state) == 0.20
+    assert float(_state_for_unique_id(hass, entry, "retail_current_price").state) == 0.20
 
 
 async def test_combined_score_now_is_unavailable_without_published_prices(

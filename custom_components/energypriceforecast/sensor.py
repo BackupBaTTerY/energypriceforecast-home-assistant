@@ -48,7 +48,7 @@ def _timestamp(value: Any) -> datetime | None:
 def _current_entry(
     series_data: dict[str, Any] | None,
 ) -> dict[str, Any] | None:
-    """Return the price entry covering now, or the earliest one as fallback.
+    """Return the price entry covering now, then the nearest usable fallback.
 
     Works for any {"entries": [...]} payload from the prices endpoint,
     whether that's the retail series or the base price series.
@@ -62,7 +62,18 @@ def _current_entry(
         end = _timestamp(entry.get("end"))
         if start is not None and end is not None and start <= now < end:
             return entry
-    return entries[0]
+    # raw_today now retains earlier slots. Falling back to entries[0] would
+    # therefore report midnight when a response has a short gap around now.
+    # Prefer the first upcoming slot; if the whole series is past, keep the
+    # most recent value rather than the oldest one.
+    upcoming = [
+        (start, entry)
+        for entry in entries
+        if (start := _timestamp(entry.get("start"))) is not None and start > now
+    ]
+    if upcoming:
+        return min(upcoming, key=lambda item: item[0])[1]
+    return entries[-1]
 
 
 def _split_today_tomorrow(
@@ -72,10 +83,9 @@ def _split_today_tomorrow(
 
     Matches the raw_today/raw_tomorrow attribute convention used by the
     Nordpool integration, so existing apexcharts-card templates work
-    with minimal changes. Only contains the hours actually returned by
-    the API - a rolling window starting at "now" - not the full
-    calendar day; hours of today that have already passed are not
-    included since the API does not look backward from local midnight.
+    with minimal changes. The API itself returns a rolling window starting
+    at "now"; the coordinator retains today's published slots as they fall
+    out of that window, so charts can keep drawing from local midnight.
 
     Forecast entries are left out on purpose, which also follows that
     convention: tomorrow stays empty until its day-ahead prices are
@@ -160,6 +170,28 @@ class _StickyUnitMixin:
         if isinstance(unit, str) and unit:
             self._last_unit = unit
         return self._last_unit
+
+
+class _QuarterHourStateRefreshMixin:
+    """Re-evaluate a time-dependent sensor at every price-slot boundary."""
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        # The coordinator's polling interval controls when new data is fetched.
+        # A slot can change between those polls, so update the entity from the
+        # already cached series at the exact quarter-hour boundary.
+        self.async_on_remove(
+            async_track_utc_time_change(
+                self.hass,
+                self._handle_slot_change,
+                minute=(0, 15, 30, 45),
+                second=0,
+            )
+        )
+
+    @callback
+    def _handle_slot_change(self, _now: datetime) -> None:
+        self.async_write_ha_state()
 
 
 def _share_percent(share: Any) -> float | None:
@@ -543,7 +575,10 @@ class EnergyPriceForecastRetailWindowSensor(
 
 
 class EnergyPriceForecastRetailPriceSensor(
-    _StickyUnitMixin, EnergyPriceForecastEntity, SensorEntity
+    _QuarterHourStateRefreshMixin,
+    _StickyUnitMixin,
+    EnergyPriceForecastEntity,
+    SensorEntity,
 ):
     """Current retail (all-in) electricity price.
 
@@ -616,7 +651,10 @@ class EnergyPriceForecastRetailPriceSensor(
 
 
 class EnergyPriceForecastPriceSeriesSensor(
-    _StickyUnitMixin, EnergyPriceForecastEntity, SensorEntity
+    _QuarterHourStateRefreshMixin,
+    _StickyUnitMixin,
+    EnergyPriceForecastEntity,
+    SensorEntity,
 ):
     """Raw price forecast series for charting and custom automations.
 
@@ -1171,7 +1209,7 @@ def _rounded(value: float | None, digits: int) -> float | None:
 
 
 class EnergyPriceForecastCombinedScoreNowSensor(
-    EnergyPriceForecastEntity, SensorEntity
+    _QuarterHourStateRefreshMixin, EnergyPriceForecastEntity, SensorEntity
 ):
     """How good the present is against the published hours ahead, 0-100.
 
@@ -1193,23 +1231,6 @@ class EnergyPriceForecastCombinedScoreNowSensor(
         self, coordinator: EnergyPriceForecastCoordinator, entry: ConfigEntry
     ) -> None:
         super().__init__(coordinator, entry, "combined_score_now")
-
-    async def async_added_to_hass(self) -> None:
-        await super().async_added_to_hass()
-        # Without this the state would only move when the integration polls,
-        # up to two hours after the slot it describes has ended.
-        self.async_on_remove(
-            async_track_utc_time_change(
-                self.hass,
-                self._handle_slot_change,
-                minute=(0, 15, 30, 45),
-                second=0,
-            )
-        )
-
-    @callback
-    def _handle_slot_change(self, _now: datetime) -> None:
-        self.async_write_ha_state()
 
     def _result(self) -> CombinedScore | None:
         prices = self.coordinator.plan_series or {}

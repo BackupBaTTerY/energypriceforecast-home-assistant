@@ -7,6 +7,7 @@ from collections.abc import Awaitable, Callable
 from datetime import date, datetime, timedelta, timezone, tzinfo
 from typing import Any
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import (
@@ -40,6 +41,33 @@ _LOGGER = logging.getLogger(__name__)
 
 _PLAN_STORAGE_VERSION = 1
 _MAX_CACHED_PLANS = 50
+_SERIES_STORAGE_VERSION = 1
+
+
+def _series_timestamp(entry: dict[str, Any], field: str) -> datetime | None:
+    """Parse one series boundary without trusting an API entry blindly."""
+    value = entry.get(field)
+    if not isinstance(value, str):
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo is not None else None
+
+
+def _series_entry_key(entry: dict[str, Any]) -> str:
+    """Give equivalent ISO spellings of one slot the same merge key."""
+    start = _series_timestamp(entry, "start")
+    if start is not None and start.tzinfo is not None:
+        return start.astimezone(timezone.utc).isoformat()
+    return f"{entry.get('start')}|{entry.get('end')}"
+
+
+def _series_sort_key(entry: dict[str, Any]) -> tuple[int, float]:
+    """Keep valid slots chronological and malformed entries at the end."""
+    start = _series_timestamp(entry, "start")
+    return (0, start.timestamp()) if start is not None else (1, 0.0)
 
 
 class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
@@ -49,7 +77,7 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self,
         hass: HomeAssistant,
         api: EnergyPriceForecastApi,
-        entry_id: str,
+        entry: ConfigEntry,
         retail_source: str = RETAIL_SOURCE_OFF,
         retail_factor: float = DEFAULT_RETAIL_FACTOR,
         retail_surcharge: float = DEFAULT_RETAIL_SURCHARGE,
@@ -68,6 +96,7 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         super().__init__(
             hass,
             logger=_LOGGER,
+            config_entry=entry,
             name=NAME,
             update_interval=timedelta(minutes=update_interval_minutes),
         )
@@ -102,11 +131,20 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.weekend_hours_window_average: float | None = None
         self.greenest_hours_window_average: float | None = None
         self._plan_store = Store[dict[str, Any]](
-            hass, _PLAN_STORAGE_VERSION, f"{DOMAIN}_{entry_id}_plans"
+            hass, _PLAN_STORAGE_VERSION, f"{DOMAIN}_{entry.entry_id}_plans"
         )
         # One entry per block, keyed by plan and block start. Values are
         # the stored plan; a bare list is the shape an older version wrote.
         self._plan_cache: dict[str, Any] | None = None
+        # The API returns a rolling window from now onward. Keep the published
+        # slots already seen today so raw_today can still draw the part of the
+        # day left of a chart's Now marker. The small Store makes that survive
+        # a Home Assistant restart; a new market day starts a fresh cache.
+        self._series_store = Store[dict[str, Any]](
+            hass, _SERIES_STORAGE_VERSION, f"{DOMAIN}_{entry.entry_id}_series"
+        )
+        self._series_cache: dict[str, Any] | None = None
+        self._series_cache_dirty = False
 
     @property
     def retail_pricing(self) -> bool:
@@ -153,6 +191,91 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             stored = await self._plan_store.async_load()
             self._plan_cache = stored if isinstance(stored, dict) else {}
         return self._plan_cache
+
+    async def _async_load_series_cache(self, now: datetime) -> dict[str, Any]:
+        """Load today's retained price slots, discarding an earlier day."""
+        if self._series_cache is None:
+            stored = await self._series_store.async_load()
+            self._series_cache = stored if isinstance(stored, dict) else {}
+
+        local_day = now.astimezone(self.zone).date().isoformat()
+        if self._series_cache.get("date") != local_day:
+            self._series_cache = {"date": local_day, "series": {}}
+            self._series_cache_dirty = True
+        if not isinstance(self._series_cache.get("series"), dict):
+            self._series_cache["series"] = {}
+            self._series_cache_dirty = True
+        return self._series_cache
+
+    async def _async_retain_today(
+        self, cache_key: str, fresh: dict[str, Any], now: datetime
+    ) -> dict[str, Any]:
+        """Prepend published slots that fell out of the API's rolling window.
+
+        Only finished slots from the cache are retained. Current and future
+        values always come from the fresh response, so a corrected price or a
+        forecast replaced by day-ahead data cannot stay stale.
+        """
+        fresh_entries = fresh.get("entries")
+        if not isinstance(fresh_entries, list):
+            return fresh
+
+        cache = await self._async_load_series_cache(now)
+        series_cache = cache["series"]
+        stored = series_cache.get(cache_key)
+        retained: list[dict[str, Any]] = []
+        if (
+            isinstance(stored, dict)
+            and stored.get("unit") == fresh.get("unit")
+            and isinstance(stored.get("entries"), list)
+        ):
+            local_today = now.astimezone(self.zone).date()
+            for entry in stored["entries"]:
+                if not isinstance(entry, dict) or entry.get("source") == "forecast":
+                    continue
+                start = _series_timestamp(entry, "start")
+                end = _series_timestamp(entry, "end")
+                if (
+                    start is not None
+                    and end is not None
+                    and start.astimezone(self.zone).date() == local_today
+                    and end <= now
+                ):
+                    retained.append(entry)
+
+        # Cached entries go first and fresh entries overwrite the same slot.
+        # That makes the live API authoritative while preserving older slots
+        # it no longer returns.
+        merged = {
+            _series_entry_key(entry): entry
+            for entry in [*retained, *fresh_entries]
+            if isinstance(entry, dict)
+        }
+        entries = sorted(merged.values(), key=_series_sort_key)
+        result = {**fresh, "entries": entries}
+
+        local_today = now.astimezone(self.zone).date()
+        known_today = []
+        for entry in entries:
+            start = _series_timestamp(entry, "start")
+            if (
+                start is not None
+                and start.astimezone(self.zone).date() == local_today
+                and entry.get("source") != "forecast"
+            ):
+                known_today.append(entry)
+        series_cache[cache_key] = {
+            "unit": fresh.get("unit"),
+            "entries": known_today,
+        }
+        self._series_cache_dirty = True
+        return result
+
+    async def _async_save_series_cache(self) -> None:
+        """Persist retained slots only after this update changed the cache."""
+        if self._series_cache_dirty and self._series_cache is not None:
+            await self._series_store.async_save(self._series_cache)
+            self._series_cache_dirty = False
 
     async def _async_get_plan(
         self,
@@ -312,6 +435,7 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         return {"unit": unit, "entries": entries}
 
     async def _async_update_data(self) -> dict[str, Any]:
+        now = dt_util.utcnow()
         try:
             summary = await self.api.async_get_summary(include_series=True)
         except EnergyPriceForecastApiError as err:
@@ -326,8 +450,11 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             # (for example the API not offering it for this market right
             # now) should not take the core price/CO2 sensors down with it.
             try:
-                self.retail_data = await self.api.async_get_prices(
+                fresh_retail = await self.api.async_get_prices(
                     price_mode="retail", postal_code=self.postal_code
+                )
+                self.retail_data = await self._async_retain_today(
+                    "retail", fresh_retail, now
                 )
             except EnergyPriceForecastApiError as err:
                 _LOGGER.warning("Retail price update failed: %s", err)
@@ -343,11 +470,14 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # pricing is on. Fetched unconditionally: it is the forecast data
         # this integration exists to expose, not a niche add-on.
         try:
-            self.price_series = await self.api.async_get_prices(price_mode="base")
+            fresh_prices = await self.api.async_get_prices(price_mode="base")
+            self.price_series = await self._async_retain_today(
+                "base", fresh_prices, now
+            )
         except EnergyPriceForecastApiError as err:
             _LOGGER.warning("Price series update failed: %s", err)
 
-        now = dt_util.utcnow()
+        await self._async_save_series_cache()
 
         if self.retail_source == RETAIL_SOURCE_FORMULA:
             # The formula needs no request of its own: it is applied to the

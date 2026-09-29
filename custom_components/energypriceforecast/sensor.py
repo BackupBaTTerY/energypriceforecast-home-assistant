@@ -24,7 +24,12 @@ from .const import COMBINED_SCORE_SCALE, RETAIL_SOURCE_FORMULA
 from .coordinator import EnergyPriceForecastCoordinator
 from .entity import EnergyPriceForecastEntity
 from .planning import duration_weighted_mean
-from .scoring import CombinedScore, combined_score_now
+from .scoring import (
+    CombinedScore,
+    CombinedScoreSeries,
+    combined_score_now,
+    combined_score_series,
+)
 
 
 def _path(data: dict[str, Any], *parts: str) -> Any:
@@ -1226,6 +1231,7 @@ class EnergyPriceForecastCombinedScoreNowSensor(
     _attr_icon = "mdi:scale-balance"
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_suggested_display_precision = 0
+    _unrecorded_attributes = frozenset({"score_series"})
 
     def __init__(
         self, coordinator: EnergyPriceForecastCoordinator, entry: ConfigEntry
@@ -1236,6 +1242,13 @@ class EnergyPriceForecastCombinedScoreNowSensor(
         prices = self.coordinator.plan_series or {}
         co2 = self.coordinator.co2_series or {}
         return combined_score_now(
+            prices.get("entries"), co2.get("entries"), dt_util.utcnow()
+        )
+
+    def _series(self) -> CombinedScoreSeries | None:
+        prices = self.coordinator.plan_series or {}
+        co2 = self.coordinator.co2_series or {}
+        return combined_score_series(
             prices.get("entries"), co2.get("entries"), dt_util.utcnow()
         )
 
@@ -1250,24 +1263,33 @@ class EnergyPriceForecastCombinedScoreNowSensor(
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        result = self._result()
-        if result is None:
+        series = self._series()
+        if series is None:
             return {}
-        hours = (result.reference_end - result.reference_start).total_seconds() / 3600
+        present = series.points[0]
+        hours = (series.reference_end - series.reference_start).total_seconds() / 3600
         return {
-            "price_part": round(result.price_part, 3),
-            "co2_part": _rounded(result.co2_part, 3),
+            "price_part": round(present.price_part, 3),
+            "co2_part": _rounded(present.co2_part, 3),
             # How much of today's ranking comes from CO2 at all: 0 in a hydro
             # grid whose CO2 barely moves, where this is a price score.
             "co2_share_percent": (
-                None if result.co2_share is None else round(100 * result.co2_share)
+                None if series.co2_share is None else round(100 * series.co2_share)
             ),
-            "price_spread": round(result.price_spread, 4),
+            "price_spread": round(series.price_spread, 4),
             "price_unit": (self.coordinator.plan_series or {}).get("unit"),
-            "co2_spread_g_kwh": _rounded(result.co2_spread, 1),
-            "reference_start": result.reference_start.isoformat(),
-            "reference_end": result.reference_end.isoformat(),
+            "co2_spread_g_kwh": _rounded(series.co2_spread, 1),
+            "reference_start": series.reference_start.isoformat(),
+            "reference_end": series.reference_end.isoformat(),
             "reference_hours": round(hours, 2),
+            "score_series": [
+                {
+                    "start": point.start.isoformat(),
+                    "end": point.end.isoformat(),
+                    "value": round(point.score, 1),
+                }
+                for point in series.points
+            ],
         }
 
 

@@ -11,7 +11,10 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from custom_components.energypriceforecast.scoring import combined_score_now
+from custom_components.energypriceforecast.scoring import (
+    combined_score_now,
+    combined_score_series,
+)
 
 START = datetime(2026, 9, 14, 0, 0, tzinfo=timezone.utc)
 
@@ -131,3 +134,34 @@ def test_quarter_hour_slots_are_ranked_at_their_own_resolution() -> None:
 
     assert result.reference_slots == 96
     assert result.score == 100.0
+
+
+def test_score_series_ranks_every_slot_inside_one_shared_reference() -> None:
+    """Future points stay comparable instead of each using a shrinking horizon."""
+    prices = [0.20, 0.10] + [0.30 + 0.01 * hour for hour in range(22)]
+
+    series = combined_score_series(_slots(prices), None, _at(5))
+    current = combined_score_now(_slots(prices), None, _at(5))
+
+    assert series is not None
+    assert current is not None
+    assert len(series.points) == 24
+    assert series.points[0].score == current.score
+    assert series.points[1].score == 100.0
+    assert series.points[-1].score == 0.0
+    assert {point.start for point in series.points} == {
+        START + timedelta(hours=hour) for hour in range(24)
+    }
+
+
+def test_score_series_keeps_forecast_prices_out_of_every_future_point() -> None:
+    """The planning curve must not quietly reintroduce biased price forecasts."""
+    entries = _slots([0.20] + [0.30] * 11) + [
+        {**slot, "source": "forecast"} for slot in _slots([0.01] * 24)[12:]
+    ]
+
+    series = combined_score_series(entries, None, _at(5))
+
+    assert series is not None
+    assert len(series.points) == 12
+    assert series.reference_end == START + timedelta(hours=12)

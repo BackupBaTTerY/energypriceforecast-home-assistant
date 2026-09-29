@@ -14,6 +14,7 @@ from pytest_homeassistant_custom_component.common import (
 )
 
 from custom_components.energypriceforecast.sensor import (
+    EnergyPriceForecastCombinedScoreNowSensor,
     EnergyPriceForecastCombinedScoreSensor,
     _combined_score,
     _current_entry,
@@ -786,6 +787,20 @@ async def test_combined_score_now_ranks_the_present_slot(hass, freezer) -> None:
     assert state.attributes["reference_hours"] == 24.0
     assert state.attributes["price_unit"] == "EUR/kWh"
     assert state.attributes["co2_part"] > 0
+    score_series = state.attributes["score_series"]
+    assert len(score_series) == 24
+    assert score_series[0] == {
+        "start": "2026-08-08T00:00:00+00:00",
+        "end": "2026-08-08T01:00:00+00:00",
+        "value": 100.0,
+    }
+
+
+def test_combined_score_series_stays_out_of_the_recorder() -> None:
+    """The planning curve is live data and must not bloat every history row."""
+    excluded = EnergyPriceForecastCombinedScoreNowSensor._unrecorded_attributes
+
+    assert "score_series" in excluded
 
 
 async def test_combined_score_now_moves_on_at_the_quarter_hour(hass, freezer) -> None:
@@ -812,7 +827,13 @@ async def test_combined_score_now_moves_on_at_the_quarter_hour(hass, freezer) ->
     await hass.async_block_till_done()
 
     # No poll happened; the dearest slot of what is left is now the present.
-    assert float(_state_for_unique_id(hass, entry, "combined_score_now").state) == 0.0
+    state = _state_for_unique_id(hass, entry, "combined_score_now")
+    assert float(state.state) == 0.0
+    assert state.attributes["score_series"][0] == {
+        "start": "2026-08-08T00:15:00+00:00",
+        "end": "2026-08-08T00:30:00+00:00",
+        "value": 0.0,
+    }
 
 
 async def test_price_sensors_move_on_at_the_quarter_hour(hass, freezer) -> None:

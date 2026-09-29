@@ -19,6 +19,8 @@ requiring YAML or JSON templates.
 - **Combined score now** *(1.5.0)*: how the present ranks against the
   published hours ahead, on price and CO2 together - a 0-100 number an
   automation can act on
+- **Combined score outlook** *(1.10.0)*: the same ranking for every upcoming
+  published slot on one shared scale, for charts and advance planning
 - Raw price-series sensor with `raw_today` / `raw_tomorrow` / `raw_forecast`
   attributes (compatible with `apexcharts-card` and custom templates), plus
   Nordpool-style `average` / `min` / `max` / `price_percent_to_average`.
@@ -245,6 +247,60 @@ The attributes show the workings: `price_part` and `co2_part` for the present;
 `price_spread` and `co2_spread_g_kwh`; and `reference_start`, `reference_end`
 and `reference_hours`.
 
+Since 1.10.0, `score_series` carries the current and every upcoming slot in
+that same reference as `{start, end, value}`. All points use the same medians,
+spreads and competing slots, so an 80 later in the line means the same thing
+as an 80 now. The first point is therefore exactly the sensor's current state.
+The series deliberately ends with the published prices: price forecasts remain
+excluded for the measured bias described above. It is live chart/planning data
+and is excluded from Home Assistant's recorder. It is an outlook rather than a
+locked plan: values can move when new data arrives and as the shared reference
+rolls forward. Loads that require a guaranteed number of daily runtime slots
+still need one of the locked plans.
+
+This ApexCharts card draws the recorded score for the previous six hours and
+the current outlook on the same 0-100 axis. Replace `sensor.CHANGE_ME` twice
+with your **Combined score now** entity:
+
+```yaml
+type: custom:apexcharts-card
+header:
+  show: true
+  title: Combined price / CO2 score
+graph_span: 30h
+span:
+  start: hour
+  offset: -6h
+now:
+  show: true
+  label: Now
+yaxis:
+  - min: 0
+    max: 100
+    decimals: 0
+series:
+  - entity: sensor.CHANGE_ME
+    name: Recorded
+    type: line
+    curve: stepline
+    color: "#78909c"
+    extend_to: false
+    group_by:
+      duration: 15min
+      func: last
+  - entity: sensor.CHANGE_ME
+    name: Outlook
+    type: line
+    curve: stepline
+    color: "#43a047"
+    extend_to: false
+    stroke_width: 2
+    data_generator: |
+      return (entity.attributes.score_series ?? [])
+        .map(e => [new Date(e.start).getTime(), e.value])
+        .sort((a, b) => a[0] - b[0]);
+```
+
 **Use it for loads that can wait**, with a threshold: "start the dishwasher
 when the score reaches 80" runs it among the better hours of what is still
 ahead. **For loads that must run every day, use a plan instead.** The
@@ -395,6 +451,9 @@ comparison against another hour in the same block, nothing more.
   prices can be quarter-hourly. It also carries `assumptions` *(1.2.1)* - the
   emission factors behind the number, with the source status of each; see
   above.
+- **Combined score now** carries `score_series`: its current and upcoming
+  published-price slots on one shared 0-100 scale. Use it to chart or inspect
+  when the best combined price/CO2 periods are coming.
 - **Next cheapest hour**, **Next weekend cheapest hour** and **Next cleanest
   hour** carry `hours`: the full locked plan as a list of
   `{start, end, average_value}`.

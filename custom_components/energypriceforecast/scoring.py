@@ -56,6 +56,29 @@ class CombinedScore:
     reference_slots: int
 
 
+@dataclass(frozen=True)
+class CombinedScorePoint:
+    """One slot ranked inside a shared combined-score reference."""
+
+    start: datetime
+    end: datetime
+    score: float
+    price_part: float
+    co2_part: float | None
+
+
+@dataclass(frozen=True)
+class CombinedScoreSeries:
+    """Comparable scores for every slot in one fixed reference block."""
+
+    points: tuple[CombinedScorePoint, ...]
+    co2_share: float | None
+    price_spread: float
+    co2_spread: float | None
+    reference_start: datetime
+    reference_end: datetime
+
+
 def _quantile(values: list[float], fraction: float) -> float:
     """Linearly interpolated quantile of a non-empty list."""
     ordered = sorted(values)
@@ -80,18 +103,26 @@ def _parts(values: list[float], floor: float) -> tuple[list[float], float]:
     return [(median - value) / spread for value in values], spread
 
 
-def combined_score_now(
+def _rank(standings: list[float], index: int) -> float:
+    """Rank one standing against every other standing in the same block."""
+    selected = standings[index]
+    others = [value for other_index, value in enumerate(standings) if other_index != index]
+    worse = sum(1 for standing in others if standing < selected - _TIE_TOLERANCE)
+    ties = sum(1 for standing in others if abs(standing - selected) <= _TIE_TOLERANCE)
+    return 100 * (worse + 0.5 * ties) / len(others)
+
+
+def combined_score_series(
     price_entries: list[dict[str, Any]] | None,
     co2_entries: list[dict[str, Any]] | None,
     now: datetime,
-) -> CombinedScore | None:
-    """Score the slot covering ``now`` against the published slots ahead.
+) -> CombinedScoreSeries | None:
+    """Rank every upcoming published slot inside one shared reference.
 
-    None when the present has no published price, or when published prices
-    reach fewer than COMBINED_SCORE_MIN_REFERENCE_HOURS ahead. CO2 counts only
-    if it covers every slot of the reference; otherwise this is a price score
-    and says so with ``co2_part`` None, rather than ranking some slots on two
-    counts and the rest on one.
+    The first point is the slot covering ``now``. Every point uses the same
+    medians, spreads and competing slots, so the resulting line can be read as
+    an outlook and its future values can be compared directly. Forecast prices
+    stay out for the same measured reason as in ``combined_score_now``.
     """
     published = [item for item in _parse_entries(price_entries or []) if item[3]]
     current = next((item for item in published if item[0] <= now < item[1]), None)
@@ -123,38 +154,79 @@ def combined_score_now(
 
     co2_slots = _parse_entries(co2_entries or [])
     co2_values = [
-        value
+        next(
+            (
+                value
+                for start, end, value, _settled in co2_slots
+                if start <= item[0] < end
+            ),
+            None,
+        )
         for item in reference
-        for start, end, value, _settled in co2_slots
-        if start <= item[0] < end
     ]
     co2_parts: list[float] | None = None
     co2_spread: float | None = None
-    if len(co2_values) == len(reference):
-        co2_parts, co2_spread = _parts(co2_values, COMBINED_SCORE_CO2_FLOOR_G_KWH)
+    if all(value is not None for value in co2_values):
+        co2_parts, co2_spread = _parts(
+            [value for value in co2_values if value is not None],
+            COMBINED_SCORE_CO2_FLOOR_G_KWH,
+        )
 
     standings = (
         [price + co2 for price, co2 in zip(price_parts, co2_parts)]
         if co2_parts is not None
         else price_parts
     )
-    present, others = standings[0], standings[1:]
-    worse = sum(1 for standing in others if standing < present - _TIE_TOLERANCE)
-    ties = sum(1 for standing in others if abs(standing - present) <= _TIE_TOLERANCE)
-
     co2_share: float | None = None
     if co2_parts is not None:
         total = _variance(price_parts) + _variance(co2_parts)
         co2_share = _variance(co2_parts) / total if total > 0 else None
 
-    return CombinedScore(
-        score=100 * (worse + 0.5 * ties) / len(others),
-        price_part=price_parts[0],
-        co2_part=None if co2_parts is None else co2_parts[0],
+    points = tuple(
+        CombinedScorePoint(
+            start=item[0],
+            end=min(item[1], reference_end),
+            score=_rank(standings, index),
+            price_part=price_parts[index],
+            co2_part=None if co2_parts is None else co2_parts[index],
+        )
+        for index, item in enumerate(reference)
+    )
+    return CombinedScoreSeries(
+        points=points,
         co2_share=co2_share,
         price_spread=price_spread,
         co2_spread=co2_spread,
         reference_start=reference_start,
         reference_end=reference_end,
-        reference_slots=len(reference),
+    )
+
+
+def combined_score_now(
+    price_entries: list[dict[str, Any]] | None,
+    co2_entries: list[dict[str, Any]] | None,
+    now: datetime,
+) -> CombinedScore | None:
+    """Score the slot covering ``now`` against the published slots ahead.
+
+    None when the present has no published price, or when published prices
+    reach fewer than COMBINED_SCORE_MIN_REFERENCE_HOURS ahead. CO2 counts only
+    if it covers every slot of the reference; otherwise this is a price score
+    and says so with ``co2_part`` None, rather than ranking some slots on two
+    counts and the rest on one.
+    """
+    series = combined_score_series(price_entries, co2_entries, now)
+    if series is None:
+        return None
+    present = series.points[0]
+    return CombinedScore(
+        score=present.score,
+        price_part=present.price_part,
+        co2_part=present.co2_part,
+        co2_share=series.co2_share,
+        price_spread=series.price_spread,
+        co2_spread=series.co2_spread,
+        reference_start=series.reference_start,
+        reference_end=series.reference_end,
+        reference_slots=len(series.points),
     )

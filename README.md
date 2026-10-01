@@ -14,6 +14,10 @@ requiring YAML or JSON templates.
 - Cheapest price window and greenest CO2 window, with a countdown to the end
   of each
 - Binary sensors indicating whether a best window is active now
+- **Everything that describes "now" switches at the slot boundary**
+  *(1.11.0)*: current price, CO2 intensity, the window countdowns and every
+  "active now" flag change on the quarter hour themselves, instead of waiting
+  for the next poll
 - Combined price/CO2 window: when the best compromise between a low price
   and low emissions is
 - **Combined score now** *(1.5.0)*: how the present ranks against the
@@ -538,6 +542,14 @@ reconfigure it:
 | Estimate | Our assumption-based all-in price: grid fee, levies, supplier markup and VAT. Germany needs a postal code for the local grid fee | DE, NL, DK1, DK2, AT, NO1-NO5 |
 | Own formula | Day-ahead price × **factor** + **surcharge** | all |
 
+Since *1.11.0* the choice decides what is asked next, on a page of its own:
+**Own formula** asks for the factor and the surcharge, the **estimate** in
+Germany asks for the postal code, and the estimate elsewhere and **Off** ask
+for nothing more. Reconfiguring opens that page with the values in use. What
+belongs to a source you switch away from is not kept: the entry stores only
+what the chosen source uses, so no postal code is sent for a market that
+prices nothing by it.
+
 **The formula** is *retail price = day-ahead price × factor + surcharge*.
 
 - **Factor** multiplies the day-ahead price. Your VAT goes here: 1.21 for
@@ -740,6 +752,32 @@ is exactly what it is for.
 All entities of one market share one API request per poll (default every 30
 minutes, configurable from 15 to 120 minutes). The integration does not
 create one request per entity.
+
+**The poll interval is not the resolution.** Day-ahead prices change every
+quarter hour, so a value that describes the present moment would otherwise be
+up to half an hour behind the price it belongs to. Since *1.11.0* these
+entities re-read themselves at every quarter hour, from data already in
+memory and without an extra request:
+
+- **Current price** and **Price source** take the slot that is running from
+  the cached series - the same series the price-series sensor shows, so the
+  two can no longer disagree.
+- **Current CO2 intensity** does the same with the CO2 series. CO2 is
+  published *hourly* where prices can be quarter-hourly, so its value still
+  only changes on the hour - it now changes *on* the hour, rather than at the
+  next poll after it.
+- **Cheapest window remaining** and **Greenest window remaining** count down
+  from the window's own end time, and are empty while the window has not
+  started - which is what the API reports as well.
+- **Cheapest window active**, **Greenest window active**, **Cheapest window
+  active (retail)**, **Combined window active** and the three plan flags
+  (**Cheapest hours active**, **Weekend cheapest hours active**, **Cleanest
+  hours active**) are worked out from the window's start and end, not from a
+  flag that was true when the API answered. A planned hour therefore switches
+  a device when it begins.
+
+Everything else - the forecasts, the quality figures, the window times - only
+changes when new data arrives, so those entities keep the poll's rhythm.
 
 ## How good is the forecast, really?
 

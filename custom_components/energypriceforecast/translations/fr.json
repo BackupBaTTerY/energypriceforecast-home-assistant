@@ -9,19 +9,19 @@
           "postal_code": "Code postal"
         },
         "data_description": {
-          "postal_code": "Requis pour l'Allemagne lorsque l'estimation est choisie ; sert à déterminer les frais de réseau. Sinon non utilisé."
+          "postal_code": "Sert à déterminer les frais de réseau locaux."
         }
       },
       "retail_formula": {
         "title": "Votre formule personnelle",
         "description": "Prix de détail = prix spot × facteur + supplément, en {unit}. Seuls ces deux nombres sont utilisés.",
         "data": {
-          "retail_factor": "Facteur (formule personnelle)",
-          "retail_surcharge": "Supplément par kWh TTC (formule personnelle)"
+          "retail_factor": "Facteur",
+          "retail_surcharge": "Supplément par kWh TTC"
         },
         "data_description": {
-          "retail_factor": "Uniquement pour la formule personnelle. Multiplie le prix spot, par ex. 1.21 pour 21 % de TVA.",
-          "retail_surcharge": "Uniquement pour la formule personnelle. Montant fixe par kWh TVA comprise, ajouté après le facteur, dans l'unité des capteurs de prix – par ex. 0.1350 pour 13,50 ct/kWh. On y met la marge du fournisseur, les taxes sur l'énergie et les frais de réseau par kWh. Les frais de réseau qui varient selon l'heure se saisissent plutôt dans « Frais de réseau horaires »."
+          "retail_factor": "Multiplie le prix spot, par ex. 1.21 pour 21 % de TVA.",
+          "retail_surcharge": "Montant fixe par kWh TVA comprise, ajouté après le facteur, dans l'unité des capteurs de prix – par ex. 0.1350 pour 13,50 ct/kWh. On y met la marge du fournisseur, les taxes sur l'énergie et les frais de réseau par kWh. Les frais de réseau qui varient selon l'heure se saisissent plutôt dans « Frais de réseau horaires »."
         }
       },
       "tariff_prefill": {

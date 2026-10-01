@@ -9,19 +9,19 @@
           "postal_code": "Postnummer"
         },
         "data_description": {
-          "postal_code": "Kræves for Tyskland, når estimatet er valgt; bruges til at finde netafgiften. Ellers ikke brugt."
+          "postal_code": "Bruges til at finde den lokale netafgift."
         }
       },
       "retail_formula": {
         "title": "Din egen formel",
         "description": "Detailpris = spotpris × faktor + tillæg, i {unit}. Kun disse to tal bruges.",
         "data": {
-          "retail_factor": "Faktor (egen formel)",
-          "retail_surcharge": "Tillæg pr. kWh inkl. moms (egen formel)"
+          "retail_factor": "Faktor",
+          "retail_surcharge": "Tillæg pr. kWh inkl. moms"
         },
         "data_description": {
-          "retail_factor": "Kun for den egne formel. Ganger spotprisen, f.eks. 1.25 for 25 % moms.",
-          "retail_surcharge": "Kun for den egne formel. Fast beløb pr. kWh inklusive moms, lagt til efter faktoren, i prissensorernes enhed (DKK/kWh) – f.eks. 0.85 for 85 øre/kWh. Her hører leverandørtillæg, elafgift og Energinets tariffer hjemme. Nettariffer, der skifter med tidspunktet på dagen, hører i stedet til \"Tidsafhængige nettariffer\"."
+          "retail_factor": "Ganger spotprisen, f.eks. 1.25 for 25 % moms.",
+          "retail_surcharge": "Fast beløb pr. kWh inklusive moms, lagt til efter faktoren, i prissensorernes enhed (DKK/kWh) – f.eks. 0.85 for 85 øre/kWh. Her hører leverandørtillæg, elafgift og Energinets tariffer hjemme. Nettariffer, der skifter med tidspunktet på dagen, hører i stedet til \"Tidsafhængige nettariffer\"."
         }
       },
       "tariff_prefill": {

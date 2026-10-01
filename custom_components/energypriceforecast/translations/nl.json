@@ -9,19 +9,19 @@
           "postal_code": "Postcode"
         },
         "data_description": {
-          "postal_code": "Nodig voor Duitsland als de schatting is gekozen; gebruikt voor de netkosten. Anders niet gebruikt."
+          "postal_code": "Wordt gebruikt om de plaatselijke netkosten op te zoeken."
         }
       },
       "retail_formula": {
         "title": "Je eigen formule",
         "description": "Consumentenprijs = beursprijs × factor + toeslag, in {unit}. Alleen deze twee getallen worden gebruikt.",
         "data": {
-          "retail_factor": "Factor (eigen formule)",
-          "retail_surcharge": "Toeslag per kWh incl. btw (eigen formule)"
+          "retail_factor": "Factor",
+          "retail_surcharge": "Toeslag per kWh incl. btw"
         },
         "data_description": {
-          "retail_factor": "Alleen voor de eigen formule. Vermenigvuldigt de beursprijs, bijv. 1.21 voor 21% btw.",
-          "retail_surcharge": "Alleen voor de eigen formule. Vast bedrag per kWh inclusief btw, opgeteld na de factor, in de eenheid van de prijssensoren – bijv. 0.1350 voor 13,50 ct/kWh. Hier horen de inkoopvergoeding van je leverancier, de energiebelasting en eventuele netkosten per kWh. Netkosten die met het tijdstip veranderen, horen in plaats daarvan bij \"Tijdsafhankelijke netkosten\"."
+          "retail_factor": "Vermenigvuldigt de beursprijs, bijv. 1.21 voor 21% btw.",
+          "retail_surcharge": "Vast bedrag per kWh inclusief btw, opgeteld na de factor, in de eenheid van de prijssensoren – bijv. 0.1350 voor 13,50 ct/kWh. Hier horen de inkoopvergoeding van je leverancier, de energiebelasting en eventuele netkosten per kWh. Netkosten die met het tijdstip veranderen, horen in plaats daarvan bij \"Tijdsafhankelijke netkosten\"."
         }
       },
       "tariff_prefill": {

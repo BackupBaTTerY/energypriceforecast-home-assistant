@@ -9,19 +9,19 @@
           "postal_code": "Postleitzahl"
         },
         "data_description": {
-          "postal_code": "Für Deutschland nötig, wenn die Schätzung gewählt ist; dient der Netzentgelt-Ermittlung. Sonst nicht verwendet."
+          "postal_code": "Dient der Ermittlung des lokalen Netzentgelts."
         }
       },
       "retail_formula": {
         "title": "Deine eigene Formel",
         "description": "Endkundenpreis = Börsenpreis × Faktor + Aufschlag, in {unit}. Verwendet werden nur diese beiden Zahlen.",
         "data": {
-          "retail_factor": "Faktor (eigene Formel)",
-          "retail_surcharge": "Aufschlag je kWh inkl. MwSt. (eigene Formel)"
+          "retail_factor": "Faktor",
+          "retail_surcharge": "Aufschlag je kWh inkl. MwSt."
         },
         "data_description": {
-          "retail_factor": "Nur für die eigene Formel. Multipliziert den Börsenpreis, z. B. 1.21 für 21 % MwSt.",
-          "retail_surcharge": "Nur für die eigene Formel. Fester Betrag je kWh inklusive MwSt., der nach dem Faktor addiert wird, in der Einheit der Preissensoren – z. B. 0.1350 für 13,50 ct/kWh. Hierher gehören Lieferantenaufschlag, Stromsteuer und Netzentgelt je kWh. Netzentgelte, die sich mit der Tageszeit ändern, gehören stattdessen zu „Zeitabhängige Netzentgelte“."
+          "retail_factor": "Multipliziert den Börsenpreis, z. B. 1.21 für 21 % MwSt.",
+          "retail_surcharge": "Fester Betrag je kWh inklusive MwSt., der nach dem Faktor addiert wird, in der Einheit der Preissensoren – z. B. 0.1350 für 13,50 ct/kWh. Hierher gehören Lieferantenaufschlag, Stromsteuer und Netzentgelt je kWh. Netzentgelte, die sich mit der Tageszeit ändern, gehören stattdessen zu „Zeitabhängige Netzentgelte“."
         }
       },
       "tariff_prefill": {

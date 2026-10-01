@@ -9,19 +9,19 @@
           "postal_code": "PSČ"
         },
         "data_description": {
-          "postal_code": "Nutné pro Německo, pokud je zvolen odhad; slouží k určení poplatku za síť. Jinak se nepoužívá."
+          "postal_code": "Slouží k určení místního poplatku za síť."
         }
       },
       "retail_formula": {
         "title": "Váš vlastní vzorec",
         "description": "Maloobchodní cena = burzovní cena × koeficient + příplatek, v {unit}. Použijí se jen tato dvě čísla.",
         "data": {
-          "retail_factor": "Koeficient (vlastní vzorec)",
-          "retail_surcharge": "Příplatek za kWh vč. DPH (vlastní vzorec)"
+          "retail_factor": "Koeficient",
+          "retail_surcharge": "Příplatek za kWh vč. DPH"
         },
         "data_description": {
-          "retail_factor": "Jen pro vlastní vzorec. Násobí burzovní cenu, např. 1.21 pro 21 % DPH.",
-          "retail_surcharge": "Jen pro vlastní vzorec. Pevná částka za kWh včetně DPH přičtená po koeficientu, v jednotce cenových senzorů – s místní měnou v Kč/kWh, jinak v EUR/kWh. Patří sem přirážka dodavatele, daň z elektřiny a poplatky za síť za kWh. Poplatky za síť, které se mění podle denní doby, patří místo toho do „Poplatky za síť podle denní doby“."
+          "retail_factor": "Násobí burzovní cenu, např. 1.21 pro 21 % DPH.",
+          "retail_surcharge": "Pevná částka za kWh včetně DPH přičtená po koeficientu, v jednotce cenových senzorů – s místní měnou v Kč/kWh, jinak v EUR/kWh. Patří sem přirážka dodavatele, daň z elektřiny a poplatky za síť za kWh. Poplatky za síť, které se mění podle denní doby, patří místo toho do „Poplatky za síť podle denní doby“."
         }
       },
       "tariff_prefill": {

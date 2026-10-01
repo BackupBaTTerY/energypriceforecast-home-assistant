@@ -9,19 +9,19 @@
           "postal_code": "Postal code"
         },
         "data_description": {
-          "postal_code": "Required for Germany when the estimate is selected; used for the grid-fee lookup. Not used otherwise."
+          "postal_code": "Used to look up the local grid fee."
         }
       },
       "retail_formula": {
         "title": "Your own formula",
         "description": "Retail price = day-ahead price × factor + surcharge, in {unit}. Only these two numbers are used.",
         "data": {
-          "retail_factor": "Factor (own formula)",
-          "retail_surcharge": "Surcharge per kWh incl. VAT (own formula)"
+          "retail_factor": "Factor",
+          "retail_surcharge": "Surcharge per kWh incl. VAT"
         },
         "data_description": {
-          "retail_factor": "Only used with your own formula. Multiplies the day-ahead price, e.g. 1.21 for 21% VAT.",
-          "retail_surcharge": "Only used with your own formula. Fixed amount per kWh including VAT, added after the factor, in the unit of the price sensors - e.g. 0.1350 for 13.50 ct/kWh. Supplier fees, energy tax and any per-kWh grid charge belong here. Grid charges that change with the time of day go into \"Time-of-day grid charges\" instead."
+          "retail_factor": "Multiplies the day-ahead price, e.g. 1.21 for 21% VAT.",
+          "retail_surcharge": "Fixed amount per kWh including VAT, added after the factor, in the unit of the price sensors - e.g. 0.1350 for 13.50 ct/kWh. Supplier fees, energy tax and any per-kWh grid charge belong here. Grid charges that change with the time of day go into \"Time-of-day grid charges\" instead."
         }
       },
       "tariff_prefill": {

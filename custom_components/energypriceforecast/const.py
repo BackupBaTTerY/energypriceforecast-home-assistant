@@ -216,6 +216,9 @@ PLATFORMS: Final = ["sensor", "binary_sensor"]
 # price - the "estimate" retail source. Germany additionally requires a
 # postal code for the grid-fee lookup; the other markets use country-wide
 # default assumptions. The own formula works in every market.
+# Germany prices the grid fee by postal code; every other estimate market
+# uses country-wide assumptions and needs nothing beyond the market.
+POSTAL_CODE_MARKETS: Final[frozenset[str]] = frozenset({"DE"})
 RETAIL_MARKETS: Final[frozenset[str]] = frozenset(
     {"DE", "NL", "DK1", "DK2", "AT", "NO1", "NO2", "NO3", "NO4", "NO5"}
 )

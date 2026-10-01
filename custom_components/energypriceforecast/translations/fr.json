@@ -2,6 +2,28 @@
   "title": "Energy Price Forecast EU",
   "config": {
     "step": {
+      "retail_postal": {
+        "title": "Code postal pour l'estimation",
+        "description": "L'estimation pour l'Allemagne calcule les frais de réseau par code postal : c'est la seule chose qui manque encore. Il est envoyé avec chaque demande de prix de détail et masqué dans les diagnostics.",
+        "data": {
+          "postal_code": "Code postal"
+        },
+        "data_description": {
+          "postal_code": "Requis pour l'Allemagne lorsque l'estimation est choisie ; sert à déterminer les frais de réseau. Sinon non utilisé."
+        }
+      },
+      "retail_formula": {
+        "title": "Votre formule personnelle",
+        "description": "Prix de détail = prix spot × facteur + supplément, en {unit}. Seuls ces deux nombres sont utilisés.",
+        "data": {
+          "retail_factor": "Facteur (formule personnelle)",
+          "retail_surcharge": "Supplément par kWh TTC (formule personnelle)"
+        },
+        "data_description": {
+          "retail_factor": "Uniquement pour la formule personnelle. Multiplie le prix spot, par ex. 1.21 pour 21 % de TVA.",
+          "retail_surcharge": "Uniquement pour la formule personnelle. Montant fixe par kWh TVA comprise, ajouté après le facteur, dans l'unité des capteurs de prix – par ex. 0.1350 pour 13,50 ct/kWh. On y met la marge du fournisseur, les taxes sur l'énergie et les frais de réseau par kWh. Les frais de réseau qui varient selon l'heure se saisissent plutôt dans « Frais de réseau horaires »."
+        }
+      },
       "tariff_prefill": {
         "title": "Partir de votre gestionnaire de réseau",
         "description": "Choisissez votre gestionnaire de réseau pour préremplir ses plages et son prix de l'énergie à partir de la collection {source}. La date indique la dernière vérification de cette entrée - comparez les valeurs avec votre grille tarifaire aux étapes suivantes. Laissez vide pour tout saisir vous-même. Les gestionnaires marqués ⚠ ont des périodes saisonnières ou multiples, qui ne sont que partiellement préremplies.",
@@ -75,9 +97,6 @@
           "window_hours": "Durée de la meilleure fenêtre",
           "api_key": "Clé API (optionnelle)",
           "retail_source": "Prix de détail",
-          "postal_code": "Code postal",
-          "retail_factor": "Facteur (formule personnelle)",
-          "retail_surcharge": "Supplément par kWh TTC (formule personnelle)",
           "tou_source": "Frais de réseau horaires",
           "local_currency": "Afficher les prix en monnaie locale",
           "update_interval_minutes": "Intervalle de mise à jour (minutes)",
@@ -92,9 +111,6 @@
           "window_hours": "Durée de la fenêtre continue la moins chère et la plus verte.",
           "api_key": "Laissez vide pour un accès public. La clé est stockée dans l'entrée de configuration de Home Assistant.",
           "retail_source": "Estimation : notre prix tout compris basé sur des hypothèses (frais de réseau, taxes, TVA), uniquement pour DE, NL, DK, AT et NO ; l'Allemagne nécessite un code postal. Formule personnelle : prix spot × facteur + supplément, dans tous les marchés. Dans les deux cas, les plans sont établis sur le prix de détail.",
-          "postal_code": "Requis pour l'Allemagne lorsque l'estimation est choisie ; sert à déterminer les frais de réseau. Sinon non utilisé.",
-          "retail_factor": "Uniquement pour la formule personnelle. Multiplie le prix spot, par ex. 1.21 pour 21 % de TVA.",
-          "retail_surcharge": "Uniquement pour la formule personnelle. Montant fixe par kWh TVA comprise, ajouté après le facteur, dans l'unité des capteurs de prix – par ex. 0.1350 pour 13,50 ct/kWh. On y met la marge du fournisseur, les taxes sur l'énergie et les frais de réseau par kWh. Les frais de réseau qui varient selon l'heure se saisissent plutôt dans « Frais de réseau horaires ».",
           "tou_source": "Les frais de réseau qui varient selon l'heure sont intégrés à votre formule personnelle - son facteur y ajoute la TVA. Saisissez les plages et montants de votre grille tarifaire ; en Norvège ils peuvent être préremplis depuis votre gestionnaire de réseau, au Danemark ils sont recherchés automatiquement. Nécessite « Formule personnelle » comme prix de détail.",
           "local_currency": "Convertit les prix de l'euro en couronnes tchèques (CZ), zlotys polonais (PL) ou couronnes suédoises (SE1-SE4) au taux de référence quotidien de la BCE. Le Danemark et la Norvège reçoivent toujours leur propre monnaie ; les autres marchés restent en euros. Changer modifie l'unité des capteurs de prix, Home Assistant recommence donc leurs statistiques à long terme.",
           "update_interval_minutes": "Fréquence d'interrogation de l'API. La résolution des données est de 15 minutes, des intervalles plus courts apportent donc rarement de nouvelles informations.",
@@ -114,9 +130,6 @@
           "window_hours": "Durée de la meilleure fenêtre",
           "api_key": "Nouvelle clé API (optionnelle)",
           "retail_source": "Prix de détail",
-          "postal_code": "Code postal",
-          "retail_factor": "Facteur (formule personnelle)",
-          "retail_surcharge": "Supplément par kWh TTC (formule personnelle)",
           "tou_source": "Frais de réseau horaires",
           "local_currency": "Afficher les prix en monnaie locale",
           "update_interval_minutes": "Intervalle de mise à jour (minutes)",
@@ -130,9 +143,6 @@
           "horizon_hours": "L'API indique l'horizon réellement autorisé via un capteur de diagnostic.",
           "window_hours": "Durée de la fenêtre continue la moins chère et la plus verte.",
           "retail_source": "Estimation : notre prix tout compris basé sur des hypothèses (frais de réseau, taxes, TVA), uniquement pour DE, NL, DK, AT et NO ; l'Allemagne nécessite un code postal. Formule personnelle : prix spot × facteur + supplément, dans tous les marchés. Dans les deux cas, les plans sont établis sur le prix de détail.",
-          "postal_code": "Requis pour l'Allemagne lorsque l'estimation est choisie ; sert à déterminer les frais de réseau. Sinon non utilisé.",
-          "retail_factor": "Uniquement pour la formule personnelle. Multiplie le prix spot, par ex. 1.21 pour 21 % de TVA.",
-          "retail_surcharge": "Uniquement pour la formule personnelle. Montant fixe par kWh TVA comprise, ajouté après le facteur, dans l'unité des capteurs de prix – par ex. 0.1350 pour 13,50 ct/kWh. On y met la marge du fournisseur, les taxes sur l'énergie et les frais de réseau par kWh. Les frais de réseau qui varient selon l'heure se saisissent plutôt dans « Frais de réseau horaires ».",
           "tou_source": "Les frais de réseau qui varient selon l'heure sont intégrés à votre formule personnelle - son facteur y ajoute la TVA. Saisissez les plages et montants de votre grille tarifaire ; en Norvège ils peuvent être préremplis depuis votre gestionnaire de réseau, au Danemark ils sont recherchés automatiquement. Nécessite « Formule personnelle » comme prix de détail.",
           "local_currency": "Convertit les prix de l'euro en couronnes tchèques (CZ), zlotys polonais (PL) ou couronnes suédoises (SE1-SE4) au taux de référence quotidien de la BCE. Le Danemark et la Norvège reçoivent toujours leur propre monnaie ; les autres marchés restent en euros. Changer modifie l'unité des capteurs de prix, Home Assistant recommence donc leurs statistiques à long terme.",
           "update_interval_minutes": "Fréquence d'interrogation de l'API. La résolution des données est de 15 minutes, des intervalles plus courts apportent donc rarement de nouvelles informations.",

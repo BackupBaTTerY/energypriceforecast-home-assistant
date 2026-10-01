@@ -2,6 +2,28 @@
   "title": "Energy Price Forecast EU",
   "config": {
     "step": {
+      "retail_postal": {
+        "title": "Postnummer for estimatet",
+        "description": "Estimatet for Tyskland regner nettleien etter postnummer, så det er det eneste som mangler. Det sendes med hver forespørsel om forbrukerpris og skjules i diagnostikken.",
+        "data": {
+          "postal_code": "Postnummer"
+        },
+        "data_description": {
+          "postal_code": "Påkrevd for Tyskland når estimatet er valgt; brukes til å finne nettleien. Ellers ikke brukt."
+        }
+      },
+      "retail_formula": {
+        "title": "Din egen formel",
+        "description": "Forbrukerpris = spotpris × faktor + påslag, i {unit}. Bare disse to tallene brukes.",
+        "data": {
+          "retail_factor": "Faktor (egen formel)",
+          "retail_surcharge": "Påslag per kWh inkl. mva. (egen formel)"
+        },
+        "data_description": {
+          "retail_factor": "Kun for egen formel. Ganger spotprisen, f.eks. 1.25 for 25 % mva.",
+          "retail_surcharge": "Kun for egen formel. Fast beløp per kWh inklusive mva., lagt til etter faktoren, i prissensorenes enhet (NOK/kWh) – f.eks. 0.55 for 55 øre/kWh. Her hører leverandørpåslag, elavgift og energiledd i nettleien hjemme. Nettleie som varierer med tid på døgnet, legges i stedet inn under «Tidsavhengig nettleie»."
+        }
+      },
       "tariff_prefill": {
         "title": "Ta utgangspunkt i netteieren din",
         "description": "Velg netteieren din for å fylle ut tidsrom og energiledd fra samlingen {source}. Datoen viser når oppføringen sist ble sjekket - sammenlign verdiene med din egen prisliste i de neste stegene. La feltet stå tomt for å legge inn alt selv. Netteiere merket med ⚠ har sesongavhengige eller flere særperioder, som bare delvis fylles ut.",
@@ -75,9 +97,6 @@
           "window_hours": "Varighet på beste tidsvindu",
           "api_key": "API-nøkkel (valgfritt)",
           "retail_source": "Forbrukerpris",
-          "postal_code": "Postnummer",
-          "retail_factor": "Faktor (egen formel)",
-          "retail_surcharge": "Påslag per kWh inkl. mva. (egen formel)",
           "tou_source": "Tidsavhengig nettleie",
           "local_currency": "Vis priser i nasjonal valuta",
           "update_interval_minutes": "Oppdateringsintervall (minutter)",
@@ -92,9 +111,6 @@
           "window_hours": "Lengden på det billigste og grønneste sammenhengende tidsvinduet.",
           "api_key": "La stå tomt for offentlig tilgang. Nøkkelen lagres i Home Assistants konfigurasjonsoppføring.",
           "retail_source": "Estimat: vår antagelsesbaserte alt-inkludert-pris (nettleie, avgifter, mva.), kun for DE, NL, DK, AT og NO; Tyskland krever postnummer. Egen formel: spotpris × faktor + påslag, i alle markeder. I begge tilfeller bygges planene på forbrukerprisen.",
-          "postal_code": "Påkrevd for Tyskland når estimatet er valgt; brukes til å finne nettleien. Ellers ikke brukt.",
-          "retail_factor": "Kun for egen formel. Ganger spotprisen, f.eks. 1.25 for 25 % mva.",
-          "retail_surcharge": "Kun for egen formel. Fast beløp per kWh inklusive mva., lagt til etter faktoren, i prissensorenes enhet (NOK/kWh) – f.eks. 0.55 for 55 øre/kWh. Her hører leverandørpåslag, elavgift og energiledd i nettleien hjemme. Nettleie som varierer med tid på døgnet, legges i stedet inn under «Tidsavhengig nettleie».",
           "tou_source": "Nettleie som varierer med tid på døgnet, regnes med i den egne formelen - faktoren legger mva. på. Legg inn tidsrom og beløp fra prislisten din; i Norge kan de fylles ut fra netteieren din, i Danmark slås de opp automatisk. Krever «Egen formel» som forbrukerpris.",
           "local_currency": "Regner om prisene fra euro til tsjekkiske kroner (CZ), polske zloty (PL) eller svenske kroner (SE1-SE4) med ECBs daglige referansekurs. Danmark og Norge får alltid sin egen valuta; alle andre markeder forblir i euro. Et bytte endrer enheten til prissensorene, så Home Assistant starter langtidsstatistikken deres på nytt.",
           "update_interval_minutes": "Hvor ofte API-et spørres. Dataoppløsningen er 15 minutter, så kortere intervaller gir sjelden ny informasjon.",
@@ -114,9 +130,6 @@
           "window_hours": "Varighet på beste tidsvindu",
           "api_key": "Ny API-nøkkel (valgfritt)",
           "retail_source": "Forbrukerpris",
-          "postal_code": "Postnummer",
-          "retail_factor": "Faktor (egen formel)",
-          "retail_surcharge": "Påslag per kWh inkl. mva. (egen formel)",
           "tou_source": "Tidsavhengig nettleie",
           "local_currency": "Vis priser i nasjonal valuta",
           "update_interval_minutes": "Oppdateringsintervall (minutter)",
@@ -130,9 +143,6 @@
           "horizon_hours": "API-et rapporterer den faktisk tillatte horisonten som en diagnostikksensor.",
           "window_hours": "Lengden på det billigste og grønneste sammenhengende tidsvinduet.",
           "retail_source": "Estimat: vår antagelsesbaserte alt-inkludert-pris (nettleie, avgifter, mva.), kun for DE, NL, DK, AT og NO; Tyskland krever postnummer. Egen formel: spotpris × faktor + påslag, i alle markeder. I begge tilfeller bygges planene på forbrukerprisen.",
-          "postal_code": "Påkrevd for Tyskland når estimatet er valgt; brukes til å finne nettleien. Ellers ikke brukt.",
-          "retail_factor": "Kun for egen formel. Ganger spotprisen, f.eks. 1.25 for 25 % mva.",
-          "retail_surcharge": "Kun for egen formel. Fast beløp per kWh inklusive mva., lagt til etter faktoren, i prissensorenes enhet (NOK/kWh) – f.eks. 0.55 for 55 øre/kWh. Her hører leverandørpåslag, elavgift og energiledd i nettleien hjemme. Nettleie som varierer med tid på døgnet, legges i stedet inn under «Tidsavhengig nettleie».",
           "tou_source": "Nettleie som varierer med tid på døgnet, regnes med i den egne formelen - faktoren legger mva. på. Legg inn tidsrom og beløp fra prislisten din; i Norge kan de fylles ut fra netteieren din, i Danmark slås de opp automatisk. Krever «Egen formel» som forbrukerpris.",
           "local_currency": "Regner om prisene fra euro til tsjekkiske kroner (CZ), polske zloty (PL) eller svenske kroner (SE1-SE4) med ECBs daglige referansekurs. Danmark og Norge får alltid sin egen valuta; alle andre markeder forblir i euro. Et bytte endrer enheten til prissensorene, så Home Assistant starter langtidsstatistikken deres på nytt.",
           "update_interval_minutes": "Hvor ofte API-et spørres. Dataoppløsningen er 15 minutter, så kortere intervaller gir sjelden ny informasjon.",

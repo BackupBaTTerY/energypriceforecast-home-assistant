@@ -2,6 +2,28 @@
   "title": "Energy Price Forecast EU",
   "config": {
     "step": {
+      "retail_postal": {
+        "title": "Postnummer til estimatet",
+        "description": "Estimatet for Tyskland beregner netafgiften efter postnummer, så det er det eneste, der mangler. Det sendes med hver forespørgsel på detailprisen og skjules i diagnostikken.",
+        "data": {
+          "postal_code": "Postnummer"
+        },
+        "data_description": {
+          "postal_code": "Kræves for Tyskland, når estimatet er valgt; bruges til at finde netafgiften. Ellers ikke brugt."
+        }
+      },
+      "retail_formula": {
+        "title": "Din egen formel",
+        "description": "Detailpris = spotpris × faktor + tillæg, i {unit}. Kun disse to tal bruges.",
+        "data": {
+          "retail_factor": "Faktor (egen formel)",
+          "retail_surcharge": "Tillæg pr. kWh inkl. moms (egen formel)"
+        },
+        "data_description": {
+          "retail_factor": "Kun for den egne formel. Ganger spotprisen, f.eks. 1.25 for 25 % moms.",
+          "retail_surcharge": "Kun for den egne formel. Fast beløb pr. kWh inklusive moms, lagt til efter faktoren, i prissensorernes enhed (DKK/kWh) – f.eks. 0.85 for 85 øre/kWh. Her hører leverandørtillæg, elafgift og Energinets tariffer hjemme. Nettariffer, der skifter med tidspunktet på dagen, hører i stedet til \"Tidsafhængige nettariffer\"."
+        }
+      },
       "tariff_prefill": {
         "title": "Tag udgangspunkt i dit netselskab",
         "description": "Vælg dit netselskab for at udfylde tidsrum og energipris fra samlingen {source}. Datoen viser, hvornår posten sidst blev tjekket - sammenlign værdierne med din egen prisliste i de næste trin. Lad feltet stå tomt for selv at indtaste det hele. Netselskaber markeret med ⚠ har sæsonbestemte eller flere særlige perioder, som kun udfyldes delvist.",
@@ -75,9 +97,6 @@
           "window_hours": "Varighed af det bedste tidsvindue",
           "api_key": "API-nøgle (valgfri)",
           "retail_source": "Detailpris",
-          "postal_code": "Postnummer",
-          "retail_factor": "Faktor (egen formel)",
-          "retail_surcharge": "Tillæg pr. kWh inkl. moms (egen formel)",
           "tou_source": "Tidsafhængige nettariffer",
           "local_currency": "Vis priser i national valuta",
           "update_interval_minutes": "Opdateringsinterval (minutter)",
@@ -92,9 +111,6 @@
           "window_hours": "Længden af det billigste og grønneste sammenhængende tidsvindue.",
           "api_key": "Lad stå tom for offentlig adgang. Nøglen gemmes i Home Assistants konfigurationspost.",
           "retail_source": "Estimat: vores antagelsesbaserede alt-inkl.-pris (netafgift, afgifter, moms), kun for DE, NL, DK, AT og NO; Tyskland kræver et postnummer. Egen formel: spotpris × faktor + tillæg, i alle markeder. I begge tilfælde bygges planerne på detailprisen.",
-          "postal_code": "Kræves for Tyskland, når estimatet er valgt; bruges til at finde netafgiften. Ellers ikke brugt.",
-          "retail_factor": "Kun for den egne formel. Ganger spotprisen, f.eks. 1.25 for 25 % moms.",
-          "retail_surcharge": "Kun for den egne formel. Fast beløb pr. kWh inklusive moms, lagt til efter faktoren, i prissensorernes enhed (DKK/kWh) – f.eks. 0.85 for 85 øre/kWh. Her hører leverandørtillæg, elafgift og Energinets tariffer hjemme. Nettariffer, der skifter med tidspunktet på dagen, hører i stedet til \"Tidsafhængige nettariffer\".",
           "tou_source": "Nettariffer, der skifter med tidspunktet på dagen, regnes med i den egne formel - dens faktor lægger moms oveni. Angiv tidsrum og beløb fra din prisliste; i Norge kan de udfyldes ud fra dit netselskab, i Danmark slås de op automatisk. Kræver \"Egen formel\" som detailpris.",
           "local_currency": "Omregner priserne fra euro til tjekkiske kroner (CZ), polske zloty (PL) eller svenske kroner (SE1-SE4) med ECB's daglige referencekurs. Danmark og Norge får altid deres egen valuta; alle andre markeder forbliver i euro. Et skift ændrer enheden for prissensorerne, så Home Assistant starter deres langtidsstatistik forfra.",
           "update_interval_minutes": "Hvor ofte API'en forespørges. Dataopløsningen er 15 minutter, så kortere intervaller giver sjældent ny information.",
@@ -114,9 +130,6 @@
           "window_hours": "Varighed af det bedste tidsvindue",
           "api_key": "Ny API-nøgle (valgfri)",
           "retail_source": "Detailpris",
-          "postal_code": "Postnummer",
-          "retail_factor": "Faktor (egen formel)",
-          "retail_surcharge": "Tillæg pr. kWh inkl. moms (egen formel)",
           "tou_source": "Tidsafhængige nettariffer",
           "local_currency": "Vis priser i national valuta",
           "update_interval_minutes": "Opdateringsinterval (minutter)",
@@ -130,9 +143,6 @@
           "horizon_hours": "API'en rapporterer den faktisk tilladte horisont som en diagnosticeringssensor.",
           "window_hours": "Længden af det billigste og grønneste sammenhængende tidsvindue.",
           "retail_source": "Estimat: vores antagelsesbaserede alt-inkl.-pris (netafgift, afgifter, moms), kun for DE, NL, DK, AT og NO; Tyskland kræver et postnummer. Egen formel: spotpris × faktor + tillæg, i alle markeder. I begge tilfælde bygges planerne på detailprisen.",
-          "postal_code": "Kræves for Tyskland, når estimatet er valgt; bruges til at finde netafgiften. Ellers ikke brugt.",
-          "retail_factor": "Kun for den egne formel. Ganger spotprisen, f.eks. 1.25 for 25 % moms.",
-          "retail_surcharge": "Kun for den egne formel. Fast beløb pr. kWh inklusive moms, lagt til efter faktoren, i prissensorernes enhed (DKK/kWh) – f.eks. 0.85 for 85 øre/kWh. Her hører leverandørtillæg, elafgift og Energinets tariffer hjemme. Nettariffer, der skifter med tidspunktet på dagen, hører i stedet til \"Tidsafhængige nettariffer\".",
           "tou_source": "Nettariffer, der skifter med tidspunktet på dagen, regnes med i den egne formel - dens faktor lægger moms oveni. Angiv tidsrum og beløb fra din prisliste; i Norge kan de udfyldes ud fra dit netselskab, i Danmark slås de op automatisk. Kræver \"Egen formel\" som detailpris.",
           "local_currency": "Omregner priserne fra euro til tjekkiske kroner (CZ), polske zloty (PL) eller svenske kroner (SE1-SE4) med ECB's daglige referencekurs. Danmark og Norge får altid deres egen valuta; alle andre markeder forbliver i euro. Et skift ændrer enheden for prissensorerne, så Home Assistant starter deres langtidsstatistik forfra.",
           "update_interval_minutes": "Hvor ofte API'en forespørges. Dataopløsningen er 15 minutter, så kortere intervaller giver sjældent ny information.",

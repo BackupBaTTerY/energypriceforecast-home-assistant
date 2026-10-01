@@ -2,6 +2,28 @@
   "title": "Energy Price Forecast EU",
   "config": {
     "step": {
+      "retail_postal": {
+        "title": "Postal code for the estimate",
+        "description": "The estimate for Germany prices the grid fee by postal code, so this is the one thing still missing. It is sent with every retail request and is redacted from diagnostics.",
+        "data": {
+          "postal_code": "Postal code"
+        },
+        "data_description": {
+          "postal_code": "Required for Germany when the estimate is selected; used for the grid-fee lookup. Not used otherwise."
+        }
+      },
+      "retail_formula": {
+        "title": "Your own formula",
+        "description": "Retail price = day-ahead price × factor + surcharge, in {unit}. Only these two numbers are used.",
+        "data": {
+          "retail_factor": "Factor (own formula)",
+          "retail_surcharge": "Surcharge per kWh incl. VAT (own formula)"
+        },
+        "data_description": {
+          "retail_factor": "Only used with your own formula. Multiplies the day-ahead price, e.g. 1.21 for 21% VAT.",
+          "retail_surcharge": "Only used with your own formula. Fixed amount per kWh including VAT, added after the factor, in the unit of the price sensors - e.g. 0.1350 for 13.50 ct/kWh. Supplier fees, energy tax and any per-kWh grid charge belong here. Grid charges that change with the time of day go into \"Time-of-day grid charges\" instead."
+        }
+      },
       "tariff_prefill": {
         "title": "Start from your grid operator",
         "description": "Pick your grid operator to prefill its windows and energy charge from the {source} collection. The date shows when that entry was last checked - compare the values with your own price sheet in the next steps. Leave it empty to type everything in yourself. Operators marked ⚠ have seasonal or several special periods, which are only partly prefilled.",
@@ -75,9 +97,6 @@
           "window_hours": "Best-window duration",
           "api_key": "API key (optional)",
           "retail_source": "Retail price",
-          "postal_code": "Postal code",
-          "retail_factor": "Factor (own formula)",
-          "retail_surcharge": "Surcharge per kWh incl. VAT (own formula)",
           "tou_source": "Time-of-day grid charges",
           "local_currency": "Show prices in local currency",
           "update_interval_minutes": "Update interval (minutes)",
@@ -92,9 +111,6 @@
           "window_hours": "Length of the cheapest and greenest continuous window.",
           "api_key": "Leave empty for public access. The key is stored in the Home Assistant config entry.",
           "retail_source": "Estimate: our assumption-based all-in price (grid fee, levies, VAT), only for DE, NL, DK, AT and NO; Germany needs a postal code. Own formula: day-ahead price × factor + surcharge, in every market. Either way the plans are then built on the retail price.",
-          "postal_code": "Required for Germany when the estimate is selected; used for the grid-fee lookup. Not used otherwise.",
-          "retail_factor": "Only used with your own formula. Multiplies the day-ahead price, e.g. 1.21 for 21% VAT.",
-          "retail_surcharge": "Only used with your own formula. Fixed amount per kWh including VAT, added after the factor, in the unit of the price sensors - e.g. 0.1350 for 13.50 ct/kWh. Supplier fees, energy tax and any per-kWh grid charge belong here. Grid charges that change with the time of day go into \"Time-of-day grid charges\" instead.",
           "tou_source": "Grid charges that change with the time of day, priced inside your own formula - its factor adds the VAT to them. Enter the windows and amounts from your price sheet; in Norway they can be prefilled from your grid operator, in Denmark they are looked up automatically. Needs \"Own formula\" as the retail price.",
           "local_currency": "Converts prices from euro into Czech koruna (CZ), Polish złoty (PL) or Swedish krona (SE1-SE4) at the ECB's daily reference rate. Denmark and Norway always get their own currency; all other markets stay in euro. Switching changes the unit of the price sensors, so Home Assistant starts their long-term statistics afresh.",
           "update_interval_minutes": "How often to poll the API. Data resolution is 15 minutes, so shorter intervals rarely add new information.",
@@ -114,9 +130,6 @@
           "window_hours": "Best-window duration",
           "api_key": "New API key (optional)",
           "retail_source": "Retail price",
-          "postal_code": "Postal code",
-          "retail_factor": "Factor (own formula)",
-          "retail_surcharge": "Surcharge per kWh incl. VAT (own formula)",
           "tou_source": "Time-of-day grid charges",
           "local_currency": "Show prices in local currency",
           "update_interval_minutes": "Update interval (minutes)",
@@ -130,9 +143,6 @@
           "horizon_hours": "The API reports the actually permitted horizon as a diagnostic sensor.",
           "window_hours": "Length of the cheapest and greenest continuous window.",
           "retail_source": "Estimate: our assumption-based all-in price (grid fee, levies, VAT), only for DE, NL, DK, AT and NO; Germany needs a postal code. Own formula: day-ahead price × factor + surcharge, in every market. Either way the plans are then built on the retail price.",
-          "postal_code": "Required for Germany when the estimate is selected; used for the grid-fee lookup. Not used otherwise.",
-          "retail_factor": "Only used with your own formula. Multiplies the day-ahead price, e.g. 1.21 for 21% VAT.",
-          "retail_surcharge": "Only used with your own formula. Fixed amount per kWh including VAT, added after the factor, in the unit of the price sensors - e.g. 0.1350 for 13.50 ct/kWh. Supplier fees, energy tax and any per-kWh grid charge belong here. Grid charges that change with the time of day go into \"Time-of-day grid charges\" instead.",
           "tou_source": "Grid charges that change with the time of day, priced inside your own formula - its factor adds the VAT to them. Enter the windows and amounts from your price sheet; in Norway they can be prefilled from your grid operator, in Denmark they are looked up automatically. Needs \"Own formula\" as the retail price.",
           "local_currency": "Converts prices from euro into Czech koruna (CZ), Polish złoty (PL) or Swedish krona (SE1-SE4) at the ECB's daily reference rate. Denmark and Norway always get their own currency; all other markets stay in euro. Switching changes the unit of the price sensors, so Home Assistant starts their long-term statistics afresh.",
           "update_interval_minutes": "How often to poll the API. Data resolution is 15 minutes, so shorter intervals rarely add new information.",

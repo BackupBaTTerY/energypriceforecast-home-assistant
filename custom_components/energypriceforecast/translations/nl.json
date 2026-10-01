@@ -2,6 +2,28 @@
   "title": "Energy Price Forecast EU",
   "config": {
     "step": {
+      "retail_postal": {
+        "title": "Postcode voor de schatting",
+        "description": "De schatting voor Duitsland rekent de netkosten per postcode; dat is het enige wat nog ontbreekt. De postcode gaat mee met elke aanvraag van de consumentenprijs en wordt in de diagnosegegevens afgeschermd.",
+        "data": {
+          "postal_code": "Postcode"
+        },
+        "data_description": {
+          "postal_code": "Nodig voor Duitsland als de schatting is gekozen; gebruikt voor de netkosten. Anders niet gebruikt."
+        }
+      },
+      "retail_formula": {
+        "title": "Je eigen formule",
+        "description": "Consumentenprijs = beursprijs × factor + toeslag, in {unit}. Alleen deze twee getallen worden gebruikt.",
+        "data": {
+          "retail_factor": "Factor (eigen formule)",
+          "retail_surcharge": "Toeslag per kWh incl. btw (eigen formule)"
+        },
+        "data_description": {
+          "retail_factor": "Alleen voor de eigen formule. Vermenigvuldigt de beursprijs, bijv. 1.21 voor 21% btw.",
+          "retail_surcharge": "Alleen voor de eigen formule. Vast bedrag per kWh inclusief btw, opgeteld na de factor, in de eenheid van de prijssensoren – bijv. 0.1350 voor 13,50 ct/kWh. Hier horen de inkoopvergoeding van je leverancier, de energiebelasting en eventuele netkosten per kWh. Netkosten die met het tijdstip veranderen, horen in plaats daarvan bij \"Tijdsafhankelijke netkosten\"."
+        }
+      },
       "tariff_prefill": {
         "title": "Uitgaan van je netbeheerder",
         "description": "Kies je netbeheerder om de tijdvakken en het energietarief in te vullen uit de verzameling {source}. De datum toont wanneer die gegevens voor het laatst zijn gecontroleerd - vergelijk ze in de volgende stappen met je eigen tariefblad. Laat leeg om alles zelf in te vullen. Netbeheerders met ⚠ hebben seizoens- of meerdere afwijkende perioden, die maar deels worden ingevuld.",
@@ -75,9 +97,6 @@
           "window_hours": "Duur van het beste tijdvak",
           "api_key": "API-sleutel (optioneel)",
           "retail_source": "Consumentenprijs",
-          "postal_code": "Postcode",
-          "retail_factor": "Factor (eigen formule)",
-          "retail_surcharge": "Toeslag per kWh incl. btw (eigen formule)",
           "tou_source": "Tijdsafhankelijke netkosten",
           "local_currency": "Prijzen in lokale valuta tonen",
           "update_interval_minutes": "Bijwerkinterval (minuten)",
@@ -92,9 +111,6 @@
           "window_hours": "Lengte van het goedkoopste en groenste aaneengesloten tijdvak.",
           "api_key": "Laat leeg voor publieke toegang. De sleutel wordt opgeslagen in het Home Assistant-configuratie-item.",
           "retail_source": "Schatting: onze op aannames gebaseerde alles-in prijs (netkosten, heffingen, btw), alleen voor DE, NL, DK, AT en NO; Duitsland heeft een postcode nodig. Eigen formule: beursprijs × factor + toeslag, in elke markt. In beide gevallen worden de plannen op de consumentenprijs gebaseerd.",
-          "postal_code": "Nodig voor Duitsland als de schatting is gekozen; gebruikt voor de netkosten. Anders niet gebruikt.",
-          "retail_factor": "Alleen voor de eigen formule. Vermenigvuldigt de beursprijs, bijv. 1.21 voor 21% btw.",
-          "retail_surcharge": "Alleen voor de eigen formule. Vast bedrag per kWh inclusief btw, opgeteld na de factor, in de eenheid van de prijssensoren – bijv. 0.1350 voor 13,50 ct/kWh. Hier horen de inkoopvergoeding van je leverancier, de energiebelasting en eventuele netkosten per kWh. Netkosten die met het tijdstip veranderen, horen in plaats daarvan bij \"Tijdsafhankelijke netkosten\".",
           "tou_source": "Netkosten die met het tijdstip veranderen, worden in je eigen formule meegerekend - de factor telt er de btw bij op. Vul de tijdvakken en bedragen van je tariefblad in; in Noorwegen kunnen ze vanuit je netbeheerder worden ingevuld, in Denemarken worden ze automatisch opgezocht. Vereist \"Eigen formule\" als consumentenprijs.",
           "local_currency": "Rekent de prijzen met de dagelijkse referentiekoers van de ECB om van euro naar Tsjechische kronen (CZ), Poolse zloty (PL) of Zweedse kronen (SE1-SE4). Denemarken en Noorwegen krijgen altijd hun eigen valuta; alle andere markten blijven in euro. Omschakelen verandert de eenheid van de prijssensoren, waardoor Home Assistant hun langetermijnstatistieken opnieuw begint.",
           "update_interval_minutes": "Hoe vaak de API wordt bevraagd. De gegevensresolutie is 15 minuten, dus kortere intervallen leveren zelden nieuwe informatie op.",
@@ -114,9 +130,6 @@
           "window_hours": "Duur van het beste tijdvak",
           "api_key": "Nieuwe API-sleutel (optioneel)",
           "retail_source": "Consumentenprijs",
-          "postal_code": "Postcode",
-          "retail_factor": "Factor (eigen formule)",
-          "retail_surcharge": "Toeslag per kWh incl. btw (eigen formule)",
           "tou_source": "Tijdsafhankelijke netkosten",
           "local_currency": "Prijzen in lokale valuta tonen",
           "update_interval_minutes": "Bijwerkinterval (minuten)",
@@ -130,9 +143,6 @@
           "horizon_hours": "De API meldt de daadwerkelijk toegestane horizon als een diagnostische sensor.",
           "window_hours": "Lengte van het goedkoopste en groenste aaneengesloten tijdvak.",
           "retail_source": "Schatting: onze op aannames gebaseerde alles-in prijs (netkosten, heffingen, btw), alleen voor DE, NL, DK, AT en NO; Duitsland heeft een postcode nodig. Eigen formule: beursprijs × factor + toeslag, in elke markt. In beide gevallen worden de plannen op de consumentenprijs gebaseerd.",
-          "postal_code": "Nodig voor Duitsland als de schatting is gekozen; gebruikt voor de netkosten. Anders niet gebruikt.",
-          "retail_factor": "Alleen voor de eigen formule. Vermenigvuldigt de beursprijs, bijv. 1.21 voor 21% btw.",
-          "retail_surcharge": "Alleen voor de eigen formule. Vast bedrag per kWh inclusief btw, opgeteld na de factor, in de eenheid van de prijssensoren – bijv. 0.1350 voor 13,50 ct/kWh. Hier horen de inkoopvergoeding van je leverancier, de energiebelasting en eventuele netkosten per kWh. Netkosten die met het tijdstip veranderen, horen in plaats daarvan bij \"Tijdsafhankelijke netkosten\".",
           "tou_source": "Netkosten die met het tijdstip veranderen, worden in je eigen formule meegerekend - de factor telt er de btw bij op. Vul de tijdvakken en bedragen van je tariefblad in; in Noorwegen kunnen ze vanuit je netbeheerder worden ingevuld, in Denemarken worden ze automatisch opgezocht. Vereist \"Eigen formule\" als consumentenprijs.",
           "local_currency": "Rekent de prijzen met de dagelijkse referentiekoers van de ECB om van euro naar Tsjechische kronen (CZ), Poolse zloty (PL) of Zweedse kronen (SE1-SE4). Denemarken en Noorwegen krijgen altijd hun eigen valuta; alle andere markten blijven in euro. Omschakelen verandert de eenheid van de prijssensoren, waardoor Home Assistant hun langetermijnstatistieken opnieuw begint.",
           "update_interval_minutes": "Hoe vaak de API wordt bevraagd. De gegevensresolutie is 15 minuten, dus kortere intervallen leveren zelden nieuwe informatie op.",

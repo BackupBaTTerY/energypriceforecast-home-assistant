@@ -30,6 +30,10 @@ REQUIRED_SECTIONS = (
     ("selector", "retail_source", "options"),
     ("selector", "tou_source", "options"),
     ("selector", "tou_weekend", "options"),
+    # The retail steps: a missing label would show the raw key.
+    ("config", "step", "retail_postal", "data"),
+    ("config", "step", "retail_formula", "data"),
+    ("config", "step", "retail_formula", "data_description"),
     # The network tariff steps of 1.7.0: a missing label shows the raw key.
     ("config", "step", "tariff_prefill", "data"),
     ("config", "step", "tariff_windows", "data"),

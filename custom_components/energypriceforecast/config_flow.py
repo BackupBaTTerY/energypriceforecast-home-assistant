@@ -99,6 +99,7 @@ from .const import (
     MIN_RETAIL_SURCHARGE,
     MIN_TOU_RATE,
     MIN_UPDATE_INTERVAL_MINUTES,
+    POSTAL_CODE_MARKETS,
     PRICES_API_URL,
     RETAIL_MARKETS,
     RETAIL_SOURCE_ESTIMATE,
@@ -202,37 +203,6 @@ def _schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                     options=list(RETAIL_SOURCES),
                     translation_key=CONF_RETAIL_SOURCE,
                     mode=SelectSelectorMode.DROPDOWN,
-                )
-            ),
-            vol.Optional(
-                CONF_POSTAL_CODE, default=defaults.get(CONF_POSTAL_CODE, "")
-            ): TextSelector(TextSelectorConfig(type=TextSelectorType.TEXT)),
-            # Shown to every market, like the postal code: the form cannot
-            # change with the selection above, so the descriptions say which
-            # fields belong to which source.
-            # Money is entered to whatever precision the contract states, and
-            # Home Assistant refuses a numeric step below 0.001: "any" is the
-            # only step that neither blocks 0.1350 nor marks it invalid.
-            vol.Optional(
-                CONF_RETAIL_FACTOR,
-                default=defaults.get(CONF_RETAIL_FACTOR, DEFAULT_RETAIL_FACTOR),
-            ): NumberSelector(
-                NumberSelectorConfig(
-                    min=MIN_RETAIL_FACTOR,
-                    max=MAX_RETAIL_FACTOR,
-                    step="any",
-                    mode=NumberSelectorMode.BOX,
-                )
-            ),
-            vol.Optional(
-                CONF_RETAIL_SURCHARGE,
-                default=defaults.get(CONF_RETAIL_SURCHARGE, DEFAULT_RETAIL_SURCHARGE),
-            ): NumberSelector(
-                NumberSelectorConfig(
-                    min=MIN_RETAIL_SURCHARGE,
-                    max=MAX_RETAIL_SURCHARGE,
-                    step="any",
-                    mode=NumberSelectorMode.BOX,
                 )
             ),
             # A checkbox, not a currency dropdown: every market sees the same
@@ -476,6 +446,64 @@ def _validate_tariff_selection(data: dict[str, Any]) -> str | None:
     return None
 
 
+def _postal_schema(defaults: dict[str, Any]) -> vol.Schema:
+    """The one thing the German estimate needs on top of the market."""
+    return vol.Schema(
+        {
+            vol.Required(
+                CONF_POSTAL_CODE, default=str(defaults.get(CONF_POSTAL_CODE, ""))
+            ): TextSelector(TextSelectorConfig(type=TextSelectorType.TEXT)),
+        }
+    )
+
+
+def _formula_schema(defaults: dict[str, Any]) -> vol.Schema:
+    """Factor and surcharge, and nothing else.
+
+    Money is entered to whatever precision the contract states, and Home
+    Assistant refuses a numeric step below 0.001: "any" is the only step
+    that neither blocks 0.1350 nor marks it invalid.
+    """
+    amount = NumberSelectorConfig(
+        min=MIN_RETAIL_SURCHARGE,
+        max=MAX_RETAIL_SURCHARGE,
+        step="any",
+        mode=NumberSelectorMode.BOX,
+    )
+    return vol.Schema(
+        {
+            vol.Optional(
+                CONF_RETAIL_FACTOR,
+                default=float(
+                    defaults.get(CONF_RETAIL_FACTOR, DEFAULT_RETAIL_FACTOR)
+                ),
+            ): NumberSelector(
+                NumberSelectorConfig(
+                    min=MIN_RETAIL_FACTOR,
+                    max=MAX_RETAIL_FACTOR,
+                    step="any",
+                    mode=NumberSelectorMode.BOX,
+                )
+            ),
+            vol.Optional(
+                CONF_RETAIL_SURCHARGE,
+                default=float(
+                    defaults.get(CONF_RETAIL_SURCHARGE, DEFAULT_RETAIL_SURCHARGE)
+                ),
+            ): NumberSelector(amount),
+        }
+    )
+
+
+def _validate_postal_code(value: Any) -> str | None:
+    postal_code = str(value or "").strip()
+    if not postal_code:
+        return "postal_code_required"
+    if not _POSTAL_CODE_RE.match(postal_code):
+        return "invalid_postal_code"
+    return None
+
+
 def _normalize_input(user_input: dict[str, Any]) -> dict[str, Any]:
     normalized = dict(user_input)
     normalized[CONF_MARKET] = str(normalized[CONF_MARKET]).upper()
@@ -490,12 +518,12 @@ def _normalize_input(user_input: dict[str, Any]) -> dict[str, Any]:
     normalized[CONF_RETAIL_SOURCE] = (
         source if source in RETAIL_SOURCES else RETAIL_SOURCE_OFF
     )
-    normalized[CONF_RETAIL_FACTOR] = float(
-        normalized.get(CONF_RETAIL_FACTOR, DEFAULT_RETAIL_FACTOR)
-    )
-    normalized[CONF_RETAIL_SURCHARGE] = float(
-        normalized.get(CONF_RETAIL_SURCHARGE, DEFAULT_RETAIL_SURCHARGE)
-    )
+    # Factor and surcharge are asked for in a step of their own, so they are
+    # only normalised when that step actually sent them. Defaulting them here
+    # would overwrite what is stored whenever the first form is saved again.
+    for key in (CONF_RETAIL_FACTOR, CONF_RETAIL_SURCHARGE):
+        if key in normalized:
+            normalized[key] = float(normalized[key])
     # The checkbox this replaced lives on only in the migration.
     normalized.pop(CONF_RETAIL_PRICING, None)
     source = str(normalized.get(CONF_TOU_SOURCE, TOU_SOURCE_OFF))
@@ -536,28 +564,20 @@ def _normalize_input(user_input: dict[str, Any]) -> dict[str, Any]:
 
 
 def _validate_retail_selection(data: dict[str, Any]) -> str | None:
-    """Check the retail-pricing selection without calling the API.
+    """Check the retail choice itself, without calling the API.
 
-    Returns an error code for ``errors["base"]``, or None if the selection
-    is consistent.
+    Only what this form can decide: whether the estimate exists for this
+    market at all. The postal code and the formula's two numbers are asked
+    for in a step of their own, and are checked there - which is also why
+    neither is in this form any more.
     """
     source = data.get(CONF_RETAIL_SOURCE, RETAIL_SOURCE_OFF)
-    if source == RETAIL_SOURCE_OFF:
-        return None
-    if source == RETAIL_SOURCE_FORMULA:
-        # Every market can use a formula. A factor of 0 or below would make
-        # every hour cost the same or turn the ranking upside down.
-        if not data.get(CONF_RETAIL_FACTOR, DEFAULT_RETAIL_FACTOR) > 0:
-            return "invalid_retail_factor"
+    if source != RETAIL_SOURCE_ESTIMATE:
+        # A formula works in every market; its numbers are checked in the
+        # step that asks for them.
         return None
     if data[CONF_MARKET] not in RETAIL_MARKETS:
         return "retail_not_supported"
-    postal_code = data.get(CONF_POSTAL_CODE)
-    if data[CONF_MARKET] == "DE":
-        if not postal_code:
-            return "postal_code_required"
-        if not _POSTAL_CODE_RE.match(postal_code):
-            return "invalid_postal_code"
     return None
 
 
@@ -580,8 +600,8 @@ def _validate_cheapest_hours_selection(data: dict[str, Any]) -> str | None:
     return None
 
 
-async def _validate_input(hass: HomeAssistant, data: dict[str, Any]) -> None:
-    api = EnergyPriceForecastApi(
+def _api_for(hass: HomeAssistant, data: dict[str, Any]) -> EnergyPriceForecastApi:
+    return EnergyPriceForecastApi(
         session=async_get_clientsession(hass),
         base_url=DEFAULT_API_URL,
         prices_url=PRICES_API_URL,
@@ -594,19 +614,30 @@ async def _validate_input(hass: HomeAssistant, data: dict[str, Any]) -> None:
             data.get(CONF_LOCAL_CURRENCY, DEFAULT_LOCAL_CURRENCY),
         ),
     )
-    await api.async_get_summary()
-    # Only the estimate comes from the API and can fail there; the formula is
-    # computed from the base series the summary check above already reached.
-    if data.get(CONF_RETAIL_SOURCE) == RETAIL_SOURCE_ESTIMATE:
-        try:
-            await api.async_get_prices(
-                price_mode="retail", postal_code=data.get(CONF_POSTAL_CODE)
-            )
-        except (
-            EnergyPriceForecastConnectionError,
-            EnergyPriceForecastInvalidResponse,
-        ) as err:
-            raise EnergyPriceForecastRetailUnavailable(str(err)) from err
+
+
+async def _validate_input(hass: HomeAssistant, data: dict[str, Any]) -> None:
+    """Reach the API with the market, horizon and key the form carries."""
+    await _api_for(hass, data).async_get_summary()
+
+
+async def _validate_retail_access(hass: HomeAssistant, data: dict[str, Any]) -> None:
+    """Ask the API for the estimate, with the postal code if there is one.
+
+    Separate from _validate_input because the postal code is collected in a
+    later step now: probing before it is known would fail for Germany every
+    single time. Only the estimate comes from the API and can fail there;
+    a formula is computed from the base series the summary check reached.
+    """
+    try:
+        await _api_for(hass, data).async_get_prices(
+            price_mode="retail", postal_code=data.get(CONF_POSTAL_CODE)
+        )
+    except (
+        EnergyPriceForecastConnectionError,
+        EnergyPriceForecastInvalidResponse,
+    ) as err:
+        raise EnergyPriceForecastRetailUnavailable(str(err)) from err
 
 
 # The keys each tariff source keeps. Everything else of the tariff is dropped
@@ -630,6 +661,16 @@ _MANUAL_KEYS = frozenset(
     }
 )
 _TARIFF_KEYS = _MANUAL_KEYS | {CONF_TOU_TARIFF}
+# The same idea for the retail price: a postal code belongs to the estimate,
+# factor and surcharge to the formula, and neither to "off".
+_RETAIL_KEYS = frozenset(
+    {CONF_POSTAL_CODE, CONF_RETAIL_FACTOR, CONF_RETAIL_SURCHARGE}
+)
+_KEPT_RETAIL_KEYS = {
+    RETAIL_SOURCE_OFF: frozenset(),
+    RETAIL_SOURCE_ESTIMATE: frozenset({CONF_POSTAL_CODE}),
+    RETAIL_SOURCE_FORMULA: frozenset({CONF_RETAIL_FACTOR, CONF_RETAIL_SURCHARGE}),
+}
 _KEPT_TARIFF_KEYS = {
     TOU_SOURCE_OFF: frozenset(),
     TOU_SOURCE_MANUAL: _MANUAL_KEYS,
@@ -687,6 +728,7 @@ class EnergyPriceForecastConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 or _validate_tariff_selection(normalized)
                 or _validate_cheapest_hours_selection(normalized)
                 or await self._async_check(normalized)
+                or await self._async_check_retail_if_complete(normalized)
             )
             if error is None:
                 self._data = normalized
@@ -729,11 +771,14 @@ class EnergyPriceForecastConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     or _validate_tariff_selection(normalized)
                     or _validate_cheapest_hours_selection(normalized)
                     or await self._async_check(normalized)
+                    or await self._async_check_retail_if_complete(normalized)
                 )
                 if error is None:
-                    # The tariff's own fields are asked in the steps after
-                    # this one; what is stored now is what they start from.
-                    stored = {k: v for k, v in entry.data.items() if k in _TARIFF_KEYS}
+                    # The retail details and the tariff are asked in the
+                    # steps after this one; what is stored now is what they
+                    # start from.
+                    kept = _TARIFF_KEYS | _RETAIL_KEYS
+                    stored = {k: v for k, v in entry.data.items() if k in kept}
                     self._data = {**stored, **normalized}
                     return await self._async_next_step()
                 errors["base"] = error
@@ -745,7 +790,93 @@ class EnergyPriceForecastConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
+    async def _async_check_retail(self, data: dict[str, Any]) -> str | None:
+        """Ask the API whether it can price this market and postal code."""
+        try:
+            await _validate_retail_access(self.hass, data)
+        except EnergyPriceForecastRetailUnavailable:
+            return "retail_unavailable"
+        except EnergyPriceForecastAuthError:
+            return "invalid_auth"
+        except EnergyPriceForecastConnectionError:
+            return "cannot_connect"
+        except EnergyPriceForecastInvalidResponse:
+            return "invalid_response"
+        return None
+
+    async def _async_check_retail_if_complete(
+        self, data: dict[str, Any]
+    ) -> str | None:
+        """Probe the estimate as soon as everything it needs is known.
+
+        In Germany that is only after the postal-code step, so there is
+        nothing to probe here yet.
+        """
+        if data.get(CONF_RETAIL_SOURCE) != RETAIL_SOURCE_ESTIMATE:
+            return None
+        if data.get(CONF_MARKET) in POSTAL_CODE_MARKETS:
+            return None
+        return await self._async_check_retail(data)
+
     async def _async_next_step(self) -> ConfigFlowResult:
+        """Ask for what the chosen retail source needs, then the tariff."""
+        source = self._data.get(CONF_RETAIL_SOURCE, RETAIL_SOURCE_OFF)
+        if (
+            source == RETAIL_SOURCE_ESTIMATE
+            and self._data.get(CONF_MARKET) in POSTAL_CODE_MARKETS
+        ):
+            return await self.async_step_retail_postal()
+        if source == RETAIL_SOURCE_FORMULA:
+            return await self.async_step_retail_formula()
+        return await self._async_tariff_step()
+
+    async def async_step_retail_postal(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """The postal code the German estimate needs, and nothing else."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            postal_code = str(user_input.get(CONF_POSTAL_CODE, "")).strip()
+            error = _validate_postal_code(postal_code)
+            if error is None:
+                error = await self._async_check_retail(
+                    {**self._data, CONF_POSTAL_CODE: postal_code}
+                )
+            if error is None:
+                self._data[CONF_POSTAL_CODE] = postal_code
+                return await self._async_tariff_step()
+            errors["base"] = error
+        return self.async_show_form(
+            step_id="retail_postal",
+            data_schema=_postal_schema({**self._data, **(user_input or {})}),
+            errors=errors,
+        )
+
+    async def async_step_retail_formula(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """The two numbers of the formula, and nothing else."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            factor = float(user_input.get(CONF_RETAIL_FACTOR, DEFAULT_RETAIL_FACTOR))
+            surcharge = float(
+                user_input.get(CONF_RETAIL_SURCHARGE, DEFAULT_RETAIL_SURCHARGE)
+            )
+            # A factor of zero or below would make every hour cost the same
+            # or turn the ranking upside down.
+            if factor > 0:
+                self._data[CONF_RETAIL_FACTOR] = factor
+                self._data[CONF_RETAIL_SURCHARGE] = surcharge
+                return await self._async_tariff_step()
+            errors["base"] = "invalid_retail_factor"
+        return self.async_show_form(
+            step_id="retail_formula",
+            data_schema=_formula_schema({**self._data, **(user_input or {})}),
+            errors=errors,
+            description_placeholders={"unit": _price_unit(self._data)},
+        )
+
+    async def _async_tariff_step(self) -> ConfigFlowResult:
         """Ask for the network tariff if one was chosen, otherwise save."""
         source = self._data.get(CONF_TOU_SOURCE, TOU_SOURCE_OFF)
         if source == TOU_SOURCE_DATAHUB:
@@ -759,10 +890,17 @@ class EnergyPriceForecastConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def _async_save(self) -> ConfigFlowResult:
         source = self._data.get(CONF_TOU_SOURCE, TOU_SOURCE_OFF)
         kept = _KEPT_TARIFF_KEYS.get(source, frozenset())
+        retail = self._data.get(CONF_RETAIL_SOURCE, RETAIL_SOURCE_OFF)
+        kept_retail = set(_KEPT_RETAIL_KEYS.get(retail, frozenset()))
+        if self._data.get(CONF_MARKET) not in POSTAL_CODE_MARKETS:
+            # Only asked for where the grid fee is local, so a market change
+            # does not leave a German postal code on a Dutch estimate.
+            kept_retail.discard(CONF_POSTAL_CODE)
         data = {
             key: value
             for key, value in self._data.items()
-            if key not in _TARIFF_KEYS or key in kept
+            if (key not in _TARIFF_KEYS or key in kept)
+            and (key not in _RETAIL_KEYS or key in kept_retail)
         }
         if self._entry is not None:
             return self.async_update_reload_and_abort(

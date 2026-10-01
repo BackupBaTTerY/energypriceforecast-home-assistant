@@ -12,6 +12,7 @@ from custom_components.energypriceforecast.api import (
 from custom_components.energypriceforecast.config_flow import (
     _schema,
     _validate_cheapest_hours_selection,
+    _validate_postal_code,
     _validate_retail_selection,
 )
 from custom_components.energypriceforecast import async_migrate_entry
@@ -20,8 +21,6 @@ from custom_components.energypriceforecast.const import (
     CONF_CHEAPEST_HOURS_WINDOW_HOURS,
     CONF_HORIZON_HOURS,
     CONF_MARKET,
-    CONF_POSTAL_CODE,
-    CONF_RETAIL_FACTOR,
     CONF_RETAIL_SOURCE,
     DOMAIN,
     HORIZON_HOURS_OPTIONS,
@@ -41,10 +40,26 @@ BASE_USER_INPUT = {
     "window_hours": 4,
     "api_key": "",
     "retail_source": "off",
-    "postal_code": "",
     "update_interval_minutes": 30,
     "cheapest_hours_count": 0,
 }
+
+
+async def _formula_step(hass, result, factor=1.19, surcharge=0.1):
+    """Walk through the step that asks for the formula's two numbers."""
+    assert result["step_id"] == "retail_formula"
+    return await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {"retail_factor": factor, "retail_surcharge": surcharge},
+    )
+
+
+async def _postal_step(hass, result, postal_code="10115"):
+    """Walk through the step that asks for the German postal code."""
+    assert result["step_id"] == "retail_postal"
+    return await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"postal_code": postal_code}
+    )
 
 
 async def test_user_flow(hass) -> None:
@@ -102,14 +117,16 @@ async def test_user_flow_accepts_an_own_formula_in_any_market(hass) -> None:
         )
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"],
-            {
-                **BASE_USER_INPUT,
-                "market": "BE",
-                "retail_source": "formula",
-                "retail_factor": 1.21,
-                "retail_surcharge": 0.02,
-            },
+            {**BASE_USER_INPUT, "market": "BE", "retail_source": "formula"},
         )
+        # The first form no longer asks for the numbers: they get a step of
+        # their own, and only when a formula was chosen.
+        assert result["step_id"] == "retail_formula"
+        assert {str(key) for key in result["data_schema"].schema} == {
+            "retail_factor",
+            "retail_surcharge",
+        }
+        result = await _formula_step(hass, result, factor=1.21, surcharge=0.02)
 
     assert result["type"] is data_entry_flow.FlowResultType.CREATE_ENTRY
     assert result["data"]["retail_source"] == "formula"
@@ -119,12 +136,19 @@ async def test_user_flow_accepts_an_own_formula_in_any_market(hass) -> None:
     assert "postal_code" not in result["data"]
 
 
-async def test_user_flow_requires_postal_code_for_the_german_estimate(hass) -> None:
-    """Germany needs a postal code before the estimate can be validated."""
-    with patch(
-        "custom_components.energypriceforecast.config_flow._validate_input",
-        new=AsyncMock(return_value=None),
-    ) as mock_validate:
+async def test_the_german_estimate_asks_for_the_postal_code_alone(hass) -> None:
+    """One field, in a step of its own, and only where it is needed."""
+    with (
+        patch(
+            "custom_components.energypriceforecast.config_flow._validate_input",
+            new=AsyncMock(return_value=None),
+        ),
+        patch(
+            "custom_components.energypriceforecast.config_flow"
+            "._validate_retail_access",
+            new=AsyncMock(return_value=None),
+        ),
+    ):
         result = await hass.config_entries.flow.async_init(
             DOMAIN, context={"source": config_entries.SOURCE_USER}
         )
@@ -132,10 +156,68 @@ async def test_user_flow_requires_postal_code_for_the_german_estimate(hass) -> N
             result["flow_id"],
             {**BASE_USER_INPUT, "market": "DE", "retail_source": "estimate"},
         )
+        assert result["step_id"] == "retail_postal"
+        assert {str(key) for key in result["data_schema"].schema} == {"postal_code"}
 
-    assert result["type"] is data_entry_flow.FlowResultType.FORM
-    assert result["errors"]["base"] == "postal_code_required"
-    mock_validate.assert_not_called()
+        # Submitting it empty is where "it is required" belongs now.
+        empty = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"postal_code": ""}
+        )
+        assert empty["step_id"] == "retail_postal"
+        assert empty["errors"]["base"] == "postal_code_required"
+
+        result = await _postal_step(hass, empty)
+
+    assert result["type"] is data_entry_flow.FlowResultType.CREATE_ENTRY
+    assert result["data"]["postal_code"] == "10115"
+    # Nothing of the formula is stored for an estimate.
+    assert "retail_factor" not in result["data"]
+
+
+async def test_an_estimate_outside_germany_asks_for_nothing_more(hass) -> None:
+    """Every other estimate market uses country-wide assumptions."""
+    with (
+        patch(
+            "custom_components.energypriceforecast.config_flow._validate_input",
+            new=AsyncMock(return_value=None),
+        ),
+        patch(
+            "custom_components.energypriceforecast.config_flow"
+            "._validate_retail_access",
+            new=AsyncMock(return_value=None),
+        ) as mock_retail,
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {**BASE_USER_INPUT, "market": "NL", "retail_source": "estimate"},
+        )
+
+    assert result["type"] is data_entry_flow.FlowResultType.CREATE_ENTRY
+    assert "postal_code" not in result["data"]
+    # The estimate is still probed - just without a postal code to wait for.
+    mock_retail.assert_awaited_once()
+
+
+async def test_retail_off_asks_for_nothing_at_all(hass) -> None:
+    with patch(
+        "custom_components.energypriceforecast.config_flow._validate_input",
+        new=AsyncMock(return_value=None),
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], BASE_USER_INPUT
+        )
+
+    assert result["type"] is data_entry_flow.FlowResultType.CREATE_ENTRY
+    assert not any(
+        key in result["data"]
+        for key in ("postal_code", "retail_factor", "retail_surcharge")
+    )
 
 
 async def test_reconfigure_drops_the_old_retail_checkbox(hass) -> None:
@@ -166,13 +248,9 @@ async def test_reconfigure_drops_the_old_retail_checkbox(hass) -> None:
         result = await entry.start_reconfigure_flow(hass)
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"],
-            {
-                **BASE_USER_INPUT,
-                "retail_source": "formula",
-                "retail_factor": 1.19,
-                "retail_surcharge": 0.25,
-            },
+            {**BASE_USER_INPUT, "retail_source": "formula"},
         )
+        result = await _formula_step(hass, result, factor=1.19, surcharge=0.25)
         await hass.async_block_till_done()
 
     assert result["type"] is data_entry_flow.FlowResultType.ABORT
@@ -180,52 +258,106 @@ async def test_reconfigure_drops_the_old_retail_checkbox(hass) -> None:
     assert entry.data["retail_source"] == "formula"
     assert entry.data["retail_factor"] == pytest.approx(1.19)
     assert "retail_pricing" not in entry.data
+    # The postal code belonged to the estimate it just left.
+    assert "postal_code" not in entry.data
+
+
+async def test_moving_an_estimate_out_of_germany_drops_the_postal_code(hass) -> None:
+    """Only Germany prices the grid fee locally, so elsewhere the code would
+    be sent with every request without ever being used."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        version=3,
+        unique_id="DE",
+        data={
+            **BASE_USER_INPUT,
+            "retail_source": "estimate",
+            "postal_code": "10115",
+        },
+    )
+    entry.add_to_hass(hass)
+    with (
+        patch(
+            "custom_components.energypriceforecast.config_flow._validate_input",
+            new=AsyncMock(return_value=None),
+        ),
+        patch(
+            "custom_components.energypriceforecast.config_flow"
+            "._validate_retail_access",
+            new=AsyncMock(return_value=None),
+        ),
+        patch(
+            "custom_components.energypriceforecast.async_setup_entry",
+            return_value=True,
+        ),
+    ):
+        result = await entry.start_reconfigure_flow(hass)
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {**BASE_USER_INPUT, "market": "NL", "retail_source": "estimate"},
+        )
+        await hass.async_block_till_done()
+
+    assert result["type"] is data_entry_flow.FlowResultType.ABORT
+    assert entry.data["market"] == "NL"
+    assert entry.data["retail_source"] == "estimate"
+    assert "postal_code" not in entry.data
 
 
 async def test_user_flow_rejects_malformed_postal_code(hass) -> None:
-    """A postal code that is not 5 digits fails validation locally."""
-    with patch(
-        "custom_components.energypriceforecast.config_flow._validate_input",
-        new=AsyncMock(return_value=None),
-    ) as mock_validate:
-        result = await hass.config_entries.flow.async_init(
-            DOMAIN, context={"source": config_entries.SOURCE_USER}
-        )
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {
-                **BASE_USER_INPUT,
-                "market": "DE",
-                "retail_source": "estimate",
-                "postal_code": "abc",
-            },
-        )
-
-    assert result["type"] is data_entry_flow.FlowResultType.FORM
-    assert result["errors"]["base"] == "invalid_postal_code"
-    mock_validate.assert_not_called()
-
-
-async def test_user_flow_surfaces_retail_unavailable_error(hass) -> None:
-    """A retail-probe failure from the API maps to its own error message."""
-    with patch(
-        "custom_components.energypriceforecast.config_flow._validate_input",
-        new=AsyncMock(side_effect=EnergyPriceForecastRetailUnavailable("boom")),
+    """A postal code that is not 5 digits fails before any API call."""
+    with (
+        patch(
+            "custom_components.energypriceforecast.config_flow._validate_input",
+            new=AsyncMock(return_value=None),
+        ),
+        patch(
+            "custom_components.energypriceforecast.config_flow"
+            "._validate_retail_access",
+            new=AsyncMock(return_value=None),
+        ) as mock_retail,
     ):
         result = await hass.config_entries.flow.async_init(
             DOMAIN, context={"source": config_entries.SOURCE_USER}
         )
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"],
-            {
-                **BASE_USER_INPUT,
-                "market": "DE",
-                "retail_source": "estimate",
-                "postal_code": "10115",
-            },
+            {**BASE_USER_INPUT, "market": "DE", "retail_source": "estimate"},
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"postal_code": "abc"}
         )
 
-    assert result["type"] is data_entry_flow.FlowResultType.FORM
+    assert result["step_id"] == "retail_postal"
+    assert result["errors"]["base"] == "invalid_postal_code"
+    mock_retail.assert_not_awaited()
+
+
+async def test_user_flow_surfaces_retail_unavailable_error(hass) -> None:
+    """A failed probe is reported where the postal code was entered."""
+    with (
+        patch(
+            "custom_components.energypriceforecast.config_flow._validate_input",
+            new=AsyncMock(return_value=None),
+        ),
+        patch(
+            "custom_components.energypriceforecast.config_flow"
+            "._validate_retail_access",
+            new=AsyncMock(side_effect=EnergyPriceForecastRetailUnavailable("boom")),
+        ),
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {**BASE_USER_INPUT, "market": "DE", "retail_source": "estimate"},
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"postal_code": "10115"}
+        )
+
+    assert result["step_id"] == "retail_postal"
     assert result["errors"]["base"] == "retail_unavailable"
 
 
@@ -375,22 +507,36 @@ def test_schema_default_horizon_survives_validation_when_stored_as_int() -> None
 @pytest.mark.parametrize(
     ("data", "expected_error"),
     [
-        ({CONF_MARKET: "DE", CONF_RETAIL_SOURCE: "off", CONF_POSTAL_CODE: None}, None),
-        ({CONF_MARKET: "BE", CONF_RETAIL_SOURCE: "estimate", CONF_POSTAL_CODE: None}, "retail_not_supported"),
-        ({CONF_MARKET: "DE", CONF_RETAIL_SOURCE: "estimate", CONF_POSTAL_CODE: None}, "postal_code_required"),
-        ({CONF_MARKET: "DE", CONF_RETAIL_SOURCE: "estimate", CONF_POSTAL_CODE: "1234"}, "invalid_postal_code"),
-        ({CONF_MARKET: "DE", CONF_RETAIL_SOURCE: "estimate", CONF_POSTAL_CODE: "10115"}, None),
-        ({CONF_MARKET: "NL", CONF_RETAIL_SOURCE: "estimate", CONF_POSTAL_CODE: None}, None),
-        # The formula works everywhere and needs no postal code, not even in DE.
-        ({CONF_MARKET: "BE", CONF_RETAIL_SOURCE: "formula", CONF_RETAIL_FACTOR: 1.21}, None),
-        ({CONF_MARKET: "DE", CONF_RETAIL_SOURCE: "formula", CONF_RETAIL_FACTOR: 1.19, CONF_POSTAL_CODE: None}, None),
-        ({CONF_MARKET: "CH", CONF_RETAIL_SOURCE: "formula", CONF_RETAIL_FACTOR: 0.0}, "invalid_retail_factor"),
-        ({CONF_MARKET: "NL", CONF_RETAIL_SOURCE: "formula", CONF_RETAIL_FACTOR: -1.21}, "invalid_retail_factor"),
+        ({CONF_MARKET: "DE", CONF_RETAIL_SOURCE: "off"}, None),
+        ({CONF_MARKET: "BE", CONF_RETAIL_SOURCE: "estimate"}, "retail_not_supported"),
+        ({CONF_MARKET: "CH", CONF_RETAIL_SOURCE: "estimate"}, "retail_not_supported"),
+        ({CONF_MARKET: "DE", CONF_RETAIL_SOURCE: "estimate"}, None),
+        ({CONF_MARKET: "NL", CONF_RETAIL_SOURCE: "estimate"}, None),
+        # A formula works in every market, and its numbers are checked in the
+        # step that asks for them rather than here.
+        ({CONF_MARKET: "BE", CONF_RETAIL_SOURCE: "formula"}, None),
+        ({CONF_MARKET: "CH", CONF_RETAIL_SOURCE: "formula"}, None),
     ],
 )
 def test_validate_retail_selection(data, expected_error) -> None:
-    """The synchronous pre-check matches each documented rule."""
+    """The first form decides only what it can see."""
     assert _validate_retail_selection(data) == expected_error
+
+
+@pytest.mark.parametrize(
+    ("postal_code", "expected_error"),
+    [
+        ("10115", None),
+        ("  10115  ", None),
+        ("", "postal_code_required"),
+        (None, "postal_code_required"),
+        ("1234", "invalid_postal_code"),
+        ("abcde", "invalid_postal_code"),
+    ],
+)
+def test_validate_postal_code(postal_code, expected_error) -> None:
+    """Checked in the step that asks for it, before any API call."""
+    assert _validate_postal_code(postal_code) == expected_error
 
 
 @pytest.mark.parametrize(
@@ -529,8 +675,6 @@ async def test_local_currency_is_off_unless_ticked(hass) -> None:
 TARIFF_INPUT = {
     **BASE_USER_INPUT,
     "retail_source": "formula",
-    "retail_factor": 1.19,
-    "retail_surcharge": 0.1,
     "tou_source": "manual",
 }
 DANISH_WINDOWS = {
@@ -561,6 +705,7 @@ async def test_a_manual_tariff_is_asked_in_two_more_steps(hass) -> None:
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], TARIFF_INPUT
         )
+        result = await _formula_step(hass, result)
         assert result["step_id"] == "tariff_windows"
 
         result = await hass.config_entries.flow.async_configure(
@@ -609,6 +754,7 @@ async def test_a_two_level_tariff_asks_for_two_amounts(hass) -> None:
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], TARIFF_INPUT
         )
+        result = await _formula_step(hass, result)
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"],
             {
@@ -638,6 +784,7 @@ async def test_overlapping_windows_are_sent_back(hass) -> None:
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], TARIFF_INPUT
         )
+        result = await _formula_step(hass, result)
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"],
             {**DANISH_WINDOWS, "tou_low_end": 18},
@@ -651,7 +798,7 @@ async def test_overlapping_windows_are_sent_back(hass) -> None:
     ("changes", "expected_error"),
     [
         # The estimate has a grid fee of its own; a second would double it.
-        ({"retail_source": "estimate", "postal_code": "10115"}, "tou_needs_formula"),
+        ({"retail_source": "estimate"}, "tou_needs_formula"),
         ({"retail_source": "off"}, "tou_needs_formula"),
         # Looking the tariff up only works where it is published.
         ({"tou_source": "datahub"}, "tou_not_supported"),
@@ -698,6 +845,7 @@ async def test_denmark_looks_the_tariff_up(hass) -> None:
             result["flow_id"],
             {**TARIFF_INPUT, "market": "DK1", "tou_source": "datahub"},
         )
+        result = await _formula_step(hass, result)
         assert result["step_id"] == "tariff_lookup"
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], {"tou_tariff": radius.value}
@@ -728,6 +876,7 @@ async def test_denmark_says_when_the_list_cannot_be_fetched(hass) -> None:
             result["flow_id"],
             {**TARIFF_INPUT, "market": "DK1", "tou_source": "datahub"},
         )
+        result = await _formula_step(hass, result)
 
     assert result["step_id"] == "tariff_lookup"
     assert result["errors"]["base"] == "datahub_unavailable"
@@ -760,6 +909,7 @@ async def test_norway_starts_from_the_grid_operators_collected_tariff(hass) -> N
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], {**TARIFF_INPUT, "market": "NO1"}
         )
+        result = await _formula_step(hass, result)
         assert result["step_id"] == "tariff_prefill"
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], {"tou_operator": "7080005046220"}
@@ -801,6 +951,7 @@ async def test_norway_without_a_choice_types_everything_in(hass) -> None:
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], {**TARIFF_INPUT, "market": "NO1"}
         )
+        result = await _formula_step(hass, result)
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], {}
         )
@@ -839,6 +990,7 @@ async def test_switching_the_tariff_off_drops_its_fields(hass) -> None:
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], {**TARIFF_INPUT, "tou_source": "off"}
         )
+        result = await _formula_step(hass, result)
         await hass.async_block_till_done()
 
     assert result["reason"] == "reconfigure_successful"
@@ -869,6 +1021,7 @@ async def test_reconfiguring_starts_from_the_stored_tariff(hass) -> None:
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], TARIFF_INPUT
         )
+        result = await _formula_step(hass, result)
 
     assert result["step_id"] == "tariff_windows"
     windows = result["data_schema"]({})

@@ -2,6 +2,28 @@
   "title": "Energy Price Forecast EU",
   "config": {
     "step": {
+      "retail_postal": {
+        "title": "PSČ pro odhad",
+        "description": "Odhad pro Německo počítá poplatek za síť podle PSČ, je to tedy jediné, co ještě chybí. Posílá se s každým dotazem na maloobchodní cenu a v diagnostice je skryté.",
+        "data": {
+          "postal_code": "PSČ"
+        },
+        "data_description": {
+          "postal_code": "Nutné pro Německo, pokud je zvolen odhad; slouží k určení poplatku za síť. Jinak se nepoužívá."
+        }
+      },
+      "retail_formula": {
+        "title": "Váš vlastní vzorec",
+        "description": "Maloobchodní cena = burzovní cena × koeficient + příplatek, v {unit}. Použijí se jen tato dvě čísla.",
+        "data": {
+          "retail_factor": "Koeficient (vlastní vzorec)",
+          "retail_surcharge": "Příplatek za kWh vč. DPH (vlastní vzorec)"
+        },
+        "data_description": {
+          "retail_factor": "Jen pro vlastní vzorec. Násobí burzovní cenu, např. 1.21 pro 21 % DPH.",
+          "retail_surcharge": "Jen pro vlastní vzorec. Pevná částka za kWh včetně DPH přičtená po koeficientu, v jednotce cenových senzorů – s místní měnou v Kč/kWh, jinak v EUR/kWh. Patří sem přirážka dodavatele, daň z elektřiny a poplatky za síť za kWh. Poplatky za síť, které se mění podle denní doby, patří místo toho do „Poplatky za síť podle denní doby“."
+        }
+      },
       "tariff_prefill": {
         "title": "Vyjít od provozovatele sítě",
         "description": "Vyberte provozovatele sítě a pásma a cena za energii se předvyplní ze sbírky {source}. Datum ukazuje, kdy byl záznam naposledy ověřen - v dalších krocích hodnoty porovnejte se svým ceníkem. Nechte prázdné, chcete-li vše zadat sami. Provozovatelé označení ⚠ mají sezónní nebo více zvláštních období, která se předvyplní jen částečně.",
@@ -75,9 +97,6 @@
           "window_hours": "Délka nejlepšího okna",
           "api_key": "API klíč (volitelný)",
           "retail_source": "Maloobchodní cena",
-          "postal_code": "PSČ",
-          "retail_factor": "Koeficient (vlastní vzorec)",
-          "retail_surcharge": "Příplatek za kWh vč. DPH (vlastní vzorec)",
           "tou_source": "Poplatky za síť podle denní doby",
           "local_currency": "Zobrazit ceny v místní měně",
           "update_interval_minutes": "Interval aktualizace (minuty)",
@@ -92,9 +111,6 @@
           "window_hours": "Délka nejlevnějšího a nejzelenějšího souvislého časového okna.",
           "api_key": "Ponechte prázdné pro veřejný přístup. Klíč se ukládá do konfiguračního záznamu Home Assistant.",
           "retail_source": "Odhad: naše kompletní cena založená na předpokladech (poplatek za síť, poplatky, DPH), jen pro DE, NL, DK, AT a NO; Německo vyžaduje PSČ. Vlastní vzorec: burzovní cena × koeficient + příplatek, na každém trhu. V obou případech se plány sestavují podle maloobchodní ceny.",
-          "postal_code": "Nutné pro Německo, pokud je zvolen odhad; slouží k určení poplatku za síť. Jinak se nepoužívá.",
-          "retail_factor": "Jen pro vlastní vzorec. Násobí burzovní cenu, např. 1.21 pro 21 % DPH.",
-          "retail_surcharge": "Jen pro vlastní vzorec. Pevná částka za kWh včetně DPH přičtená po koeficientu, v jednotce cenových senzorů – s místní měnou v Kč/kWh, jinak v EUR/kWh. Patří sem přirážka dodavatele, daň z elektřiny a poplatky za síť za kWh. Poplatky za síť, které se mění podle denní doby, patří místo toho do „Poplatky za síť podle denní doby“.",
           "tou_source": "Poplatky za síť, které se mění podle denní doby, se započítají do vlastního vzorce - jeho koeficient k nim přičte DPH. Zadejte časová pásma a částky ze svého ceníku; v Norsku je lze předvyplnit podle provozovatele sítě, v Dánsku se vyhledají automaticky. Vyžaduje „Vlastní vzorec“ jako maloobchodní cenu.",
           "local_currency": "Přepočítá ceny z eur na české koruny (CZ), polské zloté (PL) nebo švédské koruny (SE1-SE4) podle denního referenčního kurzu ECB. Dánsko a Norsko dostávají vždy vlastní měnu, ostatní trhy zůstávají v eurech. Změna mění jednotku cenových senzorů, Home Assistant proto začne jejich dlouhodobé statistiky znovu.",
           "update_interval_minutes": "Jak často se API dotazuje. Rozlišení dat je 15 minut, kratší intervaly proto zřídka přinášejí nové informace.",
@@ -114,9 +130,6 @@
           "window_hours": "Délka nejlepšího okna",
           "api_key": "Nový API klíč (volitelný)",
           "retail_source": "Maloobchodní cena",
-          "postal_code": "PSČ",
-          "retail_factor": "Koeficient (vlastní vzorec)",
-          "retail_surcharge": "Příplatek za kWh vč. DPH (vlastní vzorec)",
           "tou_source": "Poplatky za síť podle denní doby",
           "local_currency": "Zobrazit ceny v místní měně",
           "update_interval_minutes": "Interval aktualizace (minuty)",
@@ -130,9 +143,6 @@
           "horizon_hours": "API hlásí skutečně povolený horizont jako diagnostický senzor.",
           "window_hours": "Délka nejlevnějšího a nejzelenějšího souvislého časového okna.",
           "retail_source": "Odhad: naše kompletní cena založená na předpokladech (poplatek za síť, poplatky, DPH), jen pro DE, NL, DK, AT a NO; Německo vyžaduje PSČ. Vlastní vzorec: burzovní cena × koeficient + příplatek, na každém trhu. V obou případech se plány sestavují podle maloobchodní ceny.",
-          "postal_code": "Nutné pro Německo, pokud je zvolen odhad; slouží k určení poplatku za síť. Jinak se nepoužívá.",
-          "retail_factor": "Jen pro vlastní vzorec. Násobí burzovní cenu, např. 1.21 pro 21 % DPH.",
-          "retail_surcharge": "Jen pro vlastní vzorec. Pevná částka za kWh včetně DPH přičtená po koeficientu, v jednotce cenových senzorů – s místní měnou v Kč/kWh, jinak v EUR/kWh. Patří sem přirážka dodavatele, daň z elektřiny a poplatky za síť za kWh. Poplatky za síť, které se mění podle denní doby, patří místo toho do „Poplatky za síť podle denní doby“.",
           "tou_source": "Poplatky za síť, které se mění podle denní doby, se započítají do vlastního vzorce - jeho koeficient k nim přičte DPH. Zadejte časová pásma a částky ze svého ceníku; v Norsku je lze předvyplnit podle provozovatele sítě, v Dánsku se vyhledají automaticky. Vyžaduje „Vlastní vzorec“ jako maloobchodní cenu.",
           "local_currency": "Přepočítá ceny z eur na české koruny (CZ), polské zloté (PL) nebo švédské koruny (SE1-SE4) podle denního referenčního kurzu ECB. Dánsko a Norsko dostávají vždy vlastní měnu, ostatní trhy zůstávají v eurech. Změna mění jednotku cenových senzorů, Home Assistant proto začne jejich dlouhodobé statistiky znovu.",
           "update_interval_minutes": "Jak často se API dotazuje. Rozlišení dat je 15 minut, kratší intervaly proto zřídka přinášejí nové informace.",

@@ -2,6 +2,28 @@
   "title": "Energy Price Forecast EU",
   "config": {
     "step": {
+      "retail_postal": {
+        "title": "Postleitzahl für die Schätzung",
+        "description": "Die Schätzung für Deutschland rechnet das Netzentgelt je Postleitzahl, sie ist also das Einzige, was noch fehlt. Sie wird mit jeder Abfrage des Endkundenpreises mitgeschickt und in den Diagnosedaten geschwärzt.",
+        "data": {
+          "postal_code": "Postleitzahl"
+        },
+        "data_description": {
+          "postal_code": "Für Deutschland nötig, wenn die Schätzung gewählt ist; dient der Netzentgelt-Ermittlung. Sonst nicht verwendet."
+        }
+      },
+      "retail_formula": {
+        "title": "Deine eigene Formel",
+        "description": "Endkundenpreis = Börsenpreis × Faktor + Aufschlag, in {unit}. Verwendet werden nur diese beiden Zahlen.",
+        "data": {
+          "retail_factor": "Faktor (eigene Formel)",
+          "retail_surcharge": "Aufschlag je kWh inkl. MwSt. (eigene Formel)"
+        },
+        "data_description": {
+          "retail_factor": "Nur für die eigene Formel. Multipliziert den Börsenpreis, z. B. 1.21 für 21 % MwSt.",
+          "retail_surcharge": "Nur für die eigene Formel. Fester Betrag je kWh inklusive MwSt., der nach dem Faktor addiert wird, in der Einheit der Preissensoren – z. B. 0.1350 für 13,50 ct/kWh. Hierher gehören Lieferantenaufschlag, Stromsteuer und Netzentgelt je kWh. Netzentgelte, die sich mit der Tageszeit ändern, gehören stattdessen zu „Zeitabhängige Netzentgelte“."
+        }
+      },
       "tariff_prefill": {
         "title": "Vom Netzbetreiber ausgehen",
         "description": "Wähle deinen Netzbetreiber, um Zeitfenster und Arbeitspreis aus der Sammlung {source} vorzubelegen. Das Datum zeigt, wann der Eintrag zuletzt geprüft wurde - vergleiche die Werte in den nächsten Schritten mit deinem Preisblatt. Leer lassen, um alles selbst einzutragen. Mit ⚠ markierte Netzbetreiber haben saisonale oder mehrere Sonderzeiten, die nur teilweise vorbelegt werden.",
@@ -75,9 +97,6 @@
           "window_hours": "Dauer des besten Fensters",
           "api_key": "API-Key (optional)",
           "retail_source": "Endkundenpreis",
-          "postal_code": "Postleitzahl",
-          "retail_factor": "Faktor (eigene Formel)",
-          "retail_surcharge": "Aufschlag je kWh inkl. MwSt. (eigene Formel)",
           "tou_source": "Zeitabhängige Netzentgelte",
           "local_currency": "Preise in Landeswährung anzeigen",
           "update_interval_minutes": "Aktualisierungsintervall (Minuten)",
@@ -92,9 +111,6 @@
           "window_hours": "Länge des günstigsten und des grünsten zusammenhängenden Zeitfensters.",
           "api_key": "Für den öffentlichen Zugang leer lassen. Der Schlüssel wird im Home-Assistant-Konfigurationseintrag gespeichert.",
           "retail_source": "Schätzung: unser annahmenbasierter Gesamtpreis (Netzentgelt, Abgaben, MwSt.), nur für DE, NL, DK, AT und NO; Deutschland braucht eine Postleitzahl. Eigene Formel: Börsenpreis × Faktor + Aufschlag, in jedem Markt. In beiden Fällen werden die Pläne auf dem Endkundenpreis gebildet.",
-          "postal_code": "Für Deutschland nötig, wenn die Schätzung gewählt ist; dient der Netzentgelt-Ermittlung. Sonst nicht verwendet.",
-          "retail_factor": "Nur für die eigene Formel. Multipliziert den Börsenpreis, z. B. 1.21 für 21 % MwSt.",
-          "retail_surcharge": "Nur für die eigene Formel. Fester Betrag je kWh inklusive MwSt., der nach dem Faktor addiert wird, in der Einheit der Preissensoren – z. B. 0.1350 für 13,50 ct/kWh. Hierher gehören Lieferantenaufschlag, Stromsteuer und Netzentgelt je kWh. Netzentgelte, die sich mit der Tageszeit ändern, gehören stattdessen zu „Zeitabhängige Netzentgelte“.",
           "tou_source": "Netzentgelte, die sich mit der Tageszeit ändern, werden in der eigenen Formel mitgerechnet - deren Faktor schlägt die MwSt. darauf. Zeitfenster und Beträge aus dem Preisblatt eintragen; in Norwegen lassen sie sich vom Netzbetreiber vorbelegen, in Dänemark werden sie automatisch nachgeschlagen. Setzt „Eigene Formel“ als Endkundenpreis voraus.",
           "local_currency": "Rechnet die Preise mit dem täglichen Referenzkurs der EZB von Euro in tschechische Kronen (CZ), polnische Złoty (PL) oder schwedische Kronen (SE1-SE4) um. Dänemark und Norwegen bekommen immer ihre eigene Währung, alle anderen Märkte bleiben in Euro. Ein Wechsel ändert die Einheit der Preissensoren, Home Assistant beginnt deren Langzeitstatistik dann neu.",
           "update_interval_minutes": "Wie oft die API abgefragt wird. Die Datenauflösung liegt bei 15 Minuten, kürzere Intervalle liefern daher selten neue Informationen.",
@@ -114,9 +130,6 @@
           "window_hours": "Dauer des besten Fensters",
           "api_key": "Neuer API-Key (optional)",
           "retail_source": "Endkundenpreis",
-          "postal_code": "Postleitzahl",
-          "retail_factor": "Faktor (eigene Formel)",
-          "retail_surcharge": "Aufschlag je kWh inkl. MwSt. (eigene Formel)",
           "tou_source": "Zeitabhängige Netzentgelte",
           "local_currency": "Preise in Landeswährung anzeigen",
           "update_interval_minutes": "Aktualisierungsintervall (Minuten)",
@@ -130,9 +143,6 @@
           "horizon_hours": "Den tatsächlich erlaubten Horizont zeigt die Integration als Diagnose-Sensor an.",
           "window_hours": "Länge des günstigsten und des grünsten zusammenhängenden Zeitfensters.",
           "retail_source": "Schätzung: unser annahmenbasierter Gesamtpreis (Netzentgelt, Abgaben, MwSt.), nur für DE, NL, DK, AT und NO; Deutschland braucht eine Postleitzahl. Eigene Formel: Börsenpreis × Faktor + Aufschlag, in jedem Markt. In beiden Fällen werden die Pläne auf dem Endkundenpreis gebildet.",
-          "postal_code": "Für Deutschland nötig, wenn die Schätzung gewählt ist; dient der Netzentgelt-Ermittlung. Sonst nicht verwendet.",
-          "retail_factor": "Nur für die eigene Formel. Multipliziert den Börsenpreis, z. B. 1.21 für 21 % MwSt.",
-          "retail_surcharge": "Nur für die eigene Formel. Fester Betrag je kWh inklusive MwSt., der nach dem Faktor addiert wird, in der Einheit der Preissensoren – z. B. 0.1350 für 13,50 ct/kWh. Hierher gehören Lieferantenaufschlag, Stromsteuer und Netzentgelt je kWh. Netzentgelte, die sich mit der Tageszeit ändern, gehören stattdessen zu „Zeitabhängige Netzentgelte“.",
           "tou_source": "Netzentgelte, die sich mit der Tageszeit ändern, werden in der eigenen Formel mitgerechnet - deren Faktor schlägt die MwSt. darauf. Zeitfenster und Beträge aus dem Preisblatt eintragen; in Norwegen lassen sie sich vom Netzbetreiber vorbelegen, in Dänemark werden sie automatisch nachgeschlagen. Setzt „Eigene Formel“ als Endkundenpreis voraus.",
           "local_currency": "Rechnet die Preise mit dem täglichen Referenzkurs der EZB von Euro in tschechische Kronen (CZ), polnische Złoty (PL) oder schwedische Kronen (SE1-SE4) um. Dänemark und Norwegen bekommen immer ihre eigene Währung, alle anderen Märkte bleiben in Euro. Ein Wechsel ändert die Einheit der Preissensoren, Home Assistant beginnt deren Langzeitstatistik dann neu.",
           "update_interval_minutes": "Wie oft die API abgefragt wird. Die Datenauflösung liegt bei 15 Minuten, kürzere Intervalle liefern daher selten neue Informationen.",

@@ -15,14 +15,13 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE, EntityCategory, UnitOfTime
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.event import async_track_utc_time_change
 from homeassistant.util import dt as dt_util
 
 from .const import COMBINED_SCORE_SCALE, RETAIL_SOURCE_FORMULA
 from .coordinator import EnergyPriceForecastCoordinator
-from .entity import EnergyPriceForecastEntity
+from .entity import EnergyPriceForecastEntity, QuarterHourStateRefreshMixin
 from .planning import duration_weighted_mean
 from .scoring import (
     CombinedScore,
@@ -79,6 +78,70 @@ def _current_entry(
     if upcoming:
         return min(upcoming, key=lambda item: item[0])[1]
     return entries[-1]
+
+
+def _live_price(coordinator: EnergyPriceForecastCoordinator) -> Any:
+    """The price of the slot covering now, read from the cached series.
+
+    The summary's own ``current_price`` was true when the API answered. By
+    the next poll it describes a slot that has passed, which is what made
+    this sensor lag behind the price series beside it. The series carries
+    the same numbers and is cached anyway, so the value is simply read again
+    at every slot boundary. The summary stays the fallback for a market
+    whose series did not arrive.
+    """
+    value = (_current_entry(coordinator.price_series) or {}).get("value")
+    if value is None:
+        return _path(coordinator.data or {}, "flat", "current_price")
+    return value
+
+
+def _live_price_source(coordinator: EnergyPriceForecastCoordinator) -> Any:
+    """Whether the price of this slot is published or still a forecast."""
+    source = (_current_entry(coordinator.price_series) or {}).get("source")
+    if not source:
+        return _path(coordinator.data or {}, "flat", "current_price_source")
+    return source
+
+
+def _live_co2(coordinator: EnergyPriceForecastCoordinator) -> Any:
+    """The CO2 intensity of the slot covering now.
+
+    CO2 is published hourly where prices can be quarter-hourly, so this
+    number changes on the hour - but it changes *on* the hour now, instead
+    of whenever the next poll happens to fall.
+    """
+    value = (_current_entry(coordinator.co2_series) or {}).get("value")
+    if value is None:
+        return _path(coordinator.data or {}, "flat", "current_co2_g_kwh")
+    return value
+
+
+def _window_remaining(start_key: str, end_key: str, fallback_key: str):
+    """Minutes left of a window, counted from the window's own end.
+
+    The summary reports the remaining minutes as they stood when the API
+    answered, and reports none at all while the window is not running. Both
+    are reproduced here from the window's timestamps, which do not move
+    between polls - so the countdown falls in quarter hours instead of
+    jumping by whole poll intervals.
+
+    Mind which window: the API counts down its *best* window, which is not
+    always the one the start and end sensors beside it show.
+    """
+
+    def _value(data: dict[str, Any] | None) -> Any:
+        flat = _path(data or {}, "flat") or {}
+        start = _timestamp(flat.get(start_key))
+        end = _timestamp(flat.get(end_key))
+        if start is None or end is None:
+            return flat.get(fallback_key)
+        now = datetime.now(timezone.utc)
+        if not start <= now < end:
+            return None
+        return round((end - now).total_seconds() / 60, 1)
+
+    return _value
 
 
 def _split_today_tomorrow(
@@ -177,28 +240,6 @@ class _StickyUnitMixin:
         return self._last_unit
 
 
-class _QuarterHourStateRefreshMixin:
-    """Re-evaluate a time-dependent sensor at every price-slot boundary."""
-
-    async def async_added_to_hass(self) -> None:
-        await super().async_added_to_hass()
-        # The coordinator's polling interval controls when new data is fetched.
-        # A slot can change between those polls, so update the entity from the
-        # already cached series at the exact quarter-hour boundary.
-        self.async_on_remove(
-            async_track_utc_time_change(
-                self.hass,
-                self._handle_slot_change,
-                minute=(0, 15, 30, 45),
-                second=0,
-            )
-        )
-
-    @callback
-    def _handle_slot_change(self, _now: datetime) -> None:
-        self.async_write_ha_state()
-
-
 def _share_percent(share: Any) -> float | None:
     """A share the API reports as 0..1, as a percentage for display."""
     if not isinstance(share, (int, float)) or isinstance(share, bool):
@@ -286,6 +327,13 @@ class EnergyPriceForecastSensorDescription(SensorEntityDescription):
 
     value_fn: Callable[[dict[str, Any]], Any]
     unit_fn: Callable[[dict[str, Any]], str | None] | None = None
+    # True for the values that describe this moment: they are re-read at
+    # every slot boundary instead of only when the API is polled.
+    follows_slots: bool = False
+    # Set when the value comes from the cached series rather than from the
+    # summary: the series knows which slot covers now, the summary only knew
+    # which one covered the moment it was fetched.
+    live_fn: Callable[[EnergyPriceForecastCoordinator], Any] | None = None
 
 
 SENSORS: tuple[EnergyPriceForecastSensorDescription, ...] = (
@@ -297,6 +345,8 @@ SENSORS: tuple[EnergyPriceForecastSensorDescription, ...] = (
         suggested_display_precision=4,
         value_fn=lambda data: _path(data, "flat", "current_price"),
         unit_fn=lambda data: _path(data, "flat", "current_price_unit"),
+        follows_slots=True,
+        live_fn=_live_price,
     ),
     EnergyPriceForecastSensorDescription(
         key="current_co2",
@@ -306,6 +356,8 @@ SENSORS: tuple[EnergyPriceForecastSensorDescription, ...] = (
         native_unit_of_measurement="gCO2/kWh",
         suggested_display_precision=1,
         value_fn=lambda data: _path(data, "flat", "current_co2_g_kwh"),
+        follows_slots=True,
+        live_fn=_live_co2,
     ),
     EnergyPriceForecastSensorDescription(
         key="cheapest_window_average_price",
@@ -376,8 +428,11 @@ SENSORS: tuple[EnergyPriceForecastSensorDescription, ...] = (
         device_class=SensorDeviceClass.DURATION,
         native_unit_of_measurement=UnitOfTime.MINUTES,
         suggested_display_precision=0,
-        value_fn=lambda data: _path(
-            data, "flat", "cheapest_window_remaining_minutes"
+        follows_slots=True,
+        value_fn=_window_remaining(
+            "best_price_window_start",
+            "best_price_window_end",
+            "cheapest_window_remaining_minutes",
         ),
     ),
     EnergyPriceForecastSensorDescription(
@@ -387,8 +442,11 @@ SENSORS: tuple[EnergyPriceForecastSensorDescription, ...] = (
         device_class=SensorDeviceClass.DURATION,
         native_unit_of_measurement=UnitOfTime.MINUTES,
         suggested_display_precision=0,
-        value_fn=lambda data: _path(
-            data, "flat", "greenest_window_remaining_minutes"
+        follows_slots=True,
+        value_fn=_window_remaining(
+            "best_co2_window_start",
+            "best_co2_window_end",
+            "greenest_window_remaining_minutes",
         ),
     ),
     EnergyPriceForecastSensorDescription(
@@ -397,6 +455,8 @@ SENSORS: tuple[EnergyPriceForecastSensorDescription, ...] = (
         icon="mdi:database-check",
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: _path(data, "flat", "current_price_source"),
+        follows_slots=True,
+        live_fn=_live_price_source,
     ),
     EnergyPriceForecastSensorDescription(
         key="allowed_horizon",
@@ -507,7 +567,10 @@ async def async_setup_entry(
 
 
 class EnergyPriceForecastSensor(
-    _StickyUnitMixin, EnergyPriceForecastEntity, SensorEntity
+    QuarterHourStateRefreshMixin,
+    _StickyUnitMixin,
+    EnergyPriceForecastEntity,
+    SensorEntity,
 ):
     """One sensor backed by the shared summary response."""
 
@@ -522,9 +585,15 @@ class EnergyPriceForecastSensor(
         super().__init__(coordinator, entry, description.key)
         self.entity_description = description
 
+    def _follows_slot_boundaries(self) -> bool:
+        return self.entity_description.follows_slots
+
     @property
     def native_value(self) -> Any:
-        return self.entity_description.value_fn(self.coordinator.data)
+        description = self.entity_description
+        if description.live_fn is not None:
+            return description.live_fn(self.coordinator)
+        return description.value_fn(self.coordinator.data)
 
     @property
     def native_unit_of_measurement(self) -> str | None:
@@ -580,7 +649,7 @@ class EnergyPriceForecastRetailWindowSensor(
 
 
 class EnergyPriceForecastRetailPriceSensor(
-    _QuarterHourStateRefreshMixin,
+    QuarterHourStateRefreshMixin,
     _StickyUnitMixin,
     EnergyPriceForecastEntity,
     SensorEntity,
@@ -656,7 +725,7 @@ class EnergyPriceForecastRetailPriceSensor(
 
 
 class EnergyPriceForecastPriceSeriesSensor(
-    _QuarterHourStateRefreshMixin,
+    QuarterHourStateRefreshMixin,
     _StickyUnitMixin,
     EnergyPriceForecastEntity,
     SensorEntity,
@@ -709,7 +778,9 @@ class EnergyPriceForecastPriceSeriesSensor(
         }
 
 
-class EnergyPriceForecastCheapestHoursSensor(EnergyPriceForecastEntity, SensorEntity):
+class EnergyPriceForecastCheapestHoursSensor(
+    QuarterHourStateRefreshMixin, EnergyPriceForecastEntity, SensorEntity
+):
     """Start of the next of the N cheapest upcoming hours.
 
     The hours may be non-contiguous, unlike the API's single best
@@ -1103,7 +1174,9 @@ class EnergyPriceForecastWeekendPlanSavingSensor(EnergyPriceForecastPlanSavingSe
     _window_average_attribute = "weekend_hours_window_average"
 
 
-class EnergyPriceForecastWeekendHoursSensor(EnergyPriceForecastEntity, SensorEntity):
+class EnergyPriceForecastWeekendHoursSensor(
+    QuarterHourStateRefreshMixin, EnergyPriceForecastEntity, SensorEntity
+):
     """Start of the next of the N cheapest hours in this weekend's plan.
 
     A separate, independently-locked plan for the fixed Saturday 00:00 -
@@ -1214,7 +1287,7 @@ def _rounded(value: float | None, digits: int) -> float | None:
 
 
 class EnergyPriceForecastCombinedScoreNowSensor(
-    _QuarterHourStateRefreshMixin, EnergyPriceForecastEntity, SensorEntity
+    QuarterHourStateRefreshMixin, EnergyPriceForecastEntity, SensorEntity
 ):
     """How good the present is against the published hours ahead, 0-100.
 
@@ -1294,7 +1367,10 @@ class EnergyPriceForecastCombinedScoreNowSensor(
 
 
 class EnergyPriceForecastCo2SeriesSensor(
-    _StickyUnitMixin, EnergyPriceForecastEntity, SensorEntity
+    QuarterHourStateRefreshMixin,
+    _StickyUnitMixin,
+    EnergyPriceForecastEntity,
+    SensorEntity,
 ):
     """Raw CO2 intensity series for charting, mirroring the price series.
 
@@ -1352,7 +1428,7 @@ class EnergyPriceForecastCo2SeriesSensor(
 
 
 class EnergyPriceForecastGreenestHoursSensor(
-    EnergyPriceForecastEntity, SensorEntity
+    QuarterHourStateRefreshMixin, EnergyPriceForecastEntity, SensorEntity
 ):
     """Start of the next of the N cleanest upcoming hours.
 

@@ -426,7 +426,10 @@ async def test_forecast_quality_sensor_survives_a_missing_block(hass) -> None:
 
 
 async def test_current_price_sensor_reflects_summary_value(hass) -> None:
-    entry = await _setup_entry(hass)
+    """Without a price series the summary's own number and unit are what the
+    sensor shows - see the slot tests at the end of this file for the usual
+    way round, where the series decides."""
+    entry = await _setup_entry(hass, price_entries=[])
 
     state = _state_for_unique_id(hass, entry, "current_price")
 
@@ -434,7 +437,13 @@ async def test_current_price_sensor_reflects_summary_value(hass) -> None:
     assert state.attributes["unit_of_measurement"] == "EUR/kWh"
 
 
-async def test_greenest_window_binary_sensor_is_on(hass) -> None:
+async def test_greenest_window_binary_sensor_is_on(hass, freezer) -> None:
+    """Inside the window the flag is on - and the time has to be said now,
+    because the flag is worked out from the window's own hours rather than
+    taken from the summary, where it is as old as the last poll."""
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-08T05:00:00+00:00")
+
     entry = await _setup_entry(hass)
 
     state = _state_for_unique_id(hass, entry, "greenest_window_active")
@@ -442,7 +451,11 @@ async def test_greenest_window_binary_sensor_is_on(hass) -> None:
     assert state.state == "on"
 
 
-async def test_cheapest_window_binary_sensor_is_off(hass) -> None:
+async def test_cheapest_window_binary_sensor_is_off(hass, freezer) -> None:
+    """And outside it, off - here an hour before the window starts."""
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-08T03:00:00+00:00")
+
     entry = await _setup_entry(hass)
 
     state = _state_for_unique_id(hass, entry, "cheapest_window_active")
@@ -604,8 +617,10 @@ async def test_optional_entities_created_when_features_enabled(hass) -> None:
     assert f"{entry.entry_id}_retail_cheapest_window_active" in unique_ids
 
 
-async def test_retail_window_sensors_use_retail_summary(hass) -> None:
+async def test_retail_window_sensors_use_retail_summary(hass, freezer) -> None:
     """retail_cheapest_window_* reads the retail-mode summary, not the base one."""
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-08T06:00:00+00:00")  # inside the retail window
     retail_summary = {
         **SUMMARY_PAYLOAD,
         "flat": {
@@ -1078,6 +1093,8 @@ async def test_the_price_unit_is_whatever_currency_the_api_answers_in(hass) -> N
     entry = await _setup_entry(
         hass,
         extra_data={"market": "CZ", "local_currency": True},
+        # No series, so the summary's own price is the one on show here.
+        price_entries=[],
         summary_extra={
             "country": "CZ",
             "flat": {
@@ -1372,3 +1389,181 @@ async def test_both_quality_entities_are_diagnostics(hass) -> None:
         )
         assert entity_id is not None, suffix
         assert registry.async_get(entity_id).entity_category is EntityCategory.DIAGNOSTIC
+
+def test_only_the_values_that_describe_now_follow_the_clock() -> None:
+    """Writing a state every quarter hour for a value that cannot change in
+    between would be noise in the database, so the flag is explicit."""
+    from custom_components.energypriceforecast.sensor import SENSORS
+
+    assert {description.key for description in SENSORS if description.follows_slots} == {
+        "current_price",
+        "current_co2",
+        "price_source",
+        "cheapest_window_remaining",
+        "greenest_window_remaining",
+    }
+
+
+async def test_the_current_price_follows_the_slot_not_the_poll(hass, freezer) -> None:
+    """Reported from the field: the price series switched on the quarter hour
+    while the current-price sensor waited for the next poll, up to half an
+    hour away.
+
+    The summary's own flat value stays at 0.21 here; the cached series says
+    0.10 for the slot that is running and 0.20 for the next one. Both sensors
+    read the series now, so they agree with each other at every moment.
+    """
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-08T00:10:00+00:00")
+    entry = await _setup_entry(
+        hass,
+        price_entries=_day_ahead_slots(
+            "2026-08-08T00:00:00Z", {0: 0.10, 1: 0.20}, minutes=15
+        ),
+    )
+
+    assert float(_state_for_unique_id(hass, entry, "current_price").state) == 0.10
+    assert _state_for_unique_id(hass, entry, "price_source").state == "day_ahead"
+
+    # Only to the next quarter hour: the coordinator polls 30 minutes after
+    # setup, and firing past that would run the real fetch outside the mocks.
+    freezer.move_to("2026-08-08T00:15:00+00:00")
+    async_fire_time_changed(hass, dt_util.utcnow())
+    await hass.async_block_till_done()
+
+    assert float(_state_for_unique_id(hass, entry, "current_price").state) == 0.20
+    assert float(_state_for_unique_id(hass, entry, "price_series").state) == 0.20
+
+
+async def test_the_current_co2_follows_the_hour(hass, freezer) -> None:
+    """CO2 is published hourly, so it changes on the hour - but it changes
+    *on* the hour now, instead of whenever the next poll happens to fall."""
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-08T00:50:00+00:00")
+    entry = await _setup_entry(
+        hass,
+        price_entries=_day_ahead_slots("2026-08-08T00:00:00Z", {0: 0.10, 1: 0.20}),
+        summary_extra={
+            "series": {
+                "co2": _co2_slots("2026-08-08T00:00:00Z", {0: 300.0, 1: 200.0})
+            }
+        },
+    )
+
+    assert float(_state_for_unique_id(hass, entry, "current_co2").state) == 300.0
+
+    freezer.move_to("2026-08-08T01:00:00+00:00")
+    async_fire_time_changed(hass, dt_util.utcnow())
+    await hass.async_block_till_done()
+
+    assert float(_state_for_unique_id(hass, entry, "current_co2").state) == 200.0
+
+
+async def test_the_summary_stays_the_fallback_without_a_co2_series(hass) -> None:
+    """A market without CO2 coverage keeps the API's own number."""
+    entry = await _setup_entry(hass)
+
+    assert float(_state_for_unique_id(hass, entry, "current_co2").state) == 320.5
+
+
+async def test_the_window_countdown_falls_between_polls(hass, freezer) -> None:
+    """The summary's figure is as old as the last poll; the window's end is
+    not. It counts down the API's *best* window, which is the one the API
+    itself counts - not the "cheapest window" fields beside it.
+    """
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-08T00:10:00+00:00")
+    entry = await _setup_entry(
+        hass,
+        summary_extra={
+            "flat": {
+                **SUMMARY_PAYLOAD["flat"],
+                "best_price_window_start": "2026-08-08T00:00:00Z",
+                "best_price_window_end": "2026-08-08T01:00:00Z",
+                "cheapest_window_remaining_minutes": 240,
+            }
+        },
+    )
+
+    state = _state_for_unique_id(hass, entry, "cheapest_window_remaining")
+    assert float(state.state) == 50.0
+
+    freezer.move_to("2026-08-08T00:15:00+00:00")
+    async_fire_time_changed(hass, dt_util.utcnow())
+    await hass.async_block_till_done()
+
+    state = _state_for_unique_id(hass, entry, "cheapest_window_remaining")
+    assert float(state.state) == 45.0
+
+
+async def test_no_countdown_while_the_window_has_not_started(hass, freezer) -> None:
+    """Which is what the API reports as well: no figure, not a zero."""
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-08T00:10:00+00:00")
+    entry = await _setup_entry(
+        hass,
+        summary_extra={
+            "flat": {
+                **SUMMARY_PAYLOAD["flat"],
+                "best_price_window_start": "2026-08-08T04:00:00Z",
+                "best_price_window_end": "2026-08-08T08:00:00Z",
+                "cheapest_window_remaining_minutes": None,
+            }
+        },
+    )
+
+    assert (
+        _state_for_unique_id(hass, entry, "cheapest_window_remaining").state == "unknown"
+    )
+
+
+async def test_a_window_that_ended_turns_its_flag_off(hass, freezer) -> None:
+    """The flag was true when the API answered; by 00:15 the window is over,
+    and an automation switching on it must not keep running."""
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-08T00:10:00+00:00")
+    entry = await _setup_entry(
+        hass,
+        summary_extra={
+            "flat": {
+                **SUMMARY_PAYLOAD["flat"],
+                "best_price_window_start": "2026-08-08T00:00:00Z",
+                "best_price_window_end": "2026-08-08T00:15:00Z",
+                "is_cheapest_window_now": True,
+            }
+        },
+    )
+
+    assert _state_for_unique_id(hass, entry, "cheapest_window_active").state == "on"
+
+    freezer.move_to("2026-08-08T00:15:00+00:00")
+    async_fire_time_changed(hass, dt_util.utcnow())
+    await hass.async_block_till_done()
+
+    assert _state_for_unique_id(hass, entry, "cheapest_window_active").state == "off"
+
+
+async def test_the_cheapest_hours_flag_turns_on_between_polls(hass, freezer) -> None:
+    """A planned hour begins when it begins, not at the next poll.
+
+    The plan locks on the cheapest hour of the day, 01:00 to 02:00 here. Set
+    up at 00:50, the next poll would be 01:20 - so without the clock the
+    switch would have waited twenty minutes into the cheap hour.
+    """
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-08T00:50:00+00:00")
+    prices = {hour: 0.50 for hour in range(24)}
+    prices[1] = 0.05
+    entry = await _setup_entry(
+        hass,
+        extra_data={"cheapest_hours_count": 1, "cheapest_hours_window_hours": 24},
+        price_entries=_day_ahead_slots("2026-08-08T00:00:00Z", prices),
+    )
+
+    assert _state_for_unique_id(hass, entry, "is_in_cheapest_hours").state == "off"
+
+    freezer.move_to("2026-08-08T01:00:00+00:00")
+    async_fire_time_changed(hass, dt_util.utcnow())
+    await hass.async_block_till_done()
+
+    assert _state_for_unique_id(hass, entry, "is_in_cheapest_hours").state == "on"

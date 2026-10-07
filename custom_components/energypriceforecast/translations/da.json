@@ -96,6 +96,7 @@
           "horizon_hours": "Ønsket horisont",
           "window_hours": "Varighed af det bedste tidsvindue",
           "api_key": "API-nøgle (valgfri)",
+          "price_resolution": "Prisinterval i din aftale",
           "retail_source": "Detailpris",
           "tou_source": "Tidsafhængige nettariffer",
           "local_currency": "Vis priser i national valuta",
@@ -110,6 +111,7 @@
           "horizon_hours": "API'en rapporterer den faktisk tilladte horisont som en diagnosticeringssensor.",
           "window_hours": "Længden af det billigste og grønneste sammenhængende tidsvindue.",
           "api_key": "Lad stå tom for offentlig adgang. Nøglen gemmes i Home Assistants konfigurationspost.",
+          "price_resolution": "Børsen prissætter hvert kvarter, men mange aftaler afregner stadig timegennemsnittet af de kvarterer. Vælg kun timeaftalen, hvis din regning gør det samme; priser, planer og vinduer regner så i hele timer.",
           "retail_source": "Estimat: vores antagelsesbaserede alt-inkl.-pris (netafgift, afgifter, moms), kun for DE, NL, DK, AT og NO; Tyskland kræver et postnummer. Egen formel: spotpris × faktor + tillæg, i alle markeder. I begge tilfælde bygges planerne på detailprisen.",
           "tou_source": "Nettariffer, der skifter med tidspunktet på dagen, regnes med i den egne formel - dens faktor lægger moms oveni. Angiv tidsrum og beløb fra din prisliste; i Norge kan de udfyldes ud fra dit netselskab, i Danmark slås de op automatisk. Kræver \"Egen formel\" som detailpris.",
           "local_currency": "Omregner priserne fra euro til tjekkiske kroner (CZ), polske zloty (PL) eller svenske kroner (SE1-SE4) med ECB's daglige referencekurs. Danmark og Norge får altid deres egen valuta; alle andre markeder forbliver i euro. Et skift ændrer enheden for prissensorerne, så Home Assistant starter deres langtidsstatistik forfra.",
@@ -129,6 +131,7 @@
           "horizon_hours": "Ønsket horisont",
           "window_hours": "Varighed af det bedste tidsvindue",
           "api_key": "Ny API-nøgle (valgfri)",
+          "price_resolution": "Prisinterval i din aftale",
           "retail_source": "Detailpris",
           "tou_source": "Tidsafhængige nettariffer",
           "local_currency": "Vis priser i national valuta",
@@ -142,6 +145,7 @@
         "data_description": {
           "horizon_hours": "API'en rapporterer den faktisk tilladte horisont som en diagnosticeringssensor.",
           "window_hours": "Længden af det billigste og grønneste sammenhængende tidsvindue.",
+          "price_resolution": "Børsen prissætter hvert kvarter, men mange aftaler afregner stadig timegennemsnittet af de kvarterer. Vælg kun timeaftalen, hvis din regning gør det samme; priser, planer og vinduer regner så i hele timer.",
           "retail_source": "Estimat: vores antagelsesbaserede alt-inkl.-pris (netafgift, afgifter, moms), kun for DE, NL, DK, AT og NO; Tyskland kræver et postnummer. Egen formel: spotpris × faktor + tillæg, i alle markeder. I begge tilfælde bygges planerne på detailprisen.",
           "tou_source": "Nettariffer, der skifter med tidspunktet på dagen, regnes med i den egne formel - dens faktor lægger moms oveni. Angiv tidsrum og beløb fra din prisliste; i Norge kan de udfyldes ud fra dit netselskab, i Danmark slås de op automatisk. Kræver \"Egen formel\" som detailpris.",
           "local_currency": "Omregner priserne fra euro til tjekkiske kroner (CZ), polske zloty (PL) eller svenske kroner (SE1-SE4) med ECB's daglige referencekurs. Danmark og Norge får altid deres egen valuta; alle andre markeder forbliver i euro. Et skift ændrer enheden for prissensorerne, så Home Assistant starter deres langtidsstatistik forfra.",
@@ -187,6 +191,12 @@
       "options": {
         "like_weekday": "Som en hverdag",
         "low": "Lavlast hele døgnet"
+      }
+    },
+    "price_resolution": {
+      "options": {
+        "quarter_hourly": "Aftale med kvartersvis elpris",
+        "hourly": "Aftale med timevis elpris"
       }
     },
     "retail_source": {

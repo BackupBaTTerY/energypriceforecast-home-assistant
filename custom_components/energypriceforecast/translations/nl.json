@@ -96,6 +96,7 @@
           "horizon_hours": "Gewenste horizon",
           "window_hours": "Duur van het beste tijdvak",
           "api_key": "API-sleutel (optioneel)",
+          "price_resolution": "Prijsinterval van je tarief",
           "retail_source": "Consumentenprijs",
           "tou_source": "Tijdsafhankelijke netkosten",
           "local_currency": "Prijzen in lokale valuta tonen",
@@ -110,6 +111,7 @@
           "horizon_hours": "De API meldt de daadwerkelijk toegestane horizon als een diagnostische sensor.",
           "window_hours": "Lengte van het goedkoopste en groenste aaneengesloten tijdvak.",
           "api_key": "Laat leeg voor publieke toegang. De sleutel wordt opgeslagen in het Home Assistant-configuratie-item.",
+          "price_resolution": "De beurs rekent per kwartier, maar veel contracten rekenen nog steeds het uurgemiddelde van die kwartieren af. Kies het uurtarief alleen als je rekening dat ook doet; prijzen, plannen en vensters werken dan met hele uren.",
           "retail_source": "Schatting: onze op aannames gebaseerde alles-in prijs (netkosten, heffingen, btw), alleen voor DE, NL, DK, AT en NO; Duitsland heeft een postcode nodig. Eigen formule: beursprijs × factor + toeslag, in elke markt. In beide gevallen worden de plannen op de consumentenprijs gebaseerd.",
           "tou_source": "Netkosten die met het tijdstip veranderen, worden in je eigen formule meegerekend - de factor telt er de btw bij op. Vul de tijdvakken en bedragen van je tariefblad in; in Noorwegen kunnen ze vanuit je netbeheerder worden ingevuld, in Denemarken worden ze automatisch opgezocht. Vereist \"Eigen formule\" als consumentenprijs.",
           "local_currency": "Rekent de prijzen met de dagelijkse referentiekoers van de ECB om van euro naar Tsjechische kronen (CZ), Poolse zloty (PL) of Zweedse kronen (SE1-SE4). Denemarken en Noorwegen krijgen altijd hun eigen valuta; alle andere markten blijven in euro. Omschakelen verandert de eenheid van de prijssensoren, waardoor Home Assistant hun langetermijnstatistieken opnieuw begint.",
@@ -129,6 +131,7 @@
           "horizon_hours": "Gewenste horizon",
           "window_hours": "Duur van het beste tijdvak",
           "api_key": "Nieuwe API-sleutel (optioneel)",
+          "price_resolution": "Prijsinterval van je tarief",
           "retail_source": "Consumentenprijs",
           "tou_source": "Tijdsafhankelijke netkosten",
           "local_currency": "Prijzen in lokale valuta tonen",
@@ -142,6 +145,7 @@
         "data_description": {
           "horizon_hours": "De API meldt de daadwerkelijk toegestane horizon als een diagnostische sensor.",
           "window_hours": "Lengte van het goedkoopste en groenste aaneengesloten tijdvak.",
+          "price_resolution": "De beurs rekent per kwartier, maar veel contracten rekenen nog steeds het uurgemiddelde van die kwartieren af. Kies het uurtarief alleen als je rekening dat ook doet; prijzen, plannen en vensters werken dan met hele uren.",
           "retail_source": "Schatting: onze op aannames gebaseerde alles-in prijs (netkosten, heffingen, btw), alleen voor DE, NL, DK, AT en NO; Duitsland heeft een postcode nodig. Eigen formule: beursprijs × factor + toeslag, in elke markt. In beide gevallen worden de plannen op de consumentenprijs gebaseerd.",
           "tou_source": "Netkosten die met het tijdstip veranderen, worden in je eigen formule meegerekend - de factor telt er de btw bij op. Vul de tijdvakken en bedragen van je tariefblad in; in Noorwegen kunnen ze vanuit je netbeheerder worden ingevuld, in Denemarken worden ze automatisch opgezocht. Vereist \"Eigen formule\" als consumentenprijs.",
           "local_currency": "Rekent de prijzen met de dagelijkse referentiekoers van de ECB om van euro naar Tsjechische kronen (CZ), Poolse zloty (PL) of Zweedse kronen (SE1-SE4). Denemarken en Noorwegen krijgen altijd hun eigen valuta; alle andere markten blijven in euro. Omschakelen verandert de eenheid van de prijssensoren, waardoor Home Assistant hun langetermijnstatistieken opnieuw begint.",
@@ -187,6 +191,12 @@
       "options": {
         "like_weekday": "Zoals een werkdag",
         "low": "De hele dag laag tarief"
+      }
+    },
+    "price_resolution": {
+      "options": {
+        "quarter_hourly": "Tarief met een kwartierprijs voor stroom",
+        "hourly": "Tarief met een uurprijs voor stroom"
       }
     },
     "retail_source": {

@@ -193,3 +193,53 @@ async def test_prices_missing_entries_raises() -> None:
     )
     with pytest.raises(EnergyPriceForecastInvalidResponse):
         await api.async_get_prices(price_mode="retail", postal_code="10115")
+
+
+class _RecordingSession(_FakeSession):
+    """Remember what was asked for, so a parameter can be checked."""
+
+    def __init__(self, payload: dict) -> None:
+        super().__init__(payload)
+        self.calls: list[dict] = []
+
+    def get(self, url: str, params=None, headers=None, timeout=None):
+        self.calls.append(dict(params or {}))
+        return super().get(url, params=params, headers=headers, timeout=timeout)
+
+
+def _hourly_api(session, **kwargs):
+    return EnergyPriceForecastApi(
+        session=session,
+        base_url="https://example.invalid/summary",
+        prices_url="https://example.invalid/prices",
+        market="DE",
+        horizon_hours=48,
+        window_hours=4,
+        **kwargs,
+    )
+
+
+async def test_an_hourly_contract_asks_for_whole_hours() -> None:
+    """Both endpoints have to agree, or the window would be chosen on
+    quarter-hour prices while the sensors show hourly ones."""
+    session = _RecordingSession(_retail_payload())
+    api = _hourly_api(session, price_resolution="hourly")
+
+    await api.async_get_prices()
+    summary_session = _RecordingSession(_payload("missing"))
+    summary_session._payload["country"] = "DE"
+    await _hourly_api(summary_session, price_resolution="hourly").async_get_summary()
+
+    assert session.calls[0]["resolution"] == "hourly"
+    assert summary_session.calls[0]["resolution"] == "hourly"
+
+
+async def test_a_quarter_hourly_contract_sends_nothing_extra() -> None:
+    """The default has to leave the request exactly as it was, because every
+    entry configured before this option existed runs on it."""
+    session = _RecordingSession(_retail_payload())
+
+    await _hourly_api(session).async_get_prices()
+    await _hourly_api(session, price_resolution="quarter_hourly").async_get_prices()
+
+    assert all("resolution" not in call for call in session.calls)

@@ -96,6 +96,7 @@
           "horizon_hours": "Requested horizon",
           "window_hours": "Best-window duration",
           "api_key": "API key (optional)",
+          "price_resolution": "Price resolution of your tariff",
           "retail_source": "Retail price",
           "tou_source": "Time-of-day grid charges",
           "local_currency": "Show prices in local currency",
@@ -110,6 +111,7 @@
           "horizon_hours": "The API reports the actually permitted horizon as a diagnostic sensor.",
           "window_hours": "Length of the cheapest and greenest continuous window.",
           "api_key": "Leave empty for public access. The key is stored in the Home Assistant config entry.",
+          "price_resolution": "Exchanges price every quarter hour, but many contracts still bill the hourly mean of those quarters. Choose the hourly tariff only if your bill works that way; prices, plans and windows then use whole hours.",
           "retail_source": "Estimate: our assumption-based all-in price (grid fee, levies, VAT), only for DE, NL, DK, AT and NO; Germany needs a postal code. Own formula: day-ahead price × factor + surcharge, in every market. Either way the plans are then built on the retail price.",
           "tou_source": "Grid charges that change with the time of day, priced inside your own formula - its factor adds the VAT to them. Enter the windows and amounts from your price sheet; in Norway they can be prefilled from your grid operator, in Denmark they are looked up automatically. Needs \"Own formula\" as the retail price.",
           "local_currency": "Converts prices from euro into Czech koruna (CZ), Polish złoty (PL) or Swedish krona (SE1-SE4) at the ECB's daily reference rate. Denmark and Norway always get their own currency; all other markets stay in euro. Switching changes the unit of the price sensors, so Home Assistant starts their long-term statistics afresh.",
@@ -129,6 +131,7 @@
           "horizon_hours": "Requested horizon",
           "window_hours": "Best-window duration",
           "api_key": "New API key (optional)",
+          "price_resolution": "Price resolution of your tariff",
           "retail_source": "Retail price",
           "tou_source": "Time-of-day grid charges",
           "local_currency": "Show prices in local currency",
@@ -142,6 +145,7 @@
         "data_description": {
           "horizon_hours": "The API reports the actually permitted horizon as a diagnostic sensor.",
           "window_hours": "Length of the cheapest and greenest continuous window.",
+          "price_resolution": "Exchanges price every quarter hour, but many contracts still bill the hourly mean of those quarters. Choose the hourly tariff only if your bill works that way; prices, plans and windows then use whole hours.",
           "retail_source": "Estimate: our assumption-based all-in price (grid fee, levies, VAT), only for DE, NL, DK, AT and NO; Germany needs a postal code. Own formula: day-ahead price × factor + surcharge, in every market. Either way the plans are then built on the retail price.",
           "tou_source": "Grid charges that change with the time of day, priced inside your own formula - its factor adds the VAT to them. Enter the windows and amounts from your price sheet; in Norway they can be prefilled from your grid operator, in Denmark they are looked up automatically. Needs \"Own formula\" as the retail price.",
           "local_currency": "Converts prices from euro into Czech koruna (CZ), Polish złoty (PL) or Swedish krona (SE1-SE4) at the ECB's daily reference rate. Denmark and Norway always get their own currency; all other markets stay in euro. Switching changes the unit of the price sensors, so Home Assistant starts their long-term statistics afresh.",
@@ -187,6 +191,12 @@
       "options": {
         "like_weekday": "Like a weekday",
         "low": "Low rate all day"
+      }
+    },
+    "price_resolution": {
+      "options": {
+        "quarter_hourly": "Tariff with a quarter-hourly electricity price",
+        "hourly": "Tariff with an hourly electricity price"
       }
     },
     "retail_source": {

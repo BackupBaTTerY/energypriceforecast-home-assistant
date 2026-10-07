@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -1567,3 +1568,43 @@ async def test_the_cheapest_hours_flag_turns_on_between_polls(hass, freezer) -> 
     await hass.async_block_till_done()
 
     assert _state_for_unique_id(hass, entry, "is_in_cheapest_hours").state == "on"
+
+
+def test_an_hourly_contract_moves_on_the_hour_not_the_quarter() -> None:
+    """Writing the same price four times an hour would only fill the
+    database with rows that repeat the row before them."""
+    from custom_components.energypriceforecast.entity import (
+        QuarterHourStateRefreshMixin,
+    )
+
+    class _Entity(QuarterHourStateRefreshMixin):
+        def __init__(self, resolution):
+            self.coordinator = SimpleNamespace(price_resolution=resolution)
+
+    assert _Entity("hourly")._slot_boundary_minutes() == (0,)
+    assert _Entity("quarter_hourly")._slot_boundary_minutes() == (0, 15, 30, 45)
+    # An entry from before the option existed has no value at all.
+    assert _Entity(None)._slot_boundary_minutes() == (0, 15, 30, 45)
+
+
+async def test_the_hourly_price_switches_when_the_hour_does(hass, freezer) -> None:
+    """With whole-hour slots the sensor follows them, and the series the
+    plans are built from holds the same hours."""
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-08T00:50:00+00:00")
+    entry = await _setup_entry(
+        hass,
+        extra_data={"price_resolution": "hourly"},
+        price_entries=_day_ahead_slots(
+            "2026-08-08T00:00:00Z", {0: 0.10, 1: 0.20}, minutes=60
+        ),
+    )
+
+    assert float(_state_for_unique_id(hass, entry, "current_price").state) == 0.10
+
+    freezer.move_to("2026-08-08T01:00:00+00:00")
+    async_fire_time_changed(hass, dt_util.utcnow())
+    await hass.async_block_till_done()
+
+    assert float(_state_for_unique_id(hass, entry, "current_price").state) == 0.20
+    assert float(_state_for_unique_id(hass, entry, "price_series").state) == 0.20

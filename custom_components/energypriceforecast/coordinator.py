@@ -19,6 +19,7 @@ from homeassistant.util import dt as dt_util
 from .api import EnergyPriceForecastApi, EnergyPriceForecastApiError
 from .const import (
     DEFAULT_RETAIL_FACTOR,
+    DEFAULT_PRICE_RESOLUTION,
     DEFAULT_RETAIL_SURCHARGE,
     DEFAULT_UPDATE_INTERVAL_MINUTES,
     DOMAIN,
@@ -89,6 +90,7 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         weekend_hours_count: int = 0,
         greenest_hours_count: int = 0,
         currency: str | None = None,
+        price_resolution: str = DEFAULT_PRICE_RESOLUTION,
         tariff: TariffSource | None = None,
         tariff_loader: Callable[[date], Awaitable[TariffSource | None]] | None = None,
         zone: tzinfo = timezone.utc,
@@ -111,6 +113,10 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.weekend_hours_count = weekend_hours_count
         self.greenest_hours_count = greenest_hours_count
         self.currency = currency
+        # Read by the entities: a contract that settles by the hour has one
+        # price per hour, so its entities move on the hour and not four times
+        # within it.
+        self.price_resolution = price_resolution
         # A grid charge that changes with the time of day: either the
         # user's own schedule, which never changes on its own, or a
         # published table reloaded once a market day - see time_of_use.py.

@@ -14,6 +14,8 @@ requiring YAML or JSON templates.
 - Cheapest price window and greenest CO2 window, with a countdown to the end
   of each
 - Binary sensors indicating whether a best window is active now
+- **Hourly or quarter-hourly tariff** *(1.12.0)*: tell the integration how
+  your contract prices time, so every number matches your bill
 - **Everything that describes "now" switches at the slot boundary**
   *(1.11.0)*: current price, CO2 intensity, the window countdowns and every
   "active now" flag change on the quarter hour themselves, instead of waiting
@@ -778,6 +780,31 @@ memory and without an extra request:
 
 Everything else - the forecasts, the quality figures, the window times - only
 changes when new data arrives, so those entities keep the poll's rhythm.
+
+## Hourly or quarter-hourly tariff *(1.12.0)*
+
+The exchanges price every quarter hour, but a large part of the dynamic
+contracts still bills the **hourly mean** of those four quarters. Such a
+household never pays a quarter-hour price: the cheapest quarter of an hour
+costs them exactly as much as the most expensive one.
+
+**Price resolution of your tariff** says which of the two you have:
+
+| Choice | What you get |
+|---|---|
+| Tariff with a quarter-hourly electricity price *(default)* | The market's own slots, unchanged |
+| Tariff with an hourly electricity price | Whole clock hours, averaged from the quarters |
+
+With the hourly tariff the API folds the series onto clock hours before
+anything is derived from it, so the current price, the cheapest window, the
+plans and the combined score all use the price your bill uses. The running
+hour is averaged over all four of its quarters, including the ones that have
+already passed - that is the price being settled. The entities then also move
+on the hour instead of four times within it.
+
+Pick it only if your supplier really settles by the hour. If you are unsure,
+the quarter-hourly setting is the safe one: it is what every entry has been
+using so far.
 
 ## How good is the forecast, really?
 

@@ -9,6 +9,7 @@ from datetime import date, tzinfo
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .api import EnergyPriceForecastApi, requested_currency
@@ -45,6 +46,7 @@ from .const import (
     DEFAULT_UPDATE_INTERVAL_MINUTES,
     DEFAULT_GREENEST_HOURS_COUNT,
     DEFAULT_WEEKEND_HOURS_COUNT,
+    DOMAIN,
     MARKET_TIME_ZONES,
     MAX_HORIZON_HOURS,
     PLATFORMS,
@@ -214,3 +216,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def _async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     await hass.config_entries.async_reload(entry.entry_id)
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Remove locally saved comparisons when their market is removed."""
+    await Store(hass, 1, f"{DOMAIN}_{entry.entry_id}_forecast_reference").async_remove()

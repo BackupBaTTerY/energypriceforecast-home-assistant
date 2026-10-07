@@ -518,6 +518,31 @@ async def test_price_series_sensor_exposes_forecast_only_entries(hass, freezer) 
     assert [item["value"] for item in state.attributes["raw_tomorrow"]] == [0.13]
 
 
+@pytest.mark.parametrize("retail_source,suffix", [
+    ("off", "price_series"), ("estimate", "retail_current_price"),
+    ("formula", "retail_current_price"),
+])
+async def test_price_sensor_exposes_saved_reference(hass, freezer, retail_source, suffix):
+    freezer.move_to("2026-08-08T10:00:00+00:00")
+    forecast = {"start": "2026-08-09T10:00:00Z", "end": "2026-08-09T10:15:00Z",
+                "value": 0.1, "source": "forecast"}
+    entry = await _setup_entry(hass, extra_data={
+        "retail_source": retail_source, "postal_code": "10115",
+        "retail_factor": 1.19, "retail_surcharge": 0.1,
+    }, price_entries=[forecast])
+    state = _state_for_unique_id(hass, entry, suffix)
+    reference = state.attributes["raw_forecast_reference"]
+    assert len(reference) == 1
+    assert reference[0]["value"] == (0.219 if retail_source == "formula" else 0.1)
+    assert reference[0]["captured_at"] == "2026-08-08T10:00:00+00:00"
+
+    from custom_components.energypriceforecast.sensor import (
+        EnergyPriceForecastPriceSeriesSensor, EnergyPriceForecastRetailPriceSensor,
+    )
+    for cls in (EnergyPriceForecastPriceSeriesSensor, EnergyPriceForecastRetailPriceSensor):
+        assert "raw_forecast_reference" in cls._unrecorded_attributes
+
+
 async def test_forecast_entries_stay_out_of_raw_today_and_tomorrow(
     hass, freezer
 ) -> None:

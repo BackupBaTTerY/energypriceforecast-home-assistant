@@ -28,6 +28,7 @@ from .const import (
     RETAIL_SOURCE_FORMULA,
     RETAIL_SOURCE_OFF,
 )
+from .forecast_reference import reference_entries, update_reference
 from .planning import (
     fixed_repeating_window,
     fixed_weekend_window,
@@ -151,6 +152,12 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
         self._series_cache: dict[str, Any] | None = None
         self._series_cache_dirty = False
+        self._reference_store = Store[dict[str, Any]](
+            hass, 1, f"{DOMAIN}_{entry.entry_id}_forecast_reference"
+        )
+        self._reference_cache: dict[str, Any] | None = None
+        self.price_forecast_reference: list[dict[str, Any]] = []
+        self.retail_forecast_reference: list[dict[str, Any]] = []
 
     @property
     def retail_pricing(self) -> bool:
@@ -282,6 +289,28 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if self._series_cache_dirty and self._series_cache is not None:
             await self._series_store.async_save(self._series_cache)
             self._series_cache_dirty = False
+
+    async def _async_capture_reference(
+        self, cache_key: str, fresh: dict[str, Any], basis: str
+    ) -> list[dict[str, Any]]:
+        """Store a comparison separately from live prices and automation plans."""
+        observed_at = dt_util.utcnow()
+        if self._reference_cache is None:
+            stored = await self._reference_store.async_load()
+            self._reference_cache = stored if isinstance(stored, dict) else {}
+        previous = self._reference_cache.get(cache_key)
+        updated = update_reference(
+            previous,
+            fresh,
+            now=observed_at,
+            zone=self.zone,
+            basis=basis,
+            resolution=self.price_resolution,
+        )
+        if updated != previous:
+            self._reference_cache[cache_key] = updated
+            await self._reference_store.async_save(self._reference_cache)
+        return reference_entries(updated)
 
     async def _async_get_plan(
         self,
@@ -462,6 +491,9 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 self.retail_data = await self._async_retain_today(
                     "retail", fresh_retail, now
                 )
+                self.retail_forecast_reference = await self._async_capture_reference(
+                    "retail", fresh_retail, f"estimate|{self.postal_code}"
+                )
             except EnergyPriceForecastApiError as err:
                 _LOGGER.warning("Retail price update failed: %s", err)
             try:
@@ -475,10 +507,14 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # e.g. with apexcharts-card), and the plans too unless retail
         # pricing is on. Fetched unconditionally: it is the forecast data
         # this integration exists to expose, not a niche add-on.
+        fresh_prices = None
         try:
             fresh_prices = await self.api.async_get_prices(price_mode="base")
             self.price_series = await self._async_retain_today(
                 "base", fresh_prices, now
+            )
+            self.price_forecast_reference = await self._async_capture_reference(
+                "base", fresh_prices, "base"
             )
         except EnergyPriceForecastApiError as err:
             _LOGGER.warning("Price series update failed: %s", err)
@@ -511,6 +547,20 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     self.tariff,
                     now,
                 )
+                if fresh_prices is not None:
+                    fresh_formula = apply_to_series(
+                        fresh_prices,
+                        self.retail_factor,
+                        self.retail_surcharge,
+                        self.tariff,
+                    )
+                    self.retail_forecast_reference = await self._async_capture_reference(
+                        "retail",
+                        fresh_formula,
+                        formula_plan_basis(
+                            self.retail_factor, self.retail_surcharge, self.tariff
+                        ),
+                    )
 
         # Plans are built on the series the user actually pays. With retail
         # pricing on, the spot price is neither what a planned hour costs nor

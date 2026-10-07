@@ -44,6 +44,7 @@ from .const import (
     CONF_LOCAL_CURRENCY,
     CONF_MARKET,
     CONF_POSTAL_CODE,
+    CONF_PRICE_RESOLUTION,
     CONF_RETAIL_FACTOR,
     CONF_RETAIL_PRICING,
     CONF_RETAIL_SOURCE,
@@ -99,6 +100,8 @@ from .const import (
     MIN_RETAIL_SURCHARGE,
     MIN_TOU_RATE,
     MIN_UPDATE_INTERVAL_MINUTES,
+    PRICE_RESOLUTIONS,
+    PRICE_RESOLUTION_QUARTER_HOURLY,
     POSTAL_CODE_MARKETS,
     PRICES_API_URL,
     RETAIL_MARKETS,
@@ -194,6 +197,18 @@ def _schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
             ),
             vol.Optional(CONF_API_KEY, default=""): TextSelector(
                 TextSelectorConfig(type=TextSelectorType.PASSWORD)
+            ),
+            vol.Optional(
+                CONF_PRICE_RESOLUTION,
+                default=defaults.get(
+                    CONF_PRICE_RESOLUTION, PRICE_RESOLUTION_QUARTER_HOURLY
+                ),
+            ): SelectSelector(
+                SelectSelectorConfig(
+                    options=list(PRICE_RESOLUTIONS),
+                    translation_key=CONF_PRICE_RESOLUTION,
+                    mode=SelectSelectorMode.DROPDOWN,
+                )
             ),
             vol.Optional(
                 CONF_RETAIL_SOURCE,
@@ -514,6 +529,13 @@ def _normalize_input(user_input: dict[str, Any]) -> dict[str, Any]:
         normalized[CONF_API_KEY] = api_key
     else:
         normalized.pop(CONF_API_KEY, None)
+    resolution = str(normalized.get(
+        CONF_PRICE_RESOLUTION, PRICE_RESOLUTION_QUARTER_HOURLY
+    ))
+    normalized[CONF_PRICE_RESOLUTION] = (
+        resolution if resolution in PRICE_RESOLUTIONS
+        else PRICE_RESOLUTION_QUARTER_HOURLY
+    )
     source = str(normalized.get(CONF_RETAIL_SOURCE, RETAIL_SOURCE_OFF))
     normalized[CONF_RETAIL_SOURCE] = (
         source if source in RETAIL_SOURCES else RETAIL_SOURCE_OFF

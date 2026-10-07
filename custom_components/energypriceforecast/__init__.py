@@ -9,6 +9,7 @@ from datetime import date, tzinfo
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .api import EnergyPriceForecastApi, requested_currency
@@ -21,6 +22,7 @@ from .const import (
     CONF_LOCAL_CURRENCY,
     CONF_MARKET,
     CONF_POSTAL_CODE,
+    CONF_PRICE_RESOLUTION,
     CONF_RETAIL_FACTOR,
     CONF_RETAIL_PRICING,
     CONF_RETAIL_SOURCE,
@@ -38,11 +40,13 @@ from .const import (
     DEFAULT_HORIZON_HOURS,
     DEFAULT_LOCAL_CURRENCY,
     DEFAULT_RETAIL_FACTOR,
+    DEFAULT_PRICE_RESOLUTION,
     DEFAULT_RETAIL_SURCHARGE,
     DEFAULT_TIME_ZONE,
     DEFAULT_UPDATE_INTERVAL_MINUTES,
     DEFAULT_GREENEST_HOURS_COUNT,
     DEFAULT_WEEKEND_HOURS_COUNT,
+    DOMAIN,
     MARKET_TIME_ZONES,
     MAX_HORIZON_HOURS,
     PLATFORMS,
@@ -124,6 +128,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         window_hours=entry.data[CONF_WINDOW_HOURS],
         api_key=entry.data.get(CONF_API_KEY),
         currency=currency,
+        price_resolution=entry.data.get(
+            CONF_PRICE_RESOLUTION, DEFAULT_PRICE_RESOLUTION
+        ),
     )
     coordinator = EnergyPriceForecastCoordinator(
         hass,
@@ -154,6 +161,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             CONF_GREENEST_HOURS_COUNT, DEFAULT_GREENEST_HOURS_COUNT
         ),
         currency=currency,
+        price_resolution=entry.data.get(
+            CONF_PRICE_RESOLUTION, DEFAULT_PRICE_RESOLUTION
+        ),
         tariff=tariff,
         tariff_loader=tariff_loader,
         zone=zone,
@@ -206,3 +216,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def _async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     await hass.config_entries.async_reload(entry.entry_id)
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Remove locally saved comparisons when their market is removed."""
+    await Store(hass, 1, f"{DOMAIN}_{entry.entry_id}_forecast_reference").async_remove()

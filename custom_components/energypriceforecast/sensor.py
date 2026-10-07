@@ -215,6 +215,7 @@ def _forecast_only(entries: Any) -> list[dict[str, Any]]:
 # every update. They are meant to be read live (charts, templates), never
 # from history, so keep them out of the database entirely.
 _SERIES_ATTRIBUTES = frozenset({"raw_today", "raw_tomorrow", "raw_forecast"})
+_PRICE_SERIES_ATTRIBUTES = _SERIES_ATTRIBUTES | {"raw_forecast_reference"}
 
 # The emission assumptions are static for a model profile: the same ~1 KB
 # would be written to the database on every single update, describing a
@@ -671,7 +672,7 @@ class EnergyPriceForecastRetailPriceSensor(
     _attr_icon = "mdi:cash-multiple"
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_suggested_display_precision = 4
-    _unrecorded_attributes = _SERIES_ATTRIBUTES
+    _unrecorded_attributes = _PRICE_SERIES_ATTRIBUTES
 
     def __init__(
         self, coordinator: EnergyPriceForecastCoordinator, entry: ConfigEntry
@@ -699,6 +700,7 @@ class EnergyPriceForecastRetailPriceSensor(
             "raw_today": today,
             "raw_tomorrow": tomorrow,
             "raw_forecast": _forecast_only(entries),
+            "raw_forecast_reference": self.coordinator.retail_forecast_reference,
             **_day_statistics(today, self.native_value),
             **self._source_attributes(),
         }
@@ -746,7 +748,7 @@ class EnergyPriceForecastPriceSeriesSensor(
     _attr_icon = "mdi:chart-line"
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_suggested_display_precision = 4
-    _unrecorded_attributes = _SERIES_ATTRIBUTES
+    _unrecorded_attributes = _PRICE_SERIES_ATTRIBUTES
 
     def __init__(
         self, coordinator: EnergyPriceForecastCoordinator, entry: ConfigEntry
@@ -774,6 +776,7 @@ class EnergyPriceForecastPriceSeriesSensor(
             "raw_today": today,
             "raw_tomorrow": tomorrow,
             "raw_forecast": _forecast_only(entries),
+            "raw_forecast_reference": self.coordinator.price_forecast_reference,
             **_day_statistics(today, self.native_value),
         }
 

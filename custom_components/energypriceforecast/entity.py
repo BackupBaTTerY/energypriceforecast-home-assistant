@@ -10,7 +10,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.event import async_track_utc_time_change
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import CONF_MARKET, DOMAIN, NAME
+from .const import CONF_MARKET, DOMAIN, NAME, PRICE_RESOLUTION_HOURLY
 from .coordinator import EnergyPriceForecastCoordinator
 
 
@@ -61,7 +61,7 @@ class QuarterHourStateRefreshMixin:
             async_track_utc_time_change(
                 self.hass,
                 self._handle_slot_change,
-                minute=(0, 15, 30, 45),
+                minute=self._slot_boundary_minutes(),
                 second=0,
             )
         )
@@ -69,6 +69,18 @@ class QuarterHourStateRefreshMixin:
     def _follows_slot_boundaries(self) -> bool:
         """Whether this entity's value depends on when it is read."""
         return True
+
+    def _slot_boundary_minutes(self) -> tuple[int, ...]:
+        """The minutes at which this entity's price can change.
+
+        A contract that settles by the hour pays one price for all four
+        quarters, so rewriting the state at every quarter would only add rows
+        that say what the row before them said.
+        """
+        resolution = getattr(self.coordinator, "price_resolution", None)
+        if resolution == PRICE_RESOLUTION_HOURLY:
+            return (0,)
+        return (0, 15, 30, 45)
 
     @callback
     def _handle_slot_change(self, _now: datetime) -> None:

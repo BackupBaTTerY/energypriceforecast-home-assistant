@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  workflow_run:
+    workflows: [Validate]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hacs-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+      - name: Publish the tested version once
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TESTED_SHA: ${{ github.event.workflow_run.head_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_sha=$(gh api "repos/$GH_REPO/git/ref/heads/main" --jq .object.sha)
+          if [[ "$current_sha" != "$TESTED_SHA" ]]; then
+            echo "Main moved since validation; wait for its own successful run."
+            exit 0
+          fi
+          version=$(node -p "require('./custom_components/energypriceforecast/manifest.json').version")
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          if gh release view "$version" >/dev/null 2>&1; then
+            echo "Version $version already has a release; leave it unchanged."
+            exit 0
+          fi
+          notes=".github/release-notes/$version.md"
+          test -s "$notes"
+          if tag_sha=$(gh api "repos/$GH_REPO/commits/$version" --jq .sha 2>/dev/null); then
+            if [[ "$tag_sha" != "$TESTED_SHA" ]]; then
+              echo "Existing version ref points at a different commit; refusing release."
+              exit 1
+            fi
+          fi
+          gh release create "$version" --target "$TESTED_SHA" --latest \
+            --title "$version" --notes-file "$notes"

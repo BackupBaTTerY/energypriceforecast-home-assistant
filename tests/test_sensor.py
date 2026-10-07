@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -515,6 +516,31 @@ async def test_price_series_sensor_exposes_forecast_only_entries(hass, freezer) 
     assert [item["value"] for item in state.attributes["raw_forecast"]] == [0.15]
     # forecast entries beyond tomorrow must not leak into raw_today/raw_tomorrow
     assert [item["value"] for item in state.attributes["raw_tomorrow"]] == [0.13]
+
+
+@pytest.mark.parametrize("retail_source,suffix", [
+    ("off", "price_series"), ("estimate", "retail_current_price"),
+    ("formula", "retail_current_price"),
+])
+async def test_price_sensor_exposes_saved_reference(hass, freezer, retail_source, suffix):
+    freezer.move_to("2026-08-08T10:00:00+00:00")
+    forecast = {"start": "2026-08-09T10:00:00Z", "end": "2026-08-09T10:15:00Z",
+                "value": 0.1, "source": "forecast"}
+    entry = await _setup_entry(hass, extra_data={
+        "retail_source": retail_source, "postal_code": "10115",
+        "retail_factor": 1.19, "retail_surcharge": 0.1,
+    }, price_entries=[forecast])
+    state = _state_for_unique_id(hass, entry, suffix)
+    reference = state.attributes["raw_forecast_reference"]
+    assert len(reference) == 1
+    assert reference[0]["value"] == (0.219 if retail_source == "formula" else 0.1)
+    assert reference[0]["captured_at"] == "2026-08-08T10:00:00+00:00"
+
+    from custom_components.energypriceforecast.sensor import (
+        EnergyPriceForecastPriceSeriesSensor, EnergyPriceForecastRetailPriceSensor,
+    )
+    for cls in (EnergyPriceForecastPriceSeriesSensor, EnergyPriceForecastRetailPriceSensor):
+        assert "raw_forecast_reference" in cls._unrecorded_attributes
 
 
 async def test_forecast_entries_stay_out_of_raw_today_and_tomorrow(
@@ -1567,3 +1593,43 @@ async def test_the_cheapest_hours_flag_turns_on_between_polls(hass, freezer) -> 
     await hass.async_block_till_done()
 
     assert _state_for_unique_id(hass, entry, "is_in_cheapest_hours").state == "on"
+
+
+def test_an_hourly_contract_moves_on_the_hour_not_the_quarter() -> None:
+    """Writing the same price four times an hour would only fill the
+    database with rows that repeat the row before them."""
+    from custom_components.energypriceforecast.entity import (
+        QuarterHourStateRefreshMixin,
+    )
+
+    class _Entity(QuarterHourStateRefreshMixin):
+        def __init__(self, resolution):
+            self.coordinator = SimpleNamespace(price_resolution=resolution)
+
+    assert _Entity("hourly")._slot_boundary_minutes() == (0,)
+    assert _Entity("quarter_hourly")._slot_boundary_minutes() == (0, 15, 30, 45)
+    # An entry from before the option existed has no value at all.
+    assert _Entity(None)._slot_boundary_minutes() == (0, 15, 30, 45)
+
+
+async def test_the_hourly_price_switches_when_the_hour_does(hass, freezer) -> None:
+    """With whole-hour slots the sensor follows them, and the series the
+    plans are built from holds the same hours."""
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-08T00:50:00+00:00")
+    entry = await _setup_entry(
+        hass,
+        extra_data={"price_resolution": "hourly"},
+        price_entries=_day_ahead_slots(
+            "2026-08-08T00:00:00Z", {0: 0.10, 1: 0.20}, minutes=60
+        ),
+    )
+
+    assert float(_state_for_unique_id(hass, entry, "current_price").state) == 0.10
+
+    freezer.move_to("2026-08-08T01:00:00+00:00")
+    async_fire_time_changed(hass, dt_util.utcnow())
+    await hass.async_block_till_done()
+
+    assert float(_state_for_unique_id(hass, entry, "current_price").state) == 0.20
+    assert float(_state_for_unique_id(hass, entry, "price_series").state) == 0.20

@@ -14,6 +14,8 @@ requiring YAML or JSON templates.
 - Cheapest price window and greenest CO2 window, with a countdown to the end
   of each
 - Binary sensors indicating whether a best window is active now
+- **Hourly or quarter-hourly tariff** *(1.12.0)*: tell the integration how
+  your contract prices time, so every number matches your bill
 - **Everything that describes "now" switches at the slot boundary**
   *(1.11.0)*: current price, CO2 intensity, the window countdowns and every
   "active now" flag change on the quarter hour themselves, instead of waiting
@@ -30,6 +32,10 @@ requiring YAML or JSON templates.
   Nordpool-style `average` / `min` / `max` / `price_percent_to_average`.
   Published values already seen today remain available across updates and
   restarts, and the current price moves at each exact quarter hour *(1.9.0)*
+- **Saved forecast comparison** *(1.12.0)*: the first forecast received for
+  each future slot stays visible alongside later official prices, including
+  after a restart. Available for both market and retail prices, without an
+  additional API call; see the ready-to-paste chart below.
 - The same series for **CO2 intensity** *(1.2.0)*, so emissions can be charted
   the way prices already could
 - **Forecast quality**: how often the forecast actually picked the cheapest
@@ -449,6 +455,14 @@ comparison against another hour in the same block, nothing more.
   for those hours is in `raw_forecast` instead, and the two never overlap.
   Both sensors select the current slot at every quarter hour, independently of
   the configured API poll interval and without making an extra request.
+- Both price sensors also carry `raw_forecast_reference` *(1.12.0)*: the **first forecast
+  received for each future slot**, as `{start, end, value, captured_at}`. This
+  comparison is stored locally, survives restarts and is not overwritten by
+  later forecasts or official prices. It keeps today's and upcoming slots;
+  yesterday's are removed on the next successful update after market midnight.
+  `captured_at` is when Home Assistant received the value, not the model's
+  creation time. A slot first seen with an official price, or after it started,
+  cannot be retroactively given a forecast. No extra API request is needed.
 - **CO2 forecast series** carries the same `raw_today` / `raw_tomorrow` /
   `raw_forecast` attributes as the price series, in gCO2/kWh, so a chart card
   built for prices works by swapping the entity. CO2 is published hourly where
@@ -484,6 +498,11 @@ These attributes are deliberately excluded from the recorder database since
 exceeds the recorder's 16 KB per-state limit, so it used to drop them and log a
 warning on every update. They are always available live for charts, templates
 and automations - only their *history* is not stored.
+
+The comparison snapshots above use a separate, bounded local storage file,
+not recorder history. Removing the integration's configuration also removes
+its comparison data. Changing the market, currency, price resolution or retail
+formula starts a new comparison rather than mixing incompatible prices.
 
 **No `recorder:` configuration is needed for this, and adding one is a bad
 idea.** Excluding the whole entity (`recorder: exclude: entities:`) would also
@@ -779,6 +798,31 @@ memory and without an extra request:
 Everything else - the forecasts, the quality figures, the window times - only
 changes when new data arrives, so those entities keep the poll's rhythm.
 
+## Hourly or quarter-hourly tariff *(1.12.0)*
+
+The exchanges price every quarter hour, but a large part of the dynamic
+contracts still bills the **hourly mean** of those four quarters. Such a
+household never pays a quarter-hour price: the cheapest quarter of an hour
+costs them exactly as much as the most expensive one.
+
+**Price resolution of your tariff** says which of the two you have:
+
+| Choice | What you get |
+|---|---|
+| Tariff with a quarter-hourly electricity price *(default)* | The market's own slots, unchanged |
+| Tariff with an hourly electricity price | Whole clock hours, averaged from the quarters |
+
+With the hourly tariff the API folds the series onto clock hours before
+anything is derived from it, so the current price, the cheapest window, the
+plans and the combined score all use the price your bill uses. The running
+hour is averaged over all four of its quarters, including the ones that have
+already passed - that is the price being settled. The entities then also move
+on the hour instead of four times within it.
+
+Pick it only if your supplier really settles by the hour. If you are unsure,
+the quarter-hourly setting is the safe one: it is what every entry has been
+using so far.
+
 ## How good is the forecast, really?
 
 *Added in 1.0.0 - if you do not see this entity, check your installed
@@ -1057,7 +1101,8 @@ either - just point it at the right entity.
 
 ### Ready-to-paste card
 
-Replace both `sensor.CHANGE_ME` lines with your own entity (see
+Install **apexcharts-card 2.1.0 or newer** through HACS first.
+Replace all three `sensor.CHANGE_ME` lines with your own entity (see
 [Finding your entity IDs](#finding-your-entity-ids-first) - on a German
 instance it is likely `sensor..._preisreihe` or `sensor..._aktueller_endkundenpreis`).
 Add the card via **Dashboard > Edit > Add card > Manual**.
@@ -1066,8 +1111,8 @@ Add the card via **Dashboard > Edit > Add card > Manual**.
 type: custom:apexcharts-card
 header:
   show: true
-  title: Electricity price
-graph_span: 4d
+  title: Energy Price Forecast EU
+graph_span: 3d
 span:
   start: day
 now:
@@ -1079,56 +1124,109 @@ yaxis:
     apex_config:
       title:
         text: EUR/kWh
+all_series_config:
+  yaxis_id: price
+  type: line
+  curve: stepline
+  extend_to: false
+  stroke_width: 2
+  float_precision: 4
+  show:
+    legend_value: false
 series:
-  # Both sensor.CHANGE_ME lines must be the SAME entity.
-  # Retail pricing enabled? Use your retail price sensor here, not the price
-  # series sensor - the spot price is not what you pay, and a chart on it
-  # will disagree with the retail price shown elsewhere on your dashboard.
+  # Replace ALL three placeholders with the SAME price or retail sensor.
   - entity: sensor.CHANGE_ME
     name: Known (day-ahead)
-    yaxis_id: price
-    type: line
-    curve: stepline
     color: "#43a047"
-    extend_to: false
-    stroke_width: 2
     data_generator: |
-      const known = [...(entity.attributes.raw_today ?? []),
-                     ...(entity.attributes.raw_tomorrow ?? [])];
-      // raw_today retains published slots already seen today, so this line
-      // continues through the Now marker instead of starting there.
-      return known
-        .map(e => [new Date(e.start).getTime(), e.value])
-        .sort((a, b) => a[0] - b[0]);
+      const raw = [...(entity.attributes.raw_today ?? []),
+                   ...(entity.attributes.raw_tomorrow ?? [])];
+      const slots = raw.map(e => ({
+        start: Date.parse(e.start), end: Date.parse(e.end), value: e.value
+      })).filter(e => Number.isFinite(e.start) && Number.isFinite(e.end)
+        && e.end > e.start && typeof e.value === 'number' && Number.isFinite(e.value))
+        .sort((a, b) => a.start - b.start);
+      const points = [];
+      let previousEnd = null;
+      for (const slot of slots) {
+        if (previousEnd !== null && slot.start > previousEnd) {
+          points.push([previousEnd, null], [slot.start - 1, null]);
+        }
+        points.push([slot.start, slot.value], [slot.end - 1, slot.value]);
+        previousEnd = slot.end;
+      }
+      return points;
   - entity: sensor.CHANGE_ME
-    name: Forecast
-    yaxis_id: price
-    type: line
-    curve: stepline
+    name: Current forecast
     color: "#fb8c00"
-    extend_to: false
-    stroke_width: 2
     data_generator: |
-      const known = [...(entity.attributes.raw_today ?? []),
-                     ...(entity.attributes.raw_tomorrow ?? [])];
-      const forecast = entity.attributes.raw_forecast ?? [];
-      // Start the forecast at the last known point, otherwise the two lines
-      // are drawn with a gap and the forecast looks like it disagrees with
-      // the last known price instead of continuing from it.
-      const join = known.length ? [known[known.length - 1]] : [];
-      // Sorting is not cosmetic: a point out of order sends the line
-      // backwards in time, which draws as a long flat stretch across the
-      // overlap rather than as an obvious error.
-      return [...join, ...forecast]
-        .map(e => [new Date(e.start).getTime(), e.value])
-        .sort((a, b) => a[0] - b[0]);
+      const raw = entity.attributes.raw_forecast ?? [];
+      const slots = raw.map(e => ({
+        start: Date.parse(e.start), end: Date.parse(e.end), value: e.value
+      })).filter(e => Number.isFinite(e.start) && Number.isFinite(e.end)
+        && e.end > e.start && typeof e.value === 'number' && Number.isFinite(e.value))
+        .sort((a, b) => a.start - b.start);
+      const points = [];
+      let previousEnd = null;
+      for (const slot of slots) {
+        if (previousEnd !== null && slot.start > previousEnd) {
+          points.push([previousEnd, null], [slot.start - 1, null]);
+        }
+        points.push([slot.start, slot.value], [slot.end - 1, slot.value]);
+        previousEnd = slot.end;
+      }
+      return points;
+  - entity: sensor.CHANGE_ME
+    name: Saved forecast (first seen)
+    color: "#1e88e5"
+    stroke_dash: 5
+    data_generator: |
+      const raw = entity.attributes.raw_forecast_reference ?? [];
+      const slots = raw.map(e => ({
+        start: Date.parse(e.start), end: Date.parse(e.end), value: e.value
+      })).filter(e => Number.isFinite(e.start) && Number.isFinite(e.end)
+        && e.end > e.start && typeof e.value === 'number' && Number.isFinite(e.value))
+        .sort((a, b) => a.start - b.start);
+      const points = [];
+      let previousEnd = null;
+      for (const slot of slots) {
+        if (previousEnd !== null && slot.start > previousEnd) {
+          points.push([previousEnd, null], [slot.start - 1, null]);
+        }
+        points.push([slot.start, slot.value], [slot.end - 1, slot.value]);
+        previousEnd = slot.end;
+      }
+      return points;
 ```
 
 The known-price line includes the elapsed part of today on the left of the
 Now marker; tomorrow follows as soon as its day-ahead prices are published.
-Both series are `extend_to: false` on purpose: without it, apexcharts-card
+All series are `extend_to: false` on purpose: without it, apexcharts-card
 stretches the last value to the edge of the graph, inventing prices that were
 never forecast.
+
+The **blue dashed line** is the first forecast Home Assistant saved for each
+slot. The **orange line** is the current forecast and may change. When official
+prices arrive, the orange line is replaced by the **green day-ahead line** for
+those slots, while the saved blue forecast remains for comparison. It is not
+a fixed-lead-time quality measurement: a slot might first have been captured
+48 or 120 hours ahead, depending on your horizon and when HA was running.
+
+Snapshots accumulate only after installing this improvement; an initially
+empty blue line is normal. They stay visible throughout the target day, then
+are pruned at market midnight. There is no multi-day historical archive here.
+Retail snapshots contain the all-in value calculated when captured, not a
+later recalculation. An API retail estimate is still an estimate, not your
+supplier's billed rate. For markets outside EUR, change the axis title to the
+sensor's actual unit. For the full 120-hour horizon use `graph_span: 6d`;
+the chart never creates data beyond what your API access supplies.
+
+Slots include their real end time, gaps remain gaps, and zero and negative
+prices are valid. Official points are never copied into the forecast line.
+The ready-to-paste YAML is also in
+[examples/price-chart-comparison.yaml](examples/price-chart-comparison.yaml).
+The comparison idea was inspired by
+[Frank Hamm's practical dashboard](https://derschreiben.de/strompreisprognosen-mit-energy-price-forecast-und-home-assistant/).
 
 ### Showing the planned cheap hours in the chart
 
@@ -1138,7 +1236,7 @@ the price valleys. Point it at your *Next cheapest hour* sensor (German:
 `sensor..._naechste_guenstige_stunde`), and use the *Next weekend cheapest
 hour* sensor for the weekend plan.
 
-Add it as the **first** entry under `series:`, before the two price series -
+Add it as the **first** entry under `series:`, before the three price series -
 apexcharts draws series in order, so listing it first keeps the bands behind
 the price lines instead of on top of them.
 
@@ -1215,10 +1313,11 @@ Before writing YAML, ask me:
 6. Do I want to use this to actually switch a device (heat pump, water heater, car charger), rather than only look at it? If so, say that a chart alone will not do that, and offer to write a matching automation triggered on the binary sensor that is on during the planned hours.
 
 Rules for your result:
-- Use only the raw_today / raw_tomorrow / raw_forecast attributes I described. Do not invent other attributes or a different data shape.
+- The same two price sensors also expose raw_forecast_reference: {start, end, value, captured_at} slots, holding the first forecast received for each future slot. These survive restarts and official publication and are removed after the target market day ends. captured_at is the HA observation time, not the model creation time. Offer an optional dashed reference line to compare that saved prediction against official prices; no predictions can be recovered from before the integration began saving them.
+- Use only raw_today / raw_tomorrow / raw_forecast / raw_forecast_reference. Do not invent other attributes or a different data shape.
 - Use apexcharts-card's data_generator to turn the attribute list into a chart series - do not assume the card accepts the attribute directly as a series.
 - If I asked for known prices and forecast as separate series, use two series against the same entity (one summing raw_today+raw_tomorrow, one for raw_forecast), each with its own data_generator, and set extend_to: false on both - otherwise apexcharts-card visually extends the last value to the edge of the graph, which is misleading here.
-- The forecast series must start where the known series ends. In the raw_forecast data_generator, prepend the last entry of raw_today+raw_tomorrow to the forecast points. The two attributes are adjacent but not overlapping, so without that point the two lines are drawn with a visible gap, which reads as the forecast disagreeing with the last known price instead of continuing from it. Keep the prepended point in the forecast series' own colour and style, so no known value is presented as a forecast or the other way round.
+- Draw each slot from start through end (ending one millisecond before end avoids duplicate timestamps). Preserve real gaps using null points. Do not prepend official prices to a forecast series or hide zero/negative prices. Use the sensor's unit consistently.
 - Quote any string value (title, name, tooltip format) that itself contains a colon, like "Known: forecast" or "dd.MM. HH:mm" - an unquoted colon inside a YAML value breaks parsing.
 - Produce a complete, correctly indented YAML block for a manual Lovelace card (type: custom:apexcharts-card).
 - Tell me exactly where to paste it (Dashboard > Edit > Add card > Manual).

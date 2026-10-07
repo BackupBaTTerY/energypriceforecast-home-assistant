@@ -96,6 +96,7 @@
           "horizon_hours": "Požadovaný horizont",
           "window_hours": "Délka nejlepšího okna",
           "api_key": "API klíč (volitelný)",
+          "price_resolution": "Časový krok ceny ve vašem tarifu",
           "retail_source": "Maloobchodní cena",
           "tou_source": "Poplatky za síť podle denní doby",
           "local_currency": "Zobrazit ceny v místní měně",
@@ -110,6 +111,7 @@
           "horizon_hours": "API hlásí skutečně povolený horizont jako diagnostický senzor.",
           "window_hours": "Délka nejlevnějšího a nejzelenějšího souvislého časového okna.",
           "api_key": "Ponechte prázdné pro veřejný přístup. Klíč se ukládá do konfiguračního záznamu Home Assistant.",
+          "price_resolution": "Burza oceňuje každou čtvrthodinu, ale mnoho smluv stále účtuje hodinový průměr těchto čtvrthodin. Hodinový tarif zvolte jen tehdy, když to tak dělá i vaše vyúčtování; ceny, plány a okna pak počítají s celými hodinami.",
           "retail_source": "Odhad: naše kompletní cena založená na předpokladech (poplatek za síť, poplatky, DPH), jen pro DE, NL, DK, AT a NO; Německo vyžaduje PSČ. Vlastní vzorec: burzovní cena × koeficient + příplatek, na každém trhu. V obou případech se plány sestavují podle maloobchodní ceny.",
           "tou_source": "Poplatky za síť, které se mění podle denní doby, se započítají do vlastního vzorce - jeho koeficient k nim přičte DPH. Zadejte časová pásma a částky ze svého ceníku; v Norsku je lze předvyplnit podle provozovatele sítě, v Dánsku se vyhledají automaticky. Vyžaduje „Vlastní vzorec“ jako maloobchodní cenu.",
           "local_currency": "Přepočítá ceny z eur na české koruny (CZ), polské zloté (PL) nebo švédské koruny (SE1-SE4) podle denního referenčního kurzu ECB. Dánsko a Norsko dostávají vždy vlastní měnu, ostatní trhy zůstávají v eurech. Změna mění jednotku cenových senzorů, Home Assistant proto začne jejich dlouhodobé statistiky znovu.",
@@ -129,6 +131,7 @@
           "horizon_hours": "Požadovaný horizont",
           "window_hours": "Délka nejlepšího okna",
           "api_key": "Nový API klíč (volitelný)",
+          "price_resolution": "Časový krok ceny ve vašem tarifu",
           "retail_source": "Maloobchodní cena",
           "tou_source": "Poplatky za síť podle denní doby",
           "local_currency": "Zobrazit ceny v místní měně",
@@ -142,6 +145,7 @@
         "data_description": {
           "horizon_hours": "API hlásí skutečně povolený horizont jako diagnostický senzor.",
           "window_hours": "Délka nejlevnějšího a nejzelenějšího souvislého časového okna.",
+          "price_resolution": "Burza oceňuje každou čtvrthodinu, ale mnoho smluv stále účtuje hodinový průměr těchto čtvrthodin. Hodinový tarif zvolte jen tehdy, když to tak dělá i vaše vyúčtování; ceny, plány a okna pak počítají s celými hodinami.",
           "retail_source": "Odhad: naše kompletní cena založená na předpokladech (poplatek za síť, poplatky, DPH), jen pro DE, NL, DK, AT a NO; Německo vyžaduje PSČ. Vlastní vzorec: burzovní cena × koeficient + příplatek, na každém trhu. V obou případech se plány sestavují podle maloobchodní ceny.",
           "tou_source": "Poplatky za síť, které se mění podle denní doby, se započítají do vlastního vzorce - jeho koeficient k nim přičte DPH. Zadejte časová pásma a částky ze svého ceníku; v Norsku je lze předvyplnit podle provozovatele sítě, v Dánsku se vyhledají automaticky. Vyžaduje „Vlastní vzorec“ jako maloobchodní cenu.",
           "local_currency": "Přepočítá ceny z eur na české koruny (CZ), polské zloté (PL) nebo švédské koruny (SE1-SE4) podle denního referenčního kurzu ECB. Dánsko a Norsko dostávají vždy vlastní měnu, ostatní trhy zůstávají v eurech. Změna mění jednotku cenových senzorů, Home Assistant proto začne jejich dlouhodobé statistiky znovu.",
@@ -187,6 +191,12 @@
       "options": {
         "like_weekday": "Jako pracovní den",
         "low": "Celý den nízký tarif"
+      }
+    },
+    "price_resolution": {
+      "options": {
+        "quarter_hourly": "Tarif se čtvrthodinovou cenou elektřiny",
+        "hourly": "Tarif s hodinovou cenou elektřiny"
       }
     },
     "retail_source": {

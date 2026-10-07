@@ -1027,3 +1027,43 @@ async def test_reconfiguring_starts_from_the_stored_tariff(hass) -> None:
     windows = result["data_schema"]({})
     assert (windows["tou_peak_start"], windows["tou_peak_end"]) == (17, 21)
     assert windows["tou_winter_from"] == 10
+
+
+async def test_the_tariff_defaults_to_the_markets_own_quarter_hours(hass) -> None:
+    """Nobody gets a different behaviour by upgrading."""
+    with patch(
+        "custom_components.energypriceforecast.config_flow._validate_input",
+        new=AsyncMock(return_value=None),
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], BASE_USER_INPUT
+        )
+
+    assert result["data"]["price_resolution"] == "quarter_hourly"
+
+
+async def test_an_hourly_tariff_is_stored_as_chosen(hass) -> None:
+    with patch(
+        "custom_components.energypriceforecast.config_flow._validate_input",
+        new=AsyncMock(return_value=None),
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {**BASE_USER_INPUT, "price_resolution": "hourly"}
+        )
+
+    assert result["data"]["price_resolution"] == "hourly"
+
+
+async def test_an_unknown_resolution_falls_back_to_the_market(hass) -> None:
+    """A value from a hand-edited entry must not reach the API."""
+    from custom_components.energypriceforecast.config_flow import _normalize_input
+
+    normalized = _normalize_input({**BASE_USER_INPUT, "price_resolution": "monthly"})
+
+    assert normalized["price_resolution"] == "quarter_hourly"

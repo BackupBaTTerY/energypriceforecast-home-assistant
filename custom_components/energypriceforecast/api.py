@@ -7,7 +7,7 @@ from typing import Any
 
 from aiohttp import ClientError, ClientResponseError, ClientSession
 
-from .const import LOCAL_CURRENCY_BY_MARKET, VERSION
+from .const import LOCAL_CURRENCY_BY_MARKET, PRICE_RESOLUTION_HOURLY, VERSION
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -81,6 +81,7 @@ class EnergyPriceForecastApi:
         api_key: str | None = None,
         prices_url: str | None = None,
         currency: str | None = None,
+        price_resolution: str | None = None,
     ) -> None:
         self._session = session
         self._base_url = base_url
@@ -90,6 +91,7 @@ class EnergyPriceForecastApi:
         self._window_hours = window_hours
         self._api_key = (api_key or "").strip()
         self._currency = (currency or "").strip().upper() or None
+        self._price_resolution = (price_resolution or "").strip().lower() or None
 
     def _with_currency(self, params: dict[str, str]) -> dict[str, str]:
         """Ask for the configured currency, or leave the API's default alone.
@@ -101,6 +103,17 @@ class EnergyPriceForecastApi:
         """
         if self._currency:
             params["currency"] = self._currency
+        return params
+
+    def _with_resolution(self, params: dict[str, str]) -> dict[str, str]:
+        """Ask for whole hours, or say nothing and take the market's slots.
+
+        The parameter is only sent for a contract that settles by the hour.
+        Leaving it out otherwise keeps every request byte-identical to what
+        entries configured before this option existed were sending.
+        """
+        if self._price_resolution == PRICE_RESOLUTION_HOURLY:
+            params["resolution"] = "hourly"
         return params
 
     async def _async_request(
@@ -166,7 +179,7 @@ class EnergyPriceForecastApi:
         if postal_code:
             params["plz"] = postal_code
         payload = await self._async_request(
-            self._base_url, self._with_currency(params)
+            self._base_url, self._with_resolution(self._with_currency(params))
         )
 
         if payload.get("format") != "home-assistant-summary":
@@ -195,7 +208,7 @@ class EnergyPriceForecastApi:
         if postal_code:
             params["plz"] = postal_code
         payload = await self._async_request(
-            self._prices_url, self._with_currency(params)
+            self._prices_url, self._with_resolution(self._with_currency(params))
         )
 
         if payload.get("format") != "home-assistant-prices":

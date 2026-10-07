@@ -1,0 +1,89 @@
+type: custom:apexcharts-card
+header:
+  show: true
+  title: Energy Price Forecast EU
+graph_span: 3d
+span:
+  start: day
+now:
+  show: true
+  label: Now
+yaxis:
+  - id: price
+    decimals: 3
+    apex_config:
+      title:
+        text: EUR/kWh
+all_series_config:
+  yaxis_id: price
+  type: line
+  curve: stepline
+  extend_to: false
+  stroke_width: 2
+  float_precision: 4
+  show:
+    legend_value: false
+series:
+  # Replace ALL three placeholders with the SAME price or retail sensor.
+  - entity: sensor.CHANGE_ME
+    name: Known (day-ahead)
+    color: "#43a047"
+    data_generator: |
+      const raw = [...(entity.attributes.raw_today ?? []),
+                   ...(entity.attributes.raw_tomorrow ?? [])];
+      const slots = raw.map(e => ({
+        start: Date.parse(e.start), end: Date.parse(e.end), value: e.value
+      })).filter(e => Number.isFinite(e.start) && Number.isFinite(e.end)
+        && e.end > e.start && typeof e.value === 'number' && Number.isFinite(e.value))
+        .sort((a, b) => a.start - b.start);
+      const points = [];
+      let previousEnd = null;
+      for (const slot of slots) {
+        if (previousEnd !== null && slot.start > previousEnd) {
+          points.push([previousEnd, null], [slot.start - 1, null]);
+        }
+        points.push([slot.start, slot.value], [slot.end - 1, slot.value]);
+        previousEnd = slot.end;
+      }
+      return points;
+  - entity: sensor.CHANGE_ME
+    name: Current forecast
+    color: "#fb8c00"
+    data_generator: |
+      const raw = entity.attributes.raw_forecast ?? [];
+      const slots = raw.map(e => ({
+        start: Date.parse(e.start), end: Date.parse(e.end), value: e.value
+      })).filter(e => Number.isFinite(e.start) && Number.isFinite(e.end)
+        && e.end > e.start && typeof e.value === 'number' && Number.isFinite(e.value))
+        .sort((a, b) => a.start - b.start);
+      const points = [];
+      let previousEnd = null;
+      for (const slot of slots) {
+        if (previousEnd !== null && slot.start > previousEnd) {
+          points.push([previousEnd, null], [slot.start - 1, null]);
+        }
+        points.push([slot.start, slot.value], [slot.end - 1, slot.value]);
+        previousEnd = slot.end;
+      }
+      return points;
+  - entity: sensor.CHANGE_ME
+    name: Saved forecast (first seen)
+    color: "#1e88e5"
+    stroke_dash: 5
+    data_generator: |
+      const raw = entity.attributes.raw_forecast_reference ?? [];
+      const slots = raw.map(e => ({
+        start: Date.parse(e.start), end: Date.parse(e.end), value: e.value
+      })).filter(e => Number.isFinite(e.start) && Number.isFinite(e.end)
+        && e.end > e.start && typeof e.value === 'number' && Number.isFinite(e.value))
+        .sort((a, b) => a.start - b.start);
+      const points = [];
+      let previousEnd = null;
+      for (const slot of slots) {
+        if (previousEnd !== null && slot.start > previousEnd) {
+          points.push([previousEnd, null], [slot.start - 1, null]);
+        }
+        points.push([slot.start, slot.value], [slot.end - 1, slot.value]);
+        previousEnd = slot.end;
+      }
+      return points;

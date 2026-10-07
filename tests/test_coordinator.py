@@ -252,6 +252,98 @@ async def test_price_series_starts_a_fresh_cache_at_local_midnight(
     ]
 
 
+async def test_forecast_reference_survives_store_reload_and_publication(hass, freezer):
+    freezer.move_to("2026-08-12T10:00:00+00:00")
+    forecast = _full_day_entries("2026-08-13T00:00:00Z", {10: 0.1}, "forecast")
+    entry = await _setup_entry(hass, price_entries=forecast)
+    original = entry.runtime_data.price_forecast_reference
+    assert len(original) == 4
+
+    entry.runtime_data._reference_cache = None
+    entry.runtime_data.price_forecast_reference = []
+    freezer.move_to("2026-08-12T13:00:00+00:00")
+    official = _full_day_entries("2026-08-13T00:00:00Z", {10: 0.2}, "day_ahead")
+    await _refresh_with_prices(hass, entry, official)
+    assert entry.runtime_data.price_forecast_reference == original
+    assert entry.runtime_data.price_series["entries"] == official
+
+    freezer.move_to("2026-08-12T22:01:00+00:00")
+    await _refresh_with_prices(hass, entry, official)
+    assert entry.runtime_data.price_forecast_reference == original
+
+
+async def test_retail_reference_keeps_original_formula_values(hass, freezer):
+    freezer.move_to("2026-08-12T10:00:00+00:00")
+    forecast = _full_day_entries("2026-08-13T00:00:00Z", {10: 0.1}, "forecast")
+    entry = await _setup_entry(hass, extra_data={
+        "retail_source": "formula", "retail_factor": 1.19, "retail_surcharge": 0.1,
+    }, price_entries=forecast)
+    original = entry.runtime_data.retail_forecast_reference
+    assert [s["value"] for s in original] == [0.219] * 4
+    await _refresh_with_prices(hass, entry, _full_day_entries(
+        "2026-08-13T00:00:00Z", {10: 0.2}, "day_ahead"
+    ))
+    assert entry.runtime_data.retail_forecast_reference == original
+    assert entry.runtime_data.retail_data["entries"][0]["value"] == 0.338
+
+
+async def test_reference_is_captured_after_the_response_not_before(hass, freezer):
+    freezer.move_to("2026-08-12T10:59:00+00:00")
+    entry = await _setup_entry(hass)
+
+    async def slow_prices(**kwargs):
+        freezer.move_to("2026-08-12T11:01:00+00:00")
+        return {"country": "DE", "unit": "EUR/kWh", "entries":
+                _full_day_entries("2026-08-12T00:00:00Z", {11: 0.1}, "forecast")}
+
+    with (
+        patch("custom_components.energypriceforecast.api.EnergyPriceForecastApi"
+              ".async_get_summary", new=AsyncMock(return_value=SUMMARY_PAYLOAD)),
+        patch("custom_components.energypriceforecast.api.EnergyPriceForecastApi"
+              ".async_get_prices", new=AsyncMock(side_effect=slow_prices)),
+    ):
+        await entry.runtime_data.async_refresh()
+        await hass.async_block_till_done()
+    references = entry.runtime_data.price_forecast_reference
+    assert len(references) == 3
+    assert all(slot["captured_at"] == "2026-08-12T11:01:00+00:00" for slot in references)
+    assert all("11:00:00" not in slot["start"] for slot in references)
+
+
+async def test_removing_entry_deletes_reference_storage(hass, freezer, hass_storage):
+    freezer.move_to("2026-08-12T10:00:00+00:00")
+    forecast = _full_day_entries("2026-08-13T00:00:00Z", {10: 0.1}, "forecast")
+    entry = await _setup_entry(hass, price_entries=forecast)
+    storage_key = entry.runtime_data._reference_store.key
+    assert storage_key in hass_storage
+    assert await hass.config_entries.async_remove(entry.entry_id)
+    await hass.async_block_till_done()
+    assert storage_key not in hass_storage
+
+
+async def test_failed_price_poll_does_not_capture_old_data_as_new(hass, freezer):
+    from custom_components.energypriceforecast.api import EnergyPriceForecastApiError
+
+    freezer.move_to("2026-08-12T10:00:00+00:00")
+    forecast = _full_day_entries("2026-08-13T00:00:00Z", {10: 0.1}, "forecast")
+    entry = await _setup_entry(hass, extra_data={
+        "retail_source": "formula", "retail_factor": 1.19, "retail_surcharge": 0.1,
+    }, price_entries=forecast)
+    original = entry.runtime_data.retail_forecast_reference
+    entry.runtime_data.retail_surcharge = 0.2
+    freezer.move_to("2026-08-12T11:00:00+00:00")
+    with (
+        patch("custom_components.energypriceforecast.api.EnergyPriceForecastApi"
+              ".async_get_summary", new=AsyncMock(return_value=SUMMARY_PAYLOAD)),
+        patch("custom_components.energypriceforecast.api.EnergyPriceForecastApi"
+              ".async_get_prices", new=AsyncMock(side_effect=EnergyPriceForecastApiError("offline"))),
+    ):
+        await entry.runtime_data.async_refresh()
+        await hass.async_block_till_done()
+    assert entry.runtime_data.last_update_success
+    assert entry.runtime_data.retail_forecast_reference == original
+
+
 async def test_cheapest_hours_plan_locks_and_survives_a_reshuffled_forecast(
     hass, freezer
 ) -> None:

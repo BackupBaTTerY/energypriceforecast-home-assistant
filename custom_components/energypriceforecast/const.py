@@ -9,7 +9,7 @@ NAME: Final = "Energy Price Forecast EU"
 # from. Must equal manifest.json's version - test_version.py enforces that,
 # because this drifted to 0.1.0 for ten releases and every request from
 # every user was mislabelled the whole time.
-VERSION: Final = "1.11.0"
+VERSION: Final = "1.12.0"
 DEFAULT_API_URL: Final = (
     "https://api.energypriceforecast.eu/api/v1/home-assistant/summary"
 )
@@ -155,6 +155,20 @@ MARKET_TIME_ZONES: Final[dict[str, str]] = {
 # refuse - and by then Central European Time is the likeliest guess.
 DEFAULT_TIME_ZONE: Final = "Europe/Brussels"
 CONF_POSTAL_CODE: Final = "postal_code"
+
+# How often the contract prices a new slot. The exchange has moved to quarter
+# hours, but a large part of the dynamic contracts still bills the hourly mean
+# of those quarters: such a household never pays a quarter-hour price, so
+# ranking quarters would be noise for them. The market's own resolution stays
+# the default, because that is what every entry configured so far was getting.
+CONF_PRICE_RESOLUTION: Final = "price_resolution"
+PRICE_RESOLUTION_QUARTER_HOURLY: Final = "quarter_hourly"
+PRICE_RESOLUTION_HOURLY: Final = "hourly"
+PRICE_RESOLUTIONS: Final[tuple[str, ...]] = (
+    PRICE_RESOLUTION_QUARTER_HOURLY,
+    PRICE_RESOLUTION_HOURLY,
+)
+DEFAULT_PRICE_RESOLUTION: Final = PRICE_RESOLUTION_QUARTER_HOURLY
 CONF_LOCAL_CURRENCY: Final = "local_currency"
 DEFAULT_LOCAL_CURRENCY: Final = False
 CONF_UPDATE_INTERVAL_MINUTES: Final = "update_interval_minutes"

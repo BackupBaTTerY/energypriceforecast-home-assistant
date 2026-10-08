@@ -109,7 +109,7 @@
         },
         "data_description": {
           "horizon_hours": "Den tatsächlich erlaubten Horizont zeigt die Integration als Diagnose-Sensor an.",
-          "window_hours": "Länge des günstigsten und des grünsten zusammenhängenden Zeitfensters.",
+          "window_hours": "Länge des günstigsten und des grünsten zusammenhängenden Zeitfensters. Viertelstunden sind möglich, etwa 3.5 für eine Ladung, die dreieinhalb Stunden dauert. Die Prognosequalität daneben wird für die nächstliegende volle Stunde ausgewiesen.",
           "api_key": "Für den öffentlichen Zugang leer lassen. Der Schlüssel wird im Home-Assistant-Konfigurationseintrag gespeichert.",
           "price_resolution": "Die Börse rechnet je Viertelstunde, viele Verträge rechnen aber weiterhin das Stundenmittel ab. Wähle den stündlichen Tarif nur, wenn deine Rechnung das auch tut; Preise, Pläne und Fenster rechnen dann mit ganzen Stunden.",
           "retail_source": "Schätzung: unser annahmenbasierter Gesamtpreis (Netzentgelt, Abgaben, MwSt.), nur für DE, NL, DK, AT und NO; Deutschland braucht eine Postleitzahl. Eigene Formel: Börsenpreis × Faktor + Aufschlag, in jedem Markt. In beiden Fällen werden die Pläne auf dem Endkundenpreis gebildet.",
@@ -144,7 +144,7 @@
         },
         "data_description": {
           "horizon_hours": "Den tatsächlich erlaubten Horizont zeigt die Integration als Diagnose-Sensor an.",
-          "window_hours": "Länge des günstigsten und des grünsten zusammenhängenden Zeitfensters.",
+          "window_hours": "Länge des günstigsten und des grünsten zusammenhängenden Zeitfensters. Viertelstunden sind möglich, etwa 3.5 für eine Ladung, die dreieinhalb Stunden dauert. Die Prognosequalität daneben wird für die nächstliegende volle Stunde ausgewiesen.",
           "price_resolution": "Die Börse rechnet je Viertelstunde, viele Verträge rechnen aber weiterhin das Stundenmittel ab. Wähle den stündlichen Tarif nur, wenn deine Rechnung das auch tut; Preise, Pläne und Fenster rechnen dann mit ganzen Stunden.",
           "retail_source": "Schätzung: unser annahmenbasierter Gesamtpreis (Netzentgelt, Abgaben, MwSt.), nur für DE, NL, DK, AT und NO; Deutschland braucht eine Postleitzahl. Eigene Formel: Börsenpreis × Faktor + Aufschlag, in jedem Markt. In beiden Fällen werden die Pläne auf dem Endkundenpreis gebildet.",
           "tou_source": "Netzentgelte, die sich mit der Tageszeit ändern, werden in der eigenen Formel mitgerechnet - deren Faktor schlägt die MwSt. darauf. Zeitfenster und Beträge aus dem Preisblatt eintragen; in Norwegen lassen sie sich vom Netzbetreiber vorbelegen, in Dänemark werden sie automatisch nachgeschlagen. Setzt „Eigene Formel“ als Endkundenpreis voraus.",

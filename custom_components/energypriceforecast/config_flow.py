@@ -184,6 +184,10 @@ def _schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                     mode=SelectSelectorMode.DROPDOWN,
                 )
             ),
+            # Quarter hours, because a charge takes as long as it takes: a
+            # car that is full after three and a half hours otherwise has to
+            # ask for three and come up short, or for four and pay for an
+            # hour it does not use. The API prices such a window natively.
             vol.Required(
                 CONF_WINDOW_HOURS,
                 default=defaults.get(CONF_WINDOW_HOURS, DEFAULT_WINDOW_HOURS),
@@ -191,7 +195,7 @@ def _schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                 NumberSelectorConfig(
                     min=1,
                     max=24,
-                    step=1,
+                    step=0.25,
                     mode=NumberSelectorMode.BOX,
                 )
             ),
@@ -519,11 +523,22 @@ def _validate_postal_code(value: Any) -> str | None:
     return None
 
 
+def _window_hours(raw: Any) -> float | int:
+    """A window length in quarter hours, stored as a whole number when it is one.
+
+    Keeping 4 an int rather than 4.0 leaves the request of every entry
+    configured before quarter hours existed exactly as it was.
+    """
+    value = round(float(raw) * 4) / 4
+    value = min(max(value, 1.0), 24.0)
+    return int(value) if value.is_integer() else value
+
+
 def _normalize_input(user_input: dict[str, Any]) -> dict[str, Any]:
     normalized = dict(user_input)
     normalized[CONF_MARKET] = str(normalized[CONF_MARKET]).upper()
     normalized[CONF_HORIZON_HOURS] = int(normalized[CONF_HORIZON_HOURS])
-    normalized[CONF_WINDOW_HOURS] = int(normalized[CONF_WINDOW_HOURS])
+    normalized[CONF_WINDOW_HOURS] = _window_hours(normalized[CONF_WINDOW_HOURS])
     api_key = str(normalized.get(CONF_API_KEY, "")).strip()
     if api_key:
         normalized[CONF_API_KEY] = api_key

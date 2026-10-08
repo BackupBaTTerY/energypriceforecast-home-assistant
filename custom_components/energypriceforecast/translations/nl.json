@@ -109,7 +109,7 @@
         },
         "data_description": {
           "horizon_hours": "De API meldt de daadwerkelijk toegestane horizon als een diagnostische sensor.",
-          "window_hours": "Lengte van het goedkoopste en groenste aaneengesloten tijdvak.",
+          "window_hours": "Lengte van het goedkoopste en groenste aaneengesloten tijdvak. Kwartieren kunnen ook, bijvoorbeeld 3.5 voor een lading van drieënhalf uur. Het cijfer voor de prognosekwaliteit ernaast geldt voor het dichtstbijzijnde hele uur.",
           "api_key": "Laat leeg voor publieke toegang. De sleutel wordt opgeslagen in het Home Assistant-configuratie-item.",
           "price_resolution": "De beurs rekent per kwartier, maar veel contracten rekenen nog steeds het uurgemiddelde van die kwartieren af. Kies het uurtarief alleen als je rekening dat ook doet; prijzen, plannen en vensters werken dan met hele uren.",
           "retail_source": "Schatting: onze op aannames gebaseerde alles-in prijs (netkosten, heffingen, btw), alleen voor DE, NL, DK, AT en NO; Duitsland heeft een postcode nodig. Eigen formule: beursprijs × factor + toeslag, in elke markt. In beide gevallen worden de plannen op de consumentenprijs gebaseerd.",
@@ -144,7 +144,7 @@
         },
         "data_description": {
           "horizon_hours": "De API meldt de daadwerkelijk toegestane horizon als een diagnostische sensor.",
-          "window_hours": "Lengte van het goedkoopste en groenste aaneengesloten tijdvak.",
+          "window_hours": "Lengte van het goedkoopste en groenste aaneengesloten tijdvak. Kwartieren kunnen ook, bijvoorbeeld 3.5 voor een lading van drieënhalf uur. Het cijfer voor de prognosekwaliteit ernaast geldt voor het dichtstbijzijnde hele uur.",
           "price_resolution": "De beurs rekent per kwartier, maar veel contracten rekenen nog steeds het uurgemiddelde van die kwartieren af. Kies het uurtarief alleen als je rekening dat ook doet; prijzen, plannen en vensters werken dan met hele uren.",
           "retail_source": "Schatting: onze op aannames gebaseerde alles-in prijs (netkosten, heffingen, btw), alleen voor DE, NL, DK, AT en NO; Duitsland heeft een postcode nodig. Eigen formule: beursprijs × factor + toeslag, in elke markt. In beide gevallen worden de plannen op de consumentenprijs gebaseerd.",
           "tou_source": "Netkosten die met het tijdstip veranderen, worden in je eigen formule meegerekend - de factor telt er de btw bij op. Vul de tijdvakken en bedragen van je tariefblad in; in Noorwegen kunnen ze vanuit je netbeheerder worden ingevuld, in Denemarken worden ze automatisch opgezocht. Vereist \"Eigen formule\" als consumentenprijs.",

@@ -109,7 +109,7 @@
         },
         "data_description": {
           "horizon_hours": "API-et rapporterer den faktisk tillatte horisonten som en diagnostikksensor.",
-          "window_hours": "Lengden på det billigste og grønneste sammenhengende tidsvinduet.",
+          "window_hours": "Lengden på det billigste og grønneste sammenhengende tidsvinduet. Kvarter er mulig, for eksempel 3.5 for en lading som tar tre og en halv time. Prognosekvaliteten ved siden av oppgis for nærmeste hele time.",
           "api_key": "La stå tomt for offentlig tilgang. Nøkkelen lagres i Home Assistants konfigurasjonsoppføring.",
           "price_resolution": "Børsen prissetter hvert kvarter, men mange avtaler avregner fortsatt timesgjennomsnittet av kvarterene. Velg timesavtalen bare hvis regningen din gjør det samme; priser, planer og vinduer regner da i hele timer.",
           "retail_source": "Estimat: vår antagelsesbaserte alt-inkludert-pris (nettleie, avgifter, mva.), kun for DE, NL, DK, AT og NO; Tyskland krever postnummer. Egen formel: spotpris × faktor + påslag, i alle markeder. I begge tilfeller bygges planene på forbrukerprisen.",
@@ -144,7 +144,7 @@
         },
         "data_description": {
           "horizon_hours": "API-et rapporterer den faktisk tillatte horisonten som en diagnostikksensor.",
-          "window_hours": "Lengden på det billigste og grønneste sammenhengende tidsvinduet.",
+          "window_hours": "Lengden på det billigste og grønneste sammenhengende tidsvinduet. Kvarter er mulig, for eksempel 3.5 for en lading som tar tre og en halv time. Prognosekvaliteten ved siden av oppgis for nærmeste hele time.",
           "price_resolution": "Børsen prissetter hvert kvarter, men mange avtaler avregner fortsatt timesgjennomsnittet av kvarterene. Velg timesavtalen bare hvis regningen din gjør det samme; priser, planer og vinduer regner da i hele timer.",
           "retail_source": "Estimat: vår antagelsesbaserte alt-inkludert-pris (nettleie, avgifter, mva.), kun for DE, NL, DK, AT og NO; Tyskland krever postnummer. Egen formel: spotpris × faktor + påslag, i alle markeder. I begge tilfeller bygges planene på forbrukerprisen.",
           "tou_source": "Nettleie som varierer med tid på døgnet, regnes med i den egne formelen - faktoren legger mva. på. Legg inn tidsrom og beløp fra prislisten din; i Norge kan de fylles ut fra netteieren din, i Danmark slås de opp automatisk. Krever «Egen formel» som forbrukerpris.",

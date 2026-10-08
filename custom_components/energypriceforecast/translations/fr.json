@@ -109,7 +109,7 @@
         },
         "data_description": {
           "horizon_hours": "L'API indique l'horizon réellement autorisé via un capteur de diagnostic.",
-          "window_hours": "Durée de la fenêtre continue la moins chère et la plus verte.",
+          "window_hours": "Durée de la fenêtre continue la moins chère et la plus verte. Les quarts d'heure sont possibles, par exemple 3.5 pour une charge de trois heures et demie. L'indicateur de qualité à côté se rapporte à l'heure entière la plus proche.",
           "api_key": "Laissez vide pour un accès public. La clé est stockée dans l'entrée de configuration de Home Assistant.",
           "price_resolution": "La bourse cote au quart d'heure, mais beaucoup de contrats facturent encore la moyenne horaire de ces quarts d'heure. Ne choisissez le tarif horaire que si votre facture fonctionne ainsi ; les prix, les plans et les fenêtres utilisent alors des heures entières.",
           "retail_source": "Estimation : notre prix tout compris basé sur des hypothèses (frais de réseau, taxes, TVA), uniquement pour DE, NL, DK, AT et NO ; l'Allemagne nécessite un code postal. Formule personnelle : prix spot × facteur + supplément, dans tous les marchés. Dans les deux cas, les plans sont établis sur le prix de détail.",
@@ -144,7 +144,7 @@
         },
         "data_description": {
           "horizon_hours": "L'API indique l'horizon réellement autorisé via un capteur de diagnostic.",
-          "window_hours": "Durée de la fenêtre continue la moins chère et la plus verte.",
+          "window_hours": "Durée de la fenêtre continue la moins chère et la plus verte. Les quarts d'heure sont possibles, par exemple 3.5 pour une charge de trois heures et demie. L'indicateur de qualité à côté se rapporte à l'heure entière la plus proche.",
           "price_resolution": "La bourse cote au quart d'heure, mais beaucoup de contrats facturent encore la moyenne horaire de ces quarts d'heure. Ne choisissez le tarif horaire que si votre facture fonctionne ainsi ; les prix, les plans et les fenêtres utilisent alors des heures entières.",
           "retail_source": "Estimation : notre prix tout compris basé sur des hypothèses (frais de réseau, taxes, TVA), uniquement pour DE, NL, DK, AT et NO ; l'Allemagne nécessite un code postal. Formule personnelle : prix spot × facteur + supplément, dans tous les marchés. Dans les deux cas, les plans sont établis sur le prix de détail.",
           "tou_source": "Les frais de réseau qui varient selon l'heure sont intégrés à votre formule personnelle - son facteur y ajoute la TVA. Saisissez les plages et montants de votre grille tarifaire ; en Norvège ils peuvent être préremplis depuis votre gestionnaire de réseau, au Danemark ils sont recherchés automatiquement. Nécessite « Formule personnelle » comme prix de détail.",

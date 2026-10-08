@@ -1067,3 +1067,45 @@ async def test_an_unknown_resolution_falls_back_to_the_market(hass) -> None:
     normalized = _normalize_input({**BASE_USER_INPUT, "price_resolution": "monthly"})
 
     assert normalized["price_resolution"] == "quarter_hourly"
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        (3.5, 3.5),
+        ("3.5", 3.5),
+        (4, 4),
+        (4.0, 4),
+        # Anything between quarter hours snaps to one: the API prices slots,
+        # not arbitrary minutes.
+        (3.6, 3.5),
+        (3.4, 3.5),
+        (0.5, 1),
+        (36, 24),
+    ],
+)
+def test_window_hours_are_kept_in_quarter_hours(raw, expected) -> None:
+    from custom_components.energypriceforecast.config_flow import _window_hours
+
+    value = _window_hours(raw)
+
+    assert value == expected
+    # A whole number stays an int, so an entry from before quarter hours
+    # existed keeps sending "4" rather than "4.0".
+    assert isinstance(value, int) == float(expected).is_integer()
+
+
+async def test_a_three_and_a_half_hour_window_survives_the_flow(hass) -> None:
+    """The charge takes as long as it takes - the setup must not round it."""
+    with patch(
+        "custom_components.energypriceforecast.config_flow._validate_input",
+        new=AsyncMock(return_value=None),
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {**BASE_USER_INPUT, "window_hours": 3.5}
+        )
+
+    assert result["data"]["window_hours"] == 3.5

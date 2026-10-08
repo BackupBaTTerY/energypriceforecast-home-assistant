@@ -77,7 +77,7 @@ class EnergyPriceForecastApi:
         base_url: str,
         market: str,
         horizon_hours: int,
-        window_hours: int,
+        window_hours: float,
         api_key: str | None = None,
         prices_url: str | None = None,
         currency: str | None = None,

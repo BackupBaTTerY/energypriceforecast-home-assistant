@@ -50,6 +50,8 @@ integration shows the figures for yours as entities.
 - Cheapest price window and greenest CO2 window, with a countdown to the end
   of each
 - Binary sensors indicating whether a best window is active now
+- Best-window duration in quarter hours *(1.13.0)*: ask for the 3.5 hours a
+  charge actually takes
 - **Hourly or quarter-hourly tariff** *(1.12.0)*: tell the integration how
   your contract prices time, so every number matches your bill
 - **Everything that describes "now" switches at the slot boundary**
@@ -255,6 +257,12 @@ are explained below - and **Last API update** (timestamp).
 
 "Cheapest window" here is the single *contiguous* window of the configured
 best-window duration - not the same thing as the cheapest-hours plan below.
+
+The duration is set in quarter hours *(1.13.0)*, so a charge that takes three
+and a half hours can ask for 3.5 instead of coming up half an hour short at 3
+or paying for an unused hour at 4. One caveat worth knowing: the measured
+**forecast quality** beside it is published per whole hour, so a 3.5-hour
+window is reported with the figures of the 3-hour one.
 
 #### The combined window *(1.2.0)*
 

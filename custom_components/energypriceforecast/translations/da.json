@@ -109,7 +109,7 @@
         },
         "data_description": {
           "horizon_hours": "API'en rapporterer den faktisk tilladte horisont som en diagnosticeringssensor.",
-          "window_hours": "Længden af det billigste og grønneste sammenhængende tidsvindue.",
+          "window_hours": "Længden af det billigste og grønneste sammenhængende tidsvindue. Kvarter kan også bruges, for eksempel 3.5 til en opladning på tre en halv time. Prognosekvaliteten ved siden af opgøres for den nærmeste hele time.",
           "api_key": "Lad stå tom for offentlig adgang. Nøglen gemmes i Home Assistants konfigurationspost.",
           "price_resolution": "Børsen prissætter hvert kvarter, men mange aftaler afregner stadig timegennemsnittet af de kvarterer. Vælg kun timeaftalen, hvis din regning gør det samme; priser, planer og vinduer regner så i hele timer.",
           "retail_source": "Estimat: vores antagelsesbaserede alt-inkl.-pris (netafgift, afgifter, moms), kun for DE, NL, DK, AT og NO; Tyskland kræver et postnummer. Egen formel: spotpris × faktor + tillæg, i alle markeder. I begge tilfælde bygges planerne på detailprisen.",
@@ -144,7 +144,7 @@
         },
         "data_description": {
           "horizon_hours": "API'en rapporterer den faktisk tilladte horisont som en diagnosticeringssensor.",
-          "window_hours": "Længden af det billigste og grønneste sammenhængende tidsvindue.",
+          "window_hours": "Længden af det billigste og grønneste sammenhængende tidsvindue. Kvarter kan også bruges, for eksempel 3.5 til en opladning på tre en halv time. Prognosekvaliteten ved siden af opgøres for den nærmeste hele time.",
           "price_resolution": "Børsen prissætter hvert kvarter, men mange aftaler afregner stadig timegennemsnittet af de kvarterer. Vælg kun timeaftalen, hvis din regning gør det samme; priser, planer og vinduer regner så i hele timer.",
           "retail_source": "Estimat: vores antagelsesbaserede alt-inkl.-pris (netafgift, afgifter, moms), kun for DE, NL, DK, AT og NO; Tyskland kræver et postnummer. Egen formel: spotpris × faktor + tillæg, i alle markeder. I begge tilfælde bygges planerne på detailprisen.",
           "tou_source": "Nettariffer, der skifter med tidspunktet på dagen, regnes med i den egne formel - dens faktor lægger moms oveni. Angiv tidsrum og beløb fra din prisliste; i Norge kan de udfyldes ud fra dit netselskab, i Danmark slås de op automatisk. Kræver \"Egen formel\" som detailpris.",

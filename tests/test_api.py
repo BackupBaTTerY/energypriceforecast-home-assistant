@@ -243,3 +243,19 @@ async def test_a_quarter_hourly_contract_sends_nothing_extra() -> None:
     await _hourly_api(session, price_resolution="quarter_hourly").async_get_prices()
 
     assert all("resolution" not in call for call in session.calls)
+
+
+async def test_a_quarter_hour_window_reaches_the_api_unrounded() -> None:
+    session = _RecordingSession(_payload("missing"))
+    session._payload["country"] = "DE"
+    api = EnergyPriceForecastApi(
+        session=session,
+        base_url="https://example.invalid/summary",
+        market="DE",
+        horizon_hours=48,
+        window_hours=3.5,
+    )
+
+    await api.async_get_summary()
+
+    assert session.calls[0]["window_hours"] == "3.5"

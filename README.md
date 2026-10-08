@@ -1,11 +1,47 @@
 # Energy Price Forecast EU for Home Assistant
 
+[![Open your Home Assistant instance and open this repository inside HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=BackupBaTTerY&repository=energypriceforecast-home-assistant&category=integration)
+
 Custom Home Assistant integration for electricity-price and consumption-based
-CO2 forecasts from [Energy Price Forecast EU](https://energypriceforecast.eu/).
+CO2 forecasts from [Energy Price Forecast EU](https://energypriceforecast.eu/),
+for 33 price zones across Europe.
 
 The integration combines published day-ahead prices with forecast values for
 the remaining horizon. It exposes ready-to-use entities for automations without
 requiring YAML or JSON templates.
+
+## Why install this next to Nord Pool or Tibber?
+
+Those integrations show prices once they are published: today's, and
+tomorrow's from around 13:00 CET. Whether to charge the car today or wait,
+or run the heat pump harder tonight, is often decided before that - or
+needs a look further ahead than tomorrow. This integration:
+
+- **fills the hours nobody has published yet** with a forecast, kept apart
+  from the published prices, so an automation can plan before the auction
+  and, with an API key, up to five days ahead;
+- **turns it into decisions**: cheapest window, cheapest-hours plan, "is now
+  a good time", the same for CO2 - ready-made entities, no templates;
+- **tells you how good the forecast is in your market**, measured every day
+  against the prices that were published afterwards.
+
+It does not replace your existing price integration. Keep it; this one adds
+the hours it cannot know yet.
+
+**An example from Germany**, rolling 30 days from 9 September to 8 October
+2026, taken from the [public forecast quality page](https://energypriceforecast.eu/en/forecast-quality/):
+
+- The forecast's cheapest four-hour window started within one hour of the
+  actual cheapest one on **29 of 30 days**. Following it cost on average
+  0.13 ct/kWh more than a perfect choice.
+- Eight times the forecast said *wait, tomorrow is cheaper*. It was right
+  **all eight times**, and tomorrow's window was on average **6.9 ct/kWh**
+  cheaper - about 2.80 EUR on a 40 kWh car charge.
+
+Quality differs by market. It is strongest where prices swing a lot within
+the day, as in Central Europe and Denmark, and weaker in the hydro-dominated
+Nordic zones. The quality page lists every market, updated daily, and the
+integration shows the figures for yours as entities.
 
 ## Features
 
@@ -128,7 +164,16 @@ not exist.
 
 ## Installation with HACS
 
-Until the integration is part of the HACS default repository list:
+Until the integration is part of the HACS default repository list, the
+quickest way is this button - it opens HACS in your own Home Assistant with
+the repository already filled in:
+
+[![Open your Home Assistant instance and open this repository inside HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=BackupBaTTerY&repository=energypriceforecast-home-assistant&category=integration)
+
+Then install **Energy Price Forecast EU**, restart Home Assistant and add the
+integration under **Settings > Devices & services > Add integration**.
+
+Or by hand:
 
 1. Open HACS in Home Assistant.
 2. Open the menu and choose **Custom repositories**.

@@ -73,7 +73,8 @@ series:
     data_generator: |
       const raw = entity.attributes.raw_forecast_reference ?? [];
       const slots = raw.map(e => ({
-        start: Date.parse(e.start), end: Date.parse(e.end), value: e.value
+        start: Date.parse(e.start), end: Date.parse(e.end),
+        value: typeof e.final_value === 'number' ? e.final_value : e.value
       })).filter(e => Number.isFinite(e.start) && Number.isFinite(e.end)
         && e.end > e.start && typeof e.value === 'number' && Number.isFinite(e.value))
         .sort((a, b) => a.start - b.start);

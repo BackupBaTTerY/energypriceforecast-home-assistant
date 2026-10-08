@@ -500,10 +500,17 @@ comparison against another hour in the same block, nothing more.
   for those hours is in `raw_forecast` instead, and the two never overlap.
   Both sensors select the current slot at every quarter hour, independently of
   the configured API poll interval and without making an extra request.
-- Both price sensors also carry `raw_forecast_reference` *(1.12.0)*: the **first forecast
-  received for each future slot**, as `{start, end, value, captured_at}`. This
-  comparison is stored locally, survives restarts and is not overwritten by
-  later forecasts or official prices. It keeps today's and upcoming slots;
+- Both price sensors also carry `raw_forecast_reference` *(1.12.0)*: what was
+  predicted for each future slot, as `{start, end, value, captured_at,
+  final_value, final_captured_at}` *(1.13.0)*. `value` is the **first forecast
+  received** - how far ahead that was depends on your horizon. `final_value` is
+  the **last forecast before the official price arrived**, which is the moment
+  our published quality figures measure, so a chart drawn on it can be held
+  against them; the ready-to-paste card below uses it. While a slot is still a
+  forecast, `final_value` follows every update; the first official price settles
+  it, and a forecast the API falls back to later cannot overwrite it. This
+  comparison is stored locally and survives restarts. It keeps today's and
+  upcoming slots;
   yesterday's are removed on the next successful update after market midnight.
   `captured_at` is when Home Assistant received the value, not the model's
   creation time. A slot first seen with an official price, or after it started,
@@ -1228,7 +1235,8 @@ series:
     data_generator: |
       const raw = entity.attributes.raw_forecast_reference ?? [];
       const slots = raw.map(e => ({
-        start: Date.parse(e.start), end: Date.parse(e.end), value: e.value
+        start: Date.parse(e.start), end: Date.parse(e.end),
+        value: typeof e.final_value === 'number' ? e.final_value : e.value
       })).filter(e => Number.isFinite(e.start) && Number.isFinite(e.end)
         && e.end > e.start && typeof e.value === 'number' && Number.isFinite(e.value))
         .sort((a, b) => a.start - b.start);
@@ -1358,7 +1366,7 @@ Before writing YAML, ask me:
 6. Do I want to use this to actually switch a device (heat pump, water heater, car charger), rather than only look at it? If so, say that a chart alone will not do that, and offer to write a matching automation triggered on the binary sensor that is on during the planned hours.
 
 Rules for your result:
-- The same two price sensors also expose raw_forecast_reference: {start, end, value, captured_at} slots, holding the first forecast received for each future slot. These survive restarts and official publication and are removed after the target market day ends. captured_at is the HA observation time, not the model creation time. Offer an optional dashed reference line to compare that saved prediction against official prices; no predictions can be recovered from before the integration began saving them.
+- The same two price sensors also expose raw_forecast_reference: {start, end, value, captured_at, final_value, final_captured_at} slots. value is the first forecast received for each future slot; final_value is the last forecast before the official price arrived and is the value to draw, because the published quality figures measure that same moment. These survive restarts and official publication and are removed after the target market day ends. captured_at and final_captured_at are HA observation times, not model creation times. Offer an optional dashed reference line to compare that saved prediction against official prices; no predictions can be recovered from before the integration began saving them.
 - Use only raw_today / raw_tomorrow / raw_forecast / raw_forecast_reference. Do not invent other attributes or a different data shape.
 - Use apexcharts-card's data_generator to turn the attribute list into a chart series - do not assume the card accepts the attribute directly as a series.
 - If I asked for known prices and forecast as separate series, use two series against the same entity (one summing raw_today+raw_tomorrow, one for raw_forecast), each with its own data_generator, and set extend_to: false on both - otherwise apexcharts-card visually extends the last value to the edge of the graph, which is misleading here.

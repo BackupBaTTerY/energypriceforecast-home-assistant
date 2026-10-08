@@ -28,15 +28,51 @@ def update(previous=None, entries=None, **kwargs):
     )
 
 
-def test_first_forecast_survives_revisions_and_official_publication():
+LATER = datetime(2026, 8, 12, 16, tzinfo=timezone.utc)
+
+
+def test_the_first_forecast_survives_and_the_last_one_before_the_price_follows():
+    """Two values, two questions: how early we said it, and what we said last.
+
+    The last forecast before the official price is the point the published
+    quality figures measure, so a chart drawn on it can be held against them.
+    """
     original = update(entries=[slot(0.10)])
-    updated = update(original, [slot(0.20)])
-    published = update(updated, [slot(0.15, "day_ahead")])
-    assert original == updated == published
-    assert reference_entries(published) == [{
+    revised = update(original, [slot(0.20)], now=LATER)
+    published = update(revised, [slot(0.15, "day_ahead")], now=LATER)
+    fallback = update(published, [slot(0.30)], now=LATER)
+
+    assert reference_entries(fallback) == [{
         "start": "2026-08-13T10:00:00Z", "end": "2026-08-13T10:15:00Z",
         "value": 0.10, "captured_at": NOW.isoformat(),
+        "final_value": 0.20, "final_captured_at": LATER.isoformat(),
     }]
+
+
+def test_the_official_price_settles_the_slot_for_good():
+    """A forecast the API falls back to afterwards is not what was predicted
+    before the market spoke, so it must not overwrite it."""
+    published = update(update(entries=[slot(0.10)]), [slot(0.15, "day_ahead")])
+
+    after = update(published, [slot(0.90)], now=LATER)
+
+    assert reference_entries(after)[0]["final_value"] == 0.10
+
+
+def test_a_slot_seen_once_carries_the_same_value_twice():
+    """Nothing to compare yet - both answers are the same forecast."""
+    entry = reference_entries(update(entries=[slot(0.10)]))[0]
+
+    assert entry["value"] == entry["final_value"] == 0.10
+    assert entry["captured_at"] == entry["final_captured_at"] == NOW.isoformat()
+
+
+def test_the_settled_marker_stays_inside():
+    """It says what the slot may still do, not what was predicted for it."""
+    published = update(update(entries=[slot(0.10)]), [slot(0.15, "day_ahead")])
+
+    assert published["slots"][next(iter(published["slots"]))]["settled"] is True
+    assert "settled" not in reference_entries(published)[0]
 
 
 def test_official_price_then_fallback_cannot_create_a_reference():
@@ -48,7 +84,9 @@ def test_equivalent_timezones_identify_the_same_slot():
     original = update(entries=[slot()])
     changed = update(original, [slot(0.20, start="2026-08-13T12:00:00+02:00",
                                      end="2026-08-13T12:15:00+02:00")])
-    assert changed == original
+    # One slot, not two - and the first forecast is still the first one.
+    assert len(changed["slots"]) == 1
+    assert reference_entries(changed)[0]["value"] == 0.1
 
 
 @pytest.mark.parametrize("value", [0, -0.02])

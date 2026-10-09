@@ -186,6 +186,25 @@ def duration_weighted_mean(hours: list[dict[str, Any]]) -> float | None:
     return total / weight if weight else None
 
 
+def select_most_expensive_hours(
+    entries: list[dict[str, Any]],
+    count: int,
+    window_start: datetime,
+    window_end: datetime,
+    available_from: datetime,
+) -> dict[str, Any] | None:
+    """Pick the count dearest clock hours inside [window_start, window_end).
+
+    The mirror of ``select_cheapest_hours``, for the hours to stay out of: a
+    battery that should discharge then, a dryer that should not start. Same
+    block, same locking, same refusal to publish a partial plan - only the
+    end of the sorted list is taken instead of the start.
+    """
+    return _select_hours(
+        entries, count, window_start, window_end, available_from, dearest=True
+    )
+
+
 def select_cheapest_hours(
     entries: list[dict[str, Any]],
     count: int,
@@ -215,6 +234,19 @@ def select_cheapest_hours(
     from whatever happens to be available) would be misleading for an
     automation that expects a stable, complete answer.
     """
+    return _select_hours(entries, count, window_start, window_end, available_from)
+
+
+def _select_hours(
+    entries: list[dict[str, Any]],
+    count: int,
+    window_start: datetime,
+    window_end: datetime,
+    available_from: datetime,
+    *,
+    dearest: bool = False,
+) -> dict[str, Any] | None:
+    """The shared body: both plans differ only in which end of the list wins."""
     if count < 1 or window_end <= window_start:
         return None
 
@@ -245,7 +277,8 @@ def select_cheapest_hours(
     if not hours:
         return None
 
-    cheapest = sorted(hours, key=lambda h: h["average_value"])[:count]
+    ranked = sorted(hours, key=lambda h: h["average_value"], reverse=dearest)
+    cheapest = ranked[:count]
     return {
         "hours": sorted(cheapest, key=lambda h: h["start"]),
         "window_average_value": duration_weighted_mean(hours),

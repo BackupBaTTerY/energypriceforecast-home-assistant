@@ -30,6 +30,7 @@ from .const import (
     CONF_TOU_SOURCE,
     CONF_TOU_TARIFF,
     CONF_UPDATE_INTERVAL_MINUTES,
+    CONF_EXPENSIVE_HOURS_COUNT,
     CONF_GREENEST_HOURS_COUNT,
     CONF_WEEKEND_HOURS_COUNT,
     CONF_WINDOW_HOURS,
@@ -44,6 +45,7 @@ from .const import (
     DEFAULT_RETAIL_SURCHARGE,
     DEFAULT_TIME_ZONE,
     DEFAULT_UPDATE_INTERVAL_MINUTES,
+    DEFAULT_EXPENSIVE_HOURS_COUNT,
     DEFAULT_GREENEST_HOURS_COUNT,
     DEFAULT_WEEKEND_HOURS_COUNT,
     DOMAIN,
@@ -156,6 +158,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         ),
         weekend_hours_count=entry.data.get(
             CONF_WEEKEND_HOURS_COUNT, DEFAULT_WEEKEND_HOURS_COUNT
+        ),
+        expensive_hours_count=entry.data.get(
+            CONF_EXPENSIVE_HOURS_COUNT, DEFAULT_EXPENSIVE_HOURS_COUNT
         ),
         greenest_hours_count=entry.data.get(
             CONF_GREENEST_HOURS_COUNT, DEFAULT_GREENEST_HOURS_COUNT

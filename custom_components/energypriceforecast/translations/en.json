@@ -105,7 +105,8 @@
           "cheapest_hours_window_hours": "Block length (hours)",
           "cheapest_hours_start_hour": "Block start hour (local time)",
           "weekend_hours_count": "Cheapest hours for the weekend plan (0 to disable)",
-          "greenest_hours_count": "Cleanest hours per block (0 to disable)"
+          "greenest_hours_count": "Cleanest hours per block (0 to disable)",
+          "expensive_hours_count": "Most expensive hours per block (0 to disable)"
         },
         "data_description": {
           "horizon_hours": "The API reports the actually permitted horizon as a diagnostic sensor.",
@@ -120,7 +121,8 @@
           "cheapest_hours_window_hours": "How long each repeating block is. 24 repeats daily; 48 picks hours from a fixed two-day block (e.g. Monday 00:00 to Wednesday 00:00, then Wednesday to Friday, and so on). A longer block gives more hours to choose from - typically more savings, but a less evenly spread runtime. The cleanest-hours plan uses the same block.",
           "cheapest_hours_start_hour": "Local hour of day (0-23) at which each block starts. 0 means blocks start at midnight; with a 24-hour block this is simply the start of each calendar day.",
           "weekend_hours_count": "A separate plan for a fixed Saturday 00:00 to Monday 00:00 block, independent of the block above - useful for a car charger that should only use weekend flexibility. Picked and locked the same way, but requires the entire weekend to be covered by the forecast (including hours already in the past) before it locks in, so a plan built after a late reload is never partial.",
-          "greenest_hours_count": "The same blocks as above, but the hours are picked on the grid's CO2 intensity instead of price. Same rules: once a block's plan has been picked it is not reshuffled, and no plan is published at all until the forecast covers the block. Must not be greater than the block length."
+          "greenest_hours_count": "The same blocks as above, but the hours are picked on the grid's CO2 intensity instead of price. Same rules: once a block's plan has been picked it is not reshuffled, and no plan is published at all until the forecast covers the block. Must not be greater than the block length.",
+          "expensive_hours_count": "The same blocks as above, read from the other end: the hours to keep a load out of, or to discharge a battery into. Same rules - once a block's plan is picked it is not reshuffled, and nothing is published until the forecast covers the block. Must not be greater than the block length."
         }
       },
       "reconfigure": {
@@ -140,7 +142,8 @@
           "cheapest_hours_window_hours": "Block length (hours)",
           "cheapest_hours_start_hour": "Block start hour (local time)",
           "weekend_hours_count": "Cheapest hours for the weekend plan (0 to disable)",
-          "greenest_hours_count": "Cleanest hours per block (0 to disable)"
+          "greenest_hours_count": "Cleanest hours per block (0 to disable)",
+          "expensive_hours_count": "Most expensive hours per block (0 to disable)"
         },
         "data_description": {
           "horizon_hours": "The API reports the actually permitted horizon as a diagnostic sensor.",
@@ -154,7 +157,8 @@
           "cheapest_hours_window_hours": "How long each repeating block is. 24 repeats daily; 48 picks hours from a fixed two-day block (e.g. Monday 00:00 to Wednesday 00:00, then Wednesday to Friday, and so on). A longer block gives more hours to choose from - typically more savings, but a less evenly spread runtime. The cleanest-hours plan uses the same block.",
           "cheapest_hours_start_hour": "Local hour of day (0-23) at which each block starts. 0 means blocks start at midnight; with a 24-hour block this is simply the start of each calendar day.",
           "weekend_hours_count": "A separate plan for a fixed Saturday 00:00 to Monday 00:00 block, independent of the block above - useful for a car charger that should only use weekend flexibility. Picked and locked the same way, but requires the entire weekend to be covered by the forecast (including hours already in the past) before it locks in, so a plan built after a late reload is never partial.",
-          "greenest_hours_count": "The same blocks as above, but the hours are picked on the grid's CO2 intensity instead of price. Same rules: once a block's plan has been picked it is not reshuffled, and no plan is published at all until the forecast covers the block. Must not be greater than the block length."
+          "greenest_hours_count": "The same blocks as above, but the hours are picked on the grid's CO2 intensity instead of price. Same rules: once a block's plan has been picked it is not reshuffled, and no plan is published at all until the forecast covers the block. Must not be greater than the block length.",
+          "expensive_hours_count": "The same blocks as above, read from the other end: the hours to keep a load out of, or to discharge a battery into. Same rules - once a block's plan is picked it is not reshuffled, and nothing is published until the forecast covers the block. Must not be greater than the block length."
         }
       }
     },
@@ -173,7 +177,8 @@
       "tou_windows_overlap": "The low and the peak window overlap. Check the hours on your price sheet.",
       "datahub_unavailable": "Energi Data Service could not be reached. Submit again to retry.",
       "cheapest_hours_exceeds_window": "Cheapest hours per block cannot be greater than the block length.",
-      "greenest_hours_exceeds_window": "The number of cleanest hours cannot be greater than the block length."
+      "greenest_hours_exceeds_window": "The number of cleanest hours cannot be greater than the block length.",
+      "expensive_hours_exceeds_window": "The number of expensive hours cannot be greater than the block length."
     },
     "abort": {
       "already_configured": "This market is already configured."
@@ -230,6 +235,9 @@
       "retail_current_price": {"name": "Current retail price"},
       "cheapest_hours_next_start": {"name": "Next cheapest hour"},
       "weekend_hours_next_start": {"name": "Next weekend cheapest hour"},
+      "expensive_hours_next_start": {"name": "Next expensive hour"},
+      "expensive_hours_average_price": {"name": "Most expensive hours average price"},
+      "expensive_hours_surcharge": {"name": "Most expensive hours surcharge"},
       "greenest_hours_next_start": {"name": "Next cleanest hour"},
       "greenest_hours_average_co2": {"name": "Cleanest hours average CO2"},
       "greenest_hours_saving": {"name": "Cleanest hours saving"},
@@ -252,6 +260,7 @@
       "greenest_window_active": {"name": "Greenest window active"},
       "is_in_cheapest_hours": {"name": "Cheapest hours active"},
       "is_in_weekend_hours": {"name": "Weekend cheapest hours active"},
+      "is_in_expensive_hours": {"name": "Most expensive hours active"},
       "is_in_greenest_hours": {"name": "Cleanest hours active"},
       "combined_window_active": {"name": "Combined window active"},
       "retail_cheapest_window_active": {"name": "Cheapest window active (retail)"}

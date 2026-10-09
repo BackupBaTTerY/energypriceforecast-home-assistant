@@ -556,6 +556,14 @@ async def async_setup_entry(
             EnergyPriceForecastWeekendPlanAveragePriceSensor(coordinator, entry)
         )
         entities.append(EnergyPriceForecastWeekendPlanSavingSensor(coordinator, entry))
+    if coordinator.expensive_hours_count > 0:
+        entities.append(EnergyPriceForecastExpensiveHoursSensor(coordinator, entry))
+        entities.append(
+            EnergyPriceForecastExpensivePlanAveragePriceSensor(coordinator, entry)
+        )
+        entities.append(
+            EnergyPriceForecastExpensivePlanSurchargeSensor(coordinator, entry)
+        )
     if coordinator.greenest_hours_count > 0:
         entities.append(EnergyPriceForecastGreenestHoursSensor(coordinator, entry))
         entities.append(
@@ -1177,6 +1185,55 @@ class EnergyPriceForecastWeekendPlanSavingSensor(EnergyPriceForecastPlanSavingSe
     _window_average_attribute = "weekend_hours_window_average"
 
 
+class EnergyPriceForecastExpensivePlanAveragePriceSensor(
+    EnergyPriceForecastPlanAveragePriceSensor
+):
+    """Average price of the hours the dearest plan picked."""
+
+    _attr_translation_key = "expensive_hours_average_price"
+    _attr_icon = "mdi:cash-remove"
+    _hours_attribute = "expensive_hours"
+    _window_average_attribute = "expensive_hours_window_average"
+
+
+class EnergyPriceForecastExpensivePlanSurchargeSensor(_PlanStatisticSensor):
+    """How far above the block's own average the dearest hours land.
+
+    The mirror of the saving: it says what staying out of these hours is
+    worth, measured against running at an arbitrary time in the same block.
+    Withheld on a zero or negative block average for the same reason - a
+    percentage of nothing describes nothing.
+    """
+
+    _attr_translation_key = "expensive_hours_surcharge"
+    _attr_icon = "mdi:trending-up"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_suggested_display_precision = 1
+    _hours_attribute = "expensive_hours"
+    _window_average_attribute = "expensive_hours_window_average"
+
+    def __init__(
+        self, coordinator: EnergyPriceForecastCoordinator, entry: ConfigEntry
+    ) -> None:
+        super().__init__(coordinator, entry, self._attr_translation_key)
+
+    @property
+    def native_value(self) -> Any:
+        window_average = self._window_average
+        plan_average = self._plan_average
+        if window_average is None or plan_average is None or window_average <= 0:
+            return None
+        return (plan_average - window_average) / window_average * 100
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {
+            "plan_average_value": self._plan_average,
+            "window_average_value": self._window_average,
+        }
+
+
 class EnergyPriceForecastWeekendHoursSensor(
     QuarterHourStateRefreshMixin, EnergyPriceForecastEntity, SensorEntity
 ):
@@ -1427,6 +1484,49 @@ class EnergyPriceForecastCo2SeriesSensor(
             # figures it does not compute.
             "assumptions": _path(self.coordinator.data, "co2", "assumptions"),
             **_day_statistics(today, self.native_value),
+        }
+
+
+class EnergyPriceForecastExpensiveHoursSensor(
+    QuarterHourStateRefreshMixin, EnergyPriceForecastEntity, SensorEntity
+):
+    """Start of the next of the N dearest upcoming hours.
+
+    The cheapest-hours plan read from the other end: the hours to keep a load
+    out of, or to discharge a battery into. Same block, same locking, same
+    refusal to publish a partial plan. Only created when a positive count was
+    configured. Backed by coordinator.expensive_hours.
+    """
+
+    _attr_translation_key = "expensive_hours_next_start"
+    _attr_icon = "mdi:cash-clock"
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _unrecorded_attributes = frozenset({"hours"})
+
+    def __init__(
+        self, coordinator: EnergyPriceForecastCoordinator, entry: ConfigEntry
+    ) -> None:
+        super().__init__(coordinator, entry, "expensive_hours_next_start")
+
+    @property
+    def available(self) -> bool:
+        return super().available and bool(self.coordinator.expensive_hours)
+
+    @property
+    def native_value(self) -> Any:
+        return _next_planned_start(self.coordinator.expensive_hours)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {
+            "hours": [
+                {
+                    "start": hour["start"].isoformat(),
+                    "end": hour["end"].isoformat(),
+                    "average_value": round(hour["average_value"], 6),
+                }
+                for hour in self.coordinator.expensive_hours or []
+            ],
         }
 
 

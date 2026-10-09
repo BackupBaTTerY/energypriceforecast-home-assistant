@@ -39,6 +39,7 @@ from .const import (
     CONF_CHEAPEST_HOURS_COUNT,
     CONF_CHEAPEST_HOURS_START_HOUR,
     CONF_CHEAPEST_HOURS_WINDOW_HOURS,
+    CONF_EXPENSIVE_HOURS_COUNT,
     CONF_GREENEST_HOURS_COUNT,
     CONF_HORIZON_HOURS,
     CONF_LOCAL_CURRENCY,
@@ -73,6 +74,7 @@ from .const import (
     DEFAULT_CHEAPEST_HOURS_COUNT,
     DEFAULT_CHEAPEST_HOURS_START_HOUR,
     DEFAULT_CHEAPEST_HOURS_WINDOW_HOURS,
+    DEFAULT_EXPENSIVE_HOURS_COUNT,
     DEFAULT_GREENEST_HOURS_COUNT,
     DEFAULT_HORIZON_HOURS,
     DEFAULT_LOCAL_CURRENCY,
@@ -89,6 +91,7 @@ from .const import (
     MARKETS,
     MAX_CHEAPEST_HOURS_COUNT,
     MAX_CHEAPEST_HOURS_WINDOW_HOURS,
+    MAX_EXPENSIVE_HOURS_COUNT,
     MAX_GREENEST_HOURS_COUNT,
     MAX_RETAIL_FACTOR,
     MAX_RETAIL_SURCHARGE,
@@ -303,6 +306,19 @@ def _schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                 NumberSelectorConfig(
                     min=0,
                     max=MAX_WEEKEND_HOURS_COUNT,
+                    step=1,
+                    mode=NumberSelectorMode.BOX,
+                )
+            ),
+            vol.Optional(
+                CONF_EXPENSIVE_HOURS_COUNT,
+                default=defaults.get(
+                    CONF_EXPENSIVE_HOURS_COUNT, DEFAULT_EXPENSIVE_HOURS_COUNT
+                ),
+            ): NumberSelector(
+                NumberSelectorConfig(
+                    min=0,
+                    max=MAX_EXPENSIVE_HOURS_COUNT,
                     step=1,
                     mode=NumberSelectorMode.BOX,
                 )
@@ -594,6 +610,9 @@ def _normalize_input(user_input: dict[str, Any]) -> dict[str, Any]:
     normalized[CONF_WEEKEND_HOURS_COUNT] = int(
         normalized.get(CONF_WEEKEND_HOURS_COUNT, DEFAULT_WEEKEND_HOURS_COUNT)
     )
+    normalized[CONF_EXPENSIVE_HOURS_COUNT] = int(
+        normalized.get(CONF_EXPENSIVE_HOURS_COUNT, DEFAULT_EXPENSIVE_HOURS_COUNT)
+    )
     normalized[CONF_GREENEST_HOURS_COUNT] = int(
         normalized.get(CONF_GREENEST_HOURS_COUNT, DEFAULT_GREENEST_HOURS_COUNT)
     )
@@ -634,6 +653,12 @@ def _validate_cheapest_hours_selection(data: dict[str, Any]) -> str | None:
         > data[CONF_CHEAPEST_HOURS_WINDOW_HOURS]
     ):
         return "greenest_hours_exceeds_window"
+    # The dearest hours come out of the same block as well.
+    if (
+        data.get(CONF_EXPENSIVE_HOURS_COUNT, 0)
+        > data[CONF_CHEAPEST_HOURS_WINDOW_HOURS]
+    ):
+        return "expensive_hours_exceeds_window"
     return None
 
 

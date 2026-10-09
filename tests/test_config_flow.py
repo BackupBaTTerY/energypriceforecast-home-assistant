@@ -1109,3 +1109,41 @@ async def test_a_three_and_a_half_hour_window_survives_the_flow(hass) -> None:
         )
 
     assert result["data"]["window_hours"] == 3.5
+
+
+async def test_an_expensive_hours_count_is_stored(hass) -> None:
+    with patch(
+        "custom_components.energypriceforecast.config_flow._validate_input",
+        new=AsyncMock(return_value=None),
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {**BASE_USER_INPUT, "expensive_hours_count": 3}
+        )
+
+    assert result["data"]["expensive_hours_count"] == 3
+
+
+async def test_more_expensive_hours_than_the_block_is_refused(hass) -> None:
+    """Three dearest hours out of a two-hour block can never be satisfied."""
+    with patch(
+        "custom_components.energypriceforecast.config_flow._validate_input",
+        new=AsyncMock(return_value=None),
+    ) as mock_validate:
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {
+                **BASE_USER_INPUT,
+                "expensive_hours_count": 3,
+                "cheapest_hours_window_hours": 2,
+            },
+        )
+
+    assert result["step_id"] == "user"
+    assert result["errors"]["base"] == "expensive_hours_exceeds_window"
+    mock_validate.assert_not_called()

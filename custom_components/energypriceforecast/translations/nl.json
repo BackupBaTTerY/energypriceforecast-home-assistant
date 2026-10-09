@@ -105,7 +105,8 @@
           "cheapest_hours_window_hours": "Bloklengte (uren)",
           "cheapest_hours_start_hour": "Startuur van het blok (lokale tijd)",
           "weekend_hours_count": "Goedkoopste uren voor het weekendplan (0 om uit te schakelen)",
-          "greenest_hours_count": "Schoonste uren per blok (0 = uit)"
+          "greenest_hours_count": "Schoonste uren per blok (0 = uit)",
+          "expensive_hours_count": "Duurste uren per blok (0 = uit)"
         },
         "data_description": {
           "horizon_hours": "De API meldt de daadwerkelijk toegestane horizon als een diagnostische sensor.",
@@ -120,7 +121,8 @@
           "cheapest_hours_window_hours": "Hoe lang elk herhalend blok is. 24 herhaalt dagelijks; 48 kiest uren uit een vast blok van twee dagen (bijv. maandag 00:00 tot woensdag 00:00, dan woensdag tot vrijdag, enz.). Een langer blok geeft meer keuze - doorgaans meer besparing, maar een minder gelijkmatig verdeelde looptijd. Het plan voor de schoonste uren gebruikt hetzelfde blok.",
           "cheapest_hours_start_hour": "Lokaal uur van de dag (0-23) waarop elk blok begint. 0 betekent dat blokken om middernacht beginnen; bij een blok van 24 uur is dit simpelweg het begin van elke kalenderdag.",
           "weekend_hours_count": "Een apart plan voor een vast blok van zaterdag 00:00 tot maandag 00:00, onafhankelijk van het bovenstaande blok - handig voor een laadpaal die alleen weekendflexibiliteit mag gebruiken. Wordt op dezelfde manier gekozen en vastgezet, maar vereist dat het hele weekend door de prognose wordt gedekt (ook al verstreken uren) voordat het wordt vastgezet, zodat een plan na een late herstart nooit onvolledig is.",
-          "greenest_hours_count": "Dezelfde blokken als hierboven, maar de uren worden gekozen op de CO2-intensiteit van het net in plaats van op prijs. Dezelfde regels: eenmaal gekozen blijft het plan staan, en zolang de prognose het blok niet dekt wordt er geen plan gepubliceerd. Mag niet groter zijn dan de bloklengte."
+          "greenest_hours_count": "Dezelfde blokken als hierboven, maar de uren worden gekozen op de CO2-intensiteit van het net in plaats van op prijs. Dezelfde regels: eenmaal gekozen blijft het plan staan, en zolang de prognose het blok niet dekt wordt er geen plan gepubliceerd. Mag niet groter zijn dan de bloklengte.",
+          "expensive_hours_count": "Dezelfde blokken als hierboven, van de andere kant gelezen: de uren waar een apparaat uit moet blijven, of waarin een thuisbatterij mag ontladen. Dezelfde regels – een gekozen blok wordt niet opnieuw geschud, en vóór volledige dekking wordt geen plan gepubliceerd. Mag niet groter zijn dan de bloklengte."
         }
       },
       "reconfigure": {
@@ -140,7 +142,8 @@
           "cheapest_hours_window_hours": "Bloklengte (uren)",
           "cheapest_hours_start_hour": "Startuur van het blok (lokale tijd)",
           "weekend_hours_count": "Goedkoopste uren voor het weekendplan (0 om uit te schakelen)",
-          "greenest_hours_count": "Schoonste uren per blok (0 = uit)"
+          "greenest_hours_count": "Schoonste uren per blok (0 = uit)",
+          "expensive_hours_count": "Duurste uren per blok (0 = uit)"
         },
         "data_description": {
           "horizon_hours": "De API meldt de daadwerkelijk toegestane horizon als een diagnostische sensor.",
@@ -154,7 +157,8 @@
           "cheapest_hours_window_hours": "Hoe lang elk herhalend blok is. 24 herhaalt dagelijks; 48 kiest uren uit een vast blok van twee dagen (bijv. maandag 00:00 tot woensdag 00:00, dan woensdag tot vrijdag, enz.). Een langer blok geeft meer keuze - doorgaans meer besparing, maar een minder gelijkmatig verdeelde looptijd. Het plan voor de schoonste uren gebruikt hetzelfde blok.",
           "cheapest_hours_start_hour": "Lokaal uur van de dag (0-23) waarop elk blok begint. 0 betekent dat blokken om middernacht beginnen; bij een blok van 24 uur is dit simpelweg het begin van elke kalenderdag.",
           "weekend_hours_count": "Een apart plan voor een vast blok van zaterdag 00:00 tot maandag 00:00, onafhankelijk van het bovenstaande blok - handig voor een laadpaal die alleen weekendflexibiliteit mag gebruiken. Wordt op dezelfde manier gekozen en vastgezet, maar vereist dat het hele weekend door de prognose wordt gedekt (ook al verstreken uren) voordat het wordt vastgezet, zodat een plan na een late herstart nooit onvolledig is.",
-          "greenest_hours_count": "Dezelfde blokken als hierboven, maar de uren worden gekozen op de CO2-intensiteit van het net in plaats van op prijs. Dezelfde regels: eenmaal gekozen blijft het plan staan, en zolang de prognose het blok niet dekt wordt er geen plan gepubliceerd. Mag niet groter zijn dan de bloklengte."
+          "greenest_hours_count": "Dezelfde blokken als hierboven, maar de uren worden gekozen op de CO2-intensiteit van het net in plaats van op prijs. Dezelfde regels: eenmaal gekozen blijft het plan staan, en zolang de prognose het blok niet dekt wordt er geen plan gepubliceerd. Mag niet groter zijn dan de bloklengte.",
+          "expensive_hours_count": "Dezelfde blokken als hierboven, van de andere kant gelezen: de uren waar een apparaat uit moet blijven, of waarin een thuisbatterij mag ontladen. Dezelfde regels – een gekozen blok wordt niet opnieuw geschud, en vóór volledige dekking wordt geen plan gepubliceerd. Mag niet groter zijn dan de bloklengte."
         }
       }
     },
@@ -173,7 +177,8 @@
       "tou_windows_overlap": "Het lage en het piektijdvak overlappen. Controleer de uren op je tariefblad.",
       "datahub_unavailable": "Energi Data Service was niet bereikbaar. Verstuur opnieuw om het nog eens te proberen.",
       "cheapest_hours_exceeds_window": "Goedkoopste uren per blok mag niet groter zijn dan de bloklengte.",
-      "greenest_hours_exceeds_window": "Het aantal schoonste uren mag niet groter zijn dan de bloklengte."
+      "greenest_hours_exceeds_window": "Het aantal schoonste uren mag niet groter zijn dan de bloklengte.",
+      "expensive_hours_exceeds_window": "Het aantal duurste uren mag niet groter zijn dan de bloklengte."
     },
     "abort": {
       "already_configured": "Deze markt is al geconfigureerd."
@@ -230,6 +235,9 @@
       "retail_current_price": {"name": "Huidige consumentenprijs"},
       "cheapest_hours_next_start": {"name": "Volgend goedkoopste uur"},
       "weekend_hours_next_start": {"name": "Volgend goedkoopste weekenduur"},
+      "expensive_hours_next_start": {"name": "Volgend duur uur"},
+      "expensive_hours_average_price": {"name": "Gemiddelde prijs duurste uren"},
+      "expensive_hours_surcharge": {"name": "Toeslag duurste uren"},
       "greenest_hours_next_start": {"name": "Volgend schoonste uur"},
       "greenest_hours_average_co2": {"name": "Schoonste uren gemiddelde CO2"},
       "greenest_hours_saving": {"name": "Schoonste uren besparing"},
@@ -252,6 +260,7 @@
       "greenest_window_active": {"name": "Groenste tijdvak actief"},
       "is_in_cheapest_hours": {"name": "Goedkoopste uren actief"},
       "is_in_weekend_hours": {"name": "Goedkoopste weekenduren actief"},
+      "is_in_expensive_hours": {"name": "Duurste uren actief"},
       "is_in_greenest_hours": {"name": "Schoonste uren actief"},
       "combined_window_active": {"name": "Gecombineerd venster actief"},
       "retail_cheapest_window_active": {"name": "Goedkoopste tijdvak actief (consumentenprijs)"}

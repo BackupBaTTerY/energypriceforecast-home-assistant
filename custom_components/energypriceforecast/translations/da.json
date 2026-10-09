@@ -105,7 +105,8 @@
           "cheapest_hours_window_hours": "Bloklængde (timer)",
           "cheapest_hours_start_hour": "Blokkens starttime (lokal tid)",
           "weekend_hours_count": "Billigste timer til weekendplanen (0 for at deaktivere)",
-          "greenest_hours_count": "Reneste timer pr. blok (0 slår fra)"
+          "greenest_hours_count": "Reneste timer pr. blok (0 slår fra)",
+          "expensive_hours_count": "Dyreste timer pr. blok (0 = fra)"
         },
         "data_description": {
           "horizon_hours": "API'en rapporterer den faktisk tilladte horisont som en diagnosticeringssensor.",
@@ -120,7 +121,8 @@
           "cheapest_hours_window_hours": "Hvor lang hver gentagende blok er. 24 gentages dagligt; 48 vælger timer fra en fast toDages-blok (f.eks. mandag 00:00 til onsdag 00:00, derefter onsdag til fredag osv.). En længere blok giver flere timer at vælge imellem - typisk mere besparelse, men en mindre jævnt fordelt driftstid. Planen for de reneste timer bruger den samme blok.",
           "cheapest_hours_start_hour": "Lokal time på døgnet (0-23), hvor hver blok starter. 0 betyder, at blokke starter ved midnat; med en 24-timers blok er dette blot starten på hver kalenderdag.",
           "weekend_hours_count": "En separat plan for en fast blok fra lørdag 00:00 til mandag 00:00, uafhængig af blokken ovenfor - nyttigt til en ladeboks, der kun må bruge weekend-fleksibilitet. Vælges og låses på samme måde, men kræver, at hele weekenden er dækket af prognosen (også allerede passerede timer), før den låses, så en plan lavet efter en sen genstart aldrig er delvis.",
-          "greenest_hours_count": "Samme blokke som ovenfor, men timerne vælges efter nettets CO2-intensitet i stedet for prisen. Samme regler: når planen først er valgt, flytter den sig ikke, og så længe prognosen ikke dækker blokken, offentliggøres ingen plan. Må ikke være større end bloklængden."
+          "greenest_hours_count": "Samme blokke som ovenfor, men timerne vælges efter nettets CO2-intensitet i stedet for prisen. Samme regler: når planen først er valgt, flytter den sig ikke, og så længe prognosen ikke dækker blokken, offentliggøres ingen plan. Må ikke være større end bloklængden.",
+          "expensive_hours_count": "Samme blokke som ovenfor, læst fra den anden ende: de timer, et forbrug skal holdes ude af, eller som et batteri må aflades i. Samme regler – en valgt blok bliver ikke omrokeret, og der offentliggøres ingen plan, før prognosen dækker blokken. Må ikke være større end bloklængden."
         }
       },
       "reconfigure": {
@@ -140,7 +142,8 @@
           "cheapest_hours_window_hours": "Bloklængde (timer)",
           "cheapest_hours_start_hour": "Blokkens starttime (lokal tid)",
           "weekend_hours_count": "Billigste timer til weekendplanen (0 for at deaktivere)",
-          "greenest_hours_count": "Reneste timer pr. blok (0 slår fra)"
+          "greenest_hours_count": "Reneste timer pr. blok (0 slår fra)",
+          "expensive_hours_count": "Dyreste timer pr. blok (0 = fra)"
         },
         "data_description": {
           "horizon_hours": "API'en rapporterer den faktisk tilladte horisont som en diagnosticeringssensor.",
@@ -154,7 +157,8 @@
           "cheapest_hours_window_hours": "Hvor lang hver gentagende blok er. 24 gentages dagligt; 48 vælger timer fra en fast toDages-blok (f.eks. mandag 00:00 til onsdag 00:00, derefter onsdag til fredag osv.). En længere blok giver flere timer at vælge imellem - typisk mere besparelse, men en mindre jævnt fordelt driftstid. Planen for de reneste timer bruger den samme blok.",
           "cheapest_hours_start_hour": "Lokal time på døgnet (0-23), hvor hver blok starter. 0 betyder, at blokke starter ved midnat; med en 24-timers blok er dette blot starten på hver kalenderdag.",
           "weekend_hours_count": "En separat plan for en fast blok fra lørdag 00:00 til mandag 00:00, uafhængig af blokken ovenfor - nyttigt til en ladeboks, der kun må bruge weekend-fleksibilitet. Vælges og låses på samme måde, men kræver, at hele weekenden er dækket af prognosen (også allerede passerede timer), før den låses, så en plan lavet efter en sen genstart aldrig er delvis.",
-          "greenest_hours_count": "Samme blokke som ovenfor, men timerne vælges efter nettets CO2-intensitet i stedet for prisen. Samme regler: når planen først er valgt, flytter den sig ikke, og så længe prognosen ikke dækker blokken, offentliggøres ingen plan. Må ikke være større end bloklængden."
+          "greenest_hours_count": "Samme blokke som ovenfor, men timerne vælges efter nettets CO2-intensitet i stedet for prisen. Samme regler: når planen først er valgt, flytter den sig ikke, og så længe prognosen ikke dækker blokken, offentliggøres ingen plan. Må ikke være større end bloklængden.",
+          "expensive_hours_count": "Samme blokke som ovenfor, læst fra den anden ende: de timer, et forbrug skal holdes ude af, eller som et batteri må aflades i. Samme regler – en valgt blok bliver ikke omrokeret, og der offentliggøres ingen plan, før prognosen dækker blokken. Må ikke være større end bloklængden."
         }
       }
     },
@@ -173,7 +177,8 @@
       "tou_windows_overlap": "Lavlast- og spidslastperioden overlapper. Tjek timerne i din prisliste.",
       "datahub_unavailable": "Energi Data Service kunne ikke nås. Indsend igen for at prøve en gang til.",
       "cheapest_hours_exceeds_window": "Billigste timer pr. blok må ikke være større end bloklængden.",
-      "greenest_hours_exceeds_window": "Antallet af reneste timer må ikke være større end bloklængden."
+      "greenest_hours_exceeds_window": "Antallet af reneste timer må ikke være større end bloklængden.",
+      "expensive_hours_exceeds_window": "Antallet af dyre timer må ikke være større end bloklængden."
     },
     "abort": {
       "already_configured": "Dette marked er allerede konfigureret."
@@ -230,6 +235,9 @@
       "retail_current_price": {"name": "Aktuel detailpris"},
       "cheapest_hours_next_start": {"name": "Næste billigste time"},
       "weekend_hours_next_start": {"name": "Næste billigste weekendtime"},
+      "expensive_hours_next_start": {"name": "Næste dyre time"},
+      "expensive_hours_average_price": {"name": "Gennemsnitspris dyreste timer"},
+      "expensive_hours_surcharge": {"name": "Tillæg dyreste timer"},
       "greenest_hours_next_start": {"name": "Næste reneste time"},
       "greenest_hours_average_co2": {"name": "Reneste timer gennemsnitlig CO2"},
       "greenest_hours_saving": {"name": "Reneste timer besparelse"},
@@ -252,6 +260,7 @@
       "greenest_window_active": {"name": "Grønneste tidsvindue aktivt"},
       "is_in_cheapest_hours": {"name": "Billigste timer aktive"},
       "is_in_weekend_hours": {"name": "Billigste weekendtimer aktive"},
+      "is_in_expensive_hours": {"name": "Dyreste timer aktive"},
       "is_in_greenest_hours": {"name": "Reneste timer aktive"},
       "combined_window_active": {"name": "Kombineret vindue aktivt"},
       "retail_cheapest_window_active": {"name": "Billigste tidsvindue aktivt (detailpris)"}

@@ -9,7 +9,7 @@ NAME: Final = "Energy Price Forecast EU"
 # from. Must equal manifest.json's version - test_version.py enforces that,
 # because this drifted to 0.1.0 for ten releases and every request from
 # every user was mislabelled the whole time.
-VERSION: Final = "1.13.0"
+VERSION: Final = "1.14.0"
 DEFAULT_API_URL: Final = (
     "https://api.energypriceforecast.eu/api/v1/home-assistant/summary"
 )
@@ -201,6 +201,14 @@ MAX_WEEKEND_HOURS_COUNT: Final = 48
 # length and start hour: how flexible a load is, is a property of the
 # household, not of the number being optimised - and two independent block
 # geometries would double the settings for a distinction nobody makes.
+# The mirror of the cheapest-hours plan: the hours to stay out of, for a
+# battery that should discharge then or a load that should not run. Same
+# block, same locking; off unless a count is set, so nobody who ignores it
+# gains an entity.
+CONF_EXPENSIVE_HOURS_COUNT: Final = "expensive_hours_count"
+DEFAULT_EXPENSIVE_HOURS_COUNT: Final = 0
+MAX_EXPENSIVE_HOURS_COUNT: Final = 48
+
 CONF_GREENEST_HOURS_COUNT: Final = "greenest_hours_count"
 DEFAULT_GREENEST_HOURS_COUNT: Final = 0
 MAX_GREENEST_HOURS_COUNT: Final = 48

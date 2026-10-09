@@ -100,6 +100,9 @@ integration shows the figures for yours as entities.
   far below the block average that lands
 - Optional independent weekend plan (Saturday 00:00 to Monday 00:00) for
   loads that are only flexible on weekends, e.g. EV charging
+- Optional **"most expensive hours" plan** *(1.14.0)* - the same block and the
+  same locking, read from the other end: the hours to keep a load out of, or to
+  discharge a home battery into. Off unless you set a count
 - Optional "cleanest hours" plan *(1.2.0)* - the same block, the same locking,
   but picked on grid CO2 intensity instead of price
 - Optional retail price - our assumption-based estimate for DE, NL, DK, AT
@@ -455,6 +458,34 @@ you configured above - same length, same start hour - but ranked on grid CO2
 intensity instead of price. Everything else is identical: the plan locks once
 picked, no partial plan is ever published, and the saving compares the picked
 hours against the block's own average.
+
+### The hours to stay out of *(1.14.0)*
+
+Set **Most expensive hours per block** and you get the cheapest-hours plan read
+backwards: the dearest hours of the same block, picked and locked the same way,
+corrected once when the day-ahead prices settle, and never reshuffled after
+that. It is meant for the two cases where the cheap hours are not the question -
+discharging a home battery, and keeping a dryer or a heat pump out of the peak.
+
+Three entities appear, and only if you set a count above zero:
+
+| Entity | What it is |
+|---|---|
+| Next expensive hour | When the next planned expensive hour starts, with the whole plan in its `hours` attribute |
+| Most expensive hours average price | What those hours average |
+| Most expensive hours surcharge | How far above the block's own average they land, in percent |
+
+Plus the binary sensor **Most expensive hours active**, the inverse trigger of
+the cheapest-hours one.
+
+The surcharge is measured against the same block average the saving uses, so
+the two numbers are comparable: one says what picking the cheap hours gained,
+the other what avoiding the dear ones was worth. Both are withheld when the
+block average is zero or negative, where a percentage describes nothing.
+
+One limitation worth knowing: nothing stops the cheapest and the most expensive
+plan from being configured so tightly that they meet in the middle of a short
+block. They are two independent plans over the same hours, not one schedule.
 
 ### Where the CO2 number comes from
 

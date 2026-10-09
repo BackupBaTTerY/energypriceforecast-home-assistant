@@ -33,6 +33,7 @@ from .planning import (
     fixed_repeating_window,
     fixed_weekend_window,
     select_cheapest_hours,
+    select_most_expensive_hours,
     window_is_settled,
 )
 from .retail_formula import apply_to_series, apply_to_summary
@@ -89,6 +90,7 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         cheapest_hours_window_hours: int = 24,
         cheapest_hours_start_hour: int = 0,
         weekend_hours_count: int = 0,
+        expensive_hours_count: int = 0,
         greenest_hours_count: int = 0,
         currency: str | None = None,
         price_resolution: str = DEFAULT_PRICE_RESOLUTION,
@@ -112,6 +114,7 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.cheapest_hours_window_hours = cheapest_hours_window_hours
         self.cheapest_hours_start_hour = cheapest_hours_start_hour
         self.weekend_hours_count = weekend_hours_count
+        self.expensive_hours_count = expensive_hours_count
         self.greenest_hours_count = greenest_hours_count
         self.currency = currency
         # Read by the entities: a contract that settles by the hour has one
@@ -131,11 +134,13 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.co2_series: dict[str, Any] | None = None
         self.cheapest_hours: list[dict[str, Any]] | None = None
         self.weekend_hours: list[dict[str, Any]] | None = None
+        self.expensive_hours: list[dict[str, Any]] | None = None
         self.greenest_hours: list[dict[str, Any]] | None = None
         # What the whole block averages, locked together with its plan - the
         # baseline the plan's own average is compared against.
         self.cheapest_hours_window_average: float | None = None
         self.weekend_hours_window_average: float | None = None
+        self.expensive_hours_window_average: float | None = None
         self.greenest_hours_window_average: float | None = None
         self._plan_store = Store[dict[str, Any]](
             hass, _PLAN_STORAGE_VERSION, f"{DOMAIN}_{entry.entry_id}_plans"
@@ -321,6 +326,7 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         entries: list[dict[str, Any]],
         available_from: datetime,
         now: datetime,
+        dearest: bool = False,
     ) -> dict[str, Any] | None:
         """Return the plan for one block, computing and locking it once.
 
@@ -349,13 +355,14 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if self._plan_is_settled(cached) or not settled:
                 return plan
             resettled = self._resettle_plan(
-                plan, count, window_start, window_end, entries, now
+                plan, count, window_start, window_end, entries, now, dearest
             )
             if resettled is None:
                 return plan
             plan = resettled
         else:
-            plan = select_cheapest_hours(
+            picker = select_most_expensive_hours if dearest else select_cheapest_hours
+            plan = picker(
                 entries, count, window_start, window_end, available_from
             )
             if plan is None:
@@ -401,6 +408,7 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         window_end: datetime,
         entries: list[dict[str, Any]],
         now: datetime,
+        dearest: bool = False,
     ) -> dict[str, Any] | None:
         """Re-pick the hours of a forecast-planned block that are still ahead.
 
@@ -420,9 +428,8 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Start the re-pick after the last kept hour so a running hour cannot
         # be picked a second time.
         pick_from = max([now] + [hour["end"] for hour in kept])
-        replan = select_cheapest_hours(
-            entries, remaining, window_start, window_end, pick_from
-        )
+        picker = select_most_expensive_hours if dearest else select_cheapest_hours
+        replan = picker(entries, remaining, window_start, window_end, pick_from)
         if replan is None:
             return None
         return {
@@ -630,6 +637,29 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             )
             self.weekend_hours = plan["hours"] if plan else None
             self.weekend_hours_window_average = (
+                plan["window_average_value"] if plan else None
+            )
+
+        # The dearest hours are the same plan read from the other end: the
+        # hours to keep a load out of, or to discharge a battery into. Same
+        # block, same locking, same one-off correction when the prices settle.
+        if self.expensive_hours_count > 0 and plan_series:
+            window_start, window_end = fixed_repeating_window(
+                now, self.cheapest_hours_start_hour, self.cheapest_hours_window_hours
+            )
+            plan = await self._async_get_plan(
+                f"expensive|{plan_basis}|{self.expensive_hours_count}|"
+                f"{self.cheapest_hours_window_hours}|{self.cheapest_hours_start_hour}",
+                window_start,
+                window_end,
+                self.expensive_hours_count,
+                plan_series["entries"],
+                max(window_start, now),
+                now,
+                dearest=True,
+            )
+            self.expensive_hours = plan["hours"] if plan else None
+            self.expensive_hours_window_average = (
                 plan["window_average_value"] if plan else None
             )
 

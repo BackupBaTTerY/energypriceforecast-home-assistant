@@ -99,6 +99,10 @@ async def async_setup_entry(
         entities.append(EnergyPriceForecastCheapestHoursBinarySensor(coordinator, entry))
     if coordinator.weekend_hours_count > 0:
         entities.append(EnergyPriceForecastWeekendHoursBinarySensor(coordinator, entry))
+    if coordinator.expensive_hours_count > 0:
+        entities.append(
+            EnergyPriceForecastExpensiveHoursBinarySensor(coordinator, entry)
+        )
     if coordinator.greenest_hours_count > 0:
         entities.append(EnergyPriceForecastGreenestHoursBinarySensor(coordinator, entry))
     entities.append(EnergyPriceForecastCombinedWindowBinarySensor(coordinator, entry))
@@ -220,6 +224,36 @@ class EnergyPriceForecastWeekendHoursBinarySensor(
         return any(
             hour["start"] <= now < hour["end"]
             for hour in self.coordinator.weekend_hours or []
+        )
+
+
+class EnergyPriceForecastExpensiveHoursBinarySensor(
+    QuarterHourStateRefreshMixin, EnergyPriceForecastEntity, BinarySensorEntity
+):
+    """Whether one of the N dearest planned hours is running right now.
+
+    The inverse trigger of the cheapest-hours flag: switch a load off, or a
+    battery to discharging. Backed by coordinator.expensive_hours.
+    """
+
+    _attr_translation_key = "is_in_expensive_hours"
+    _attr_icon = "mdi:cash-remove"
+
+    def __init__(
+        self, coordinator: EnergyPriceForecastCoordinator, entry: ConfigEntry
+    ) -> None:
+        super().__init__(coordinator, entry, "is_in_expensive_hours")
+
+    @property
+    def available(self) -> bool:
+        return super().available and self.coordinator.expensive_hours is not None
+
+    @property
+    def is_on(self) -> bool:
+        now = datetime.now(timezone.utc)
+        return any(
+            hour["start"] <= now < hour["end"]
+            for hour in self.coordinator.expensive_hours or []
         )
 
 

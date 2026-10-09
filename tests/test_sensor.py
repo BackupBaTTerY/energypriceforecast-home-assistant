@@ -1633,3 +1633,44 @@ async def test_the_hourly_price_switches_when_the_hour_does(hass, freezer) -> No
 
     assert float(_state_for_unique_id(hass, entry, "current_price").state) == 0.20
     assert float(_state_for_unique_id(hass, entry, "price_series").state) == 0.20
+
+
+async def test_the_dearest_hours_are_planned_and_flagged(hass, freezer) -> None:
+    """The mirror of the cheapest plan: what to stay out of, or discharge into."""
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-08-08T00:10:00+00:00")
+    prices = {hour: 0.10 for hour in range(24)}
+    prices[0] = 0.90
+    prices[5] = 0.80
+    entry = await _setup_entry(
+        hass,
+        extra_data={"expensive_hours_count": 2, "cheapest_hours_window_hours": 24},
+        price_entries=_day_ahead_slots("2026-08-08T00:00:00Z", prices),
+    )
+
+    registry = er.async_get(hass)
+    unique_ids = {e.unique_id for e in er.async_entries_for_config_entry(registry, entry.entry_id)}
+    for suffix in (
+        "expensive_hours_next_start",
+        "expensive_hours_average_price",
+        "expensive_hours_surcharge",
+        "is_in_expensive_hours",
+    ):
+        assert f"{entry.entry_id}_{suffix}" in unique_ids
+
+    # 00:00 is the dearest hour of the block and it is running now.
+    assert _state_for_unique_id(hass, entry, "is_in_expensive_hours").state == "on"
+    plan = _state_for_unique_id(hass, entry, "expensive_hours_next_start")
+    assert [hour["average_value"] for hour in plan.attributes["hours"]] == [0.9, 0.8]
+    # Dearer than the block average, so the surcharge is positive.
+    assert float(_state_for_unique_id(hass, entry, "expensive_hours_surcharge").state) > 0
+
+
+async def test_without_a_count_there_are_no_expensive_entities(hass) -> None:
+    """Nobody who ignores the option pays for it with an entity."""
+    entry = await _setup_entry(hass)
+
+    registry = er.async_get(hass)
+    unique_ids = {e.unique_id for e in er.async_entries_for_config_entry(registry, entry.entry_id)}
+
+    assert not any("expensive_hours" in uid for uid in unique_ids)

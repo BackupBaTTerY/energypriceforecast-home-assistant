@@ -10,6 +10,7 @@ from custom_components.energypriceforecast.planning import (
     fixed_repeating_window,
     fixed_weekend_window,
     select_cheapest_hours,
+    select_most_expensive_hours,
     window_is_settled,
 )
 
@@ -353,3 +354,46 @@ def test_zero_or_negative_count_yields_no_plan() -> None:
     entries = _quarter_hour_entries(start, {0: 0.1})
 
     assert select_cheapest_hours(entries, count=0, window_start=start, window_end=end, available_from=start) is None
+
+
+def test_selects_the_dearest_hours_within_the_window() -> None:
+    """The same plan read from the other end - for the hours to stay out of."""
+    start = datetime(2026, 8, 12, 0, 0, tzinfo=timezone.utc)
+    end = start + timedelta(hours=24)
+    entries = _quarter_hour_entries(
+        start, {0: 0.30, 1: 0.10, 2: 0.50, 3: 0.05, 4: 0.20}
+    )
+    for hour in range(5, 24):
+        entries.extend(_quarter_hour_entries(start, {hour: 0.25}))
+
+    result = select_most_expensive_hours(
+        entries, count=2, window_start=start, window_end=end, available_from=start
+    )
+
+    assert result is not None
+    # 0.50 at hour 2 and 0.30 at hour 0 are the dearest; the rest sit at 0.25.
+    # Returned in time order, like every other plan.
+    assert [h["start"] for h in result["hours"]] == [
+        start,
+        start + timedelta(hours=2),
+    ]
+    assert result["hours"][1]["average_value"] == 0.50
+
+
+def test_both_ends_share_one_baseline() -> None:
+    """Saving and surcharge are measured against the same block average."""
+    start = datetime(2026, 8, 12, 0, 0, tzinfo=timezone.utc)
+    end = start + timedelta(hours=24)
+    entries = []
+    for hour in range(24):
+        entries.extend(_quarter_hour_entries(start, {hour: 0.10 + hour / 100}))
+
+    cheap = select_cheapest_hours(
+        entries, count=3, window_start=start, window_end=end, available_from=start
+    )
+    dear = select_most_expensive_hours(
+        entries, count=3, window_start=start, window_end=end, available_from=start
+    )
+
+    assert cheap["window_average_value"] == dear["window_average_value"]
+    assert [h["start"] for h in cheap["hours"]] != [h["start"] for h in dear["hours"]]

@@ -52,3 +52,66 @@ def test_every_entity_is_listed_in_the_readme() -> None:
         "these entities exist but are not documented in README.md: "
         + ", ".join(sorted(missing))
     )
+
+
+# Where the README covers each setup option. Entity names have been guarded by
+# the test above for a long time; the options were not, and an option that
+# never reaches the README is one nobody can discover without clicking through
+# the setup dialog. A key is matched by exact name or by prefix, and the
+# section named here has to exist, so renaming a section fails loudly instead
+# of leaving a stale pointer behind.
+SETTING_SECTIONS = {
+    "market": "## Supported markets",
+    "horizon_hours": "## Horizon",
+    "window_hours": "### Always created",
+    "api_key": "## Horizon",
+    "price_resolution": "## Hourly or quarter-hourly tariff",
+    "local_currency": "## Prices in your own currency",
+    "postal_code": "## Retail price: estimate or your own formula",
+    "retail_": "## Retail price: estimate or your own formula",
+    "tou_": "## Time-of-day grid charges",
+    "update_interval_minutes": "## Data updates",
+    "cheapest_hours_": "### Heat pump or water heater: N cheapest hours per X-hour block",
+    "weekend_hours_count": "### EV charging on weekends",
+    "greenest_hours_count": "### Charging on clean power instead of cheap power",
+    "expensive_hours_count": "### The hours to stay out of",
+}
+
+
+def _settings() -> list[str]:
+    source = (COMPONENT_DIR / "const.py").read_text(encoding="utf-8")
+    return [
+        key
+        for _, key in re.findall(
+            r'^CONF_([A-Z0-9_]+): Final = "([a-z0-9_]+)"', source, re.M
+        )
+    ]
+
+
+def _section_for(key: str) -> str | None:
+    if key in SETTING_SECTIONS:
+        return SETTING_SECTIONS[key]
+    for prefix, section in SETTING_SECTIONS.items():
+        if prefix.endswith("_") and key.startswith(prefix):
+            return section
+    return None
+
+
+def test_every_setting_is_covered_by_a_readme_section() -> None:
+    readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+
+    unlisted = [key for key in _settings() if _section_for(key) is None]
+    assert not unlisted, (
+        "these setup options have no documented home: " + ", ".join(sorted(unlisted))
+    )
+
+    missing_sections = sorted(
+        {
+            section
+            for key in _settings()
+            if (section := _section_for(key)) and section not in readme
+        }
+    )
+    assert not missing_sections, (
+        "the README no longer has these sections: " + ", ".join(missing_sections)
+    )

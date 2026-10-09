@@ -10,6 +10,13 @@ The integration combines published day-ahead prices with forecast values for
 the remaining horizon. It exposes ready-to-use entities for automations without
 requiring YAML or JSON templates.
 
+![A Home Assistant dashboard built from this integration: the price now, today's range, the best four-hour window and the cheapest-hours plan, a chart of published prices followed by five days of forecast, and the forecast quality measured for the market.](https://raw.githubusercontent.com/BackupBaTTerY/energypriceforecast-home-assistant/main/docs/images/dashboard.png)
+
+*Germany, retail price, a Friday in October 2026. Green is the published
+day-ahead price, orange the forecast for the days after, dashed blue the last
+forecast before each price was published. The whole view is
+[ready to paste](#a-card-that-answers-what-to-do-now-1130).*
+
 ## Why install this next to Nord Pool or Tibber?
 
 Those integrations show prices once they are published: today's, and

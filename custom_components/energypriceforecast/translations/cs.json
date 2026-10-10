@@ -262,6 +262,7 @@
       "is_in_weekend_hours": {"name": "Nejlevnější víkendové hodiny aktivní"},
       "is_in_expensive_hours": {"name": "Nejdražší hodiny aktivní"},
       "is_in_greenest_hours": {"name": "Nejčistší hodiny aktivní"},
+      "prices_unpublished": {"name": "Chybí zveřejněné ceny"},
       "combined_window_active": {"name": "Kombinované okno aktivní"},
       "retail_cheapest_window_active": {"name": "Nejlevnější okno aktivní (maloobchodní)"}
     }

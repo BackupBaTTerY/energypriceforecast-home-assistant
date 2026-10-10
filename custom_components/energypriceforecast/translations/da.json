@@ -262,6 +262,7 @@
       "is_in_weekend_hours": {"name": "Billigste weekendtimer aktive"},
       "is_in_expensive_hours": {"name": "Dyreste timer aktive"},
       "is_in_greenest_hours": {"name": "Reneste timer aktive"},
+      "prices_unpublished": {"name": "Offentliggjorte priser mangler"},
       "combined_window_active": {"name": "Kombineret vindue aktivt"},
       "retail_cheapest_window_active": {"name": "Billigste tidsvindue aktivt (detailpris)"}
     }

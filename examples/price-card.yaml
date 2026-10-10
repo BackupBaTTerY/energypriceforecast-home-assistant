@@ -3,6 +3,11 @@ path: price
 icon: mdi:lightning-bolt-outline
 type: sections
 max_columns: 3
+badges:
+  - type: entity
+    entity: binary_sensor.energy_price_forecast_eu_de_published_prices_missing
+    name: Prices
+    state_content: state
 sections:
   - type: grid
     cards:
@@ -21,6 +26,18 @@ sections:
 
           <ha-icon icon="mdi:lightning-bolt"></ha-icon> **Electricity price
           now**
+
+          {% set warn =
+          'binary_sensor.energy_price_forecast_eu_de_published_prices_missing'
+          %}{% if is_state(warn, 'on') %}<ha-alert
+          alert-type="warning">Estimated price: the official prices for this
+          hour were never published.</ha-alert>{% else %}{% set pu =
+          state_attr(warn, 'published_until') %}<ha-icon
+          icon="mdi:check-decagram"
+          style="color: var(--success-color)"></ha-icon> {% if pu is string
+          %}Official prices until **{{ as_timestamp(pu) |
+          timestamp_custom('%H:%M') }}**{% else %}Published prices in use{%
+          endif %}{% endif %}
 
           {% if states(p) | is_number %}
 

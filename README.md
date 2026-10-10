@@ -257,6 +257,7 @@ integration depends on the ID.
 | Cheapest window active | binary sensor | on/off |
 | Greenest window active | binary sensor | on/off |
 | Combined window active *(1.2.0)* | binary sensor | on/off |
+| Published prices missing *(1.15.0)* | binary sensor | on/off |
 
 Plus eight diagnostic entities, shown separately in the device page:
 **Allowed horizon** and **Used horizon** (hours), **API-key status**,
@@ -921,6 +922,69 @@ Pick it only if your supplier really settles by the hour. If you are unsure,
 the quarter-hourly setting is the safe one: it is what every entry has been
 using so far.
 
+## When the official prices are missing *(1.15.0)*
+
+**Published prices missing** is a binary sensor with Home Assistant's
+`problem` device class, so it shows up red as "Problem" and can be used in an
+automation as plainly as `state: "on"`.
+
+It is on when the price for the slot running **right now** is a forecast
+rather than a published day-ahead price. That is the narrow case, and
+deliberately so: beyond the published window the series is always a forecast -
+that is what this integration is for - and a flag that reported *that* would
+be on every afternoon and worth nothing. The price for the current hour, on
+the other hand, was settled at auction the day before. If it is a forecast,
+the published prices never arrived.
+
+That is not hypothetical. On 9 and 10 October 2026 the Dutch, Greek, Romanian
+and Slovak day-ahead results were missing from both platforms this project
+reads, for a day and a half. Installations in those markets were served a
+complete series the whole time - all of it estimated.
+
+Two attributes say what the flag rests on:
+
+| Attribute | Meaning |
+| --- | --- |
+| `price_source` | `day_ahead`, `early_auction` or `forecast` for the current slot |
+| `published_until` | end of the last published slot in your series, `null` while none is published |
+
+An early-auction price does **not** raise the flag. It is not the official
+price either, but it is a traded one: measured against the Dutch day-ahead
+result for 10 October 2026 it sat 0.94 ct/kWh away, where the model forecast
+sat 3.18 ct away. The attribute still names it, so a template can tell the
+three cases apart.
+
+What this is not: a repair issue, because there is nothing you can fix at your
+end, and not a reason to make entities unavailable. The numbers are there,
+they are only estimates, and an automation that stops dead helps nobody. What
+an automation that spends money can usefully do is widen its margin or wait -
+there is no point optimising to a third of a cent on a number that is a guess.
+How long the flag has been on is simply the entity's own `last_changed`.
+
+```yaml
+automation:
+  - alias: Charge the car, but not on guessed prices
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.energy_price_forecast_eu_de_cheapest_hours_active
+        to: "on"
+    conditions:
+      - condition: state
+        entity_id: binary_sensor.energy_price_forecast_eu_de_published_prices_missing
+        state: "off"
+    actions:
+      - action: switch.turn_on
+        target:
+          entity_id: switch.wallbox
+```
+
+The dashboard card below carries it in two places. A badge at the top of the
+view shows the flag itself, so the state is visible whichever card you are
+looking at. And in the price tile there is one line that is always there: a
+green check with "Official prices until 22:00" while the prices are
+published, and a warning in its place, directly above the number, when they
+are not.
+
 ## How good is the forecast, really?
 
 *Added in 1.0.0 - if you do not see this entity, check your installed
@@ -1425,6 +1489,11 @@ path: price
 icon: mdi:lightning-bolt-outline
 type: sections
 max_columns: 3
+badges:
+  - type: entity
+    entity: binary_sensor.energy_price_forecast_eu_de_published_prices_missing
+    name: Prices
+    state_content: state
 sections:
   - type: grid
     cards:
@@ -1443,6 +1512,18 @@ sections:
 
           <ha-icon icon="mdi:lightning-bolt"></ha-icon> **Electricity price
           now**
+
+          {% set warn =
+          'binary_sensor.energy_price_forecast_eu_de_published_prices_missing'
+          %}{% if is_state(warn, 'on') %}<ha-alert
+          alert-type="warning">Estimated price: the official prices for this
+          hour were never published.</ha-alert>{% else %}{% set pu =
+          state_attr(warn, 'published_until') %}<ha-icon
+          icon="mdi:check-decagram"
+          style="color: var(--success-color)"></ha-icon> {% if pu is string
+          %}Official prices until **{{ as_timestamp(pu) |
+          timestamp_custom('%H:%M') }}**{% else %}Published prices in use{%
+          endif %}{% endif %}
 
           {% if states(p) | is_number %}
 

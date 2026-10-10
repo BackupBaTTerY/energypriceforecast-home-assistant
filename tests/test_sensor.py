@@ -58,6 +58,7 @@ async def _setup_entry(
     price_entries: list[dict] | None = None,
     retail_summary_payload: dict | None = None,
     summary_extra: dict | None = None,
+    price_series_source: dict | None = None,
 ) -> MockConfigEntry:
     entry = MockConfigEntry(
         domain=DOMAIN,
@@ -85,6 +86,8 @@ async def _setup_entry(
             {"start": "2026-08-08T04:00:00Z", "end": "2026-08-08T05:00:00Z", "value": 0.1}
         ],
     }
+    if price_series_source is not None:
+        prices_payload["source"] = price_series_source
 
     summary = {**SUMMARY_PAYLOAD, **(summary_extra or {})}
 
@@ -1674,3 +1677,133 @@ async def test_without_a_count_there_are_no_expensive_entities(hass) -> None:
     unique_ids = {e.unique_id for e in er.async_entries_for_config_entry(registry, entry.entry_id)}
 
     assert not any("expensive_hours" in uid for uid in unique_ids)
+
+# --- Published prices missing ---------------------------------------------
+# The flag that says the price being paid right now is only an estimate. Born
+# on 2026-10-09/10, when the Dutch, Greek, Romanian and Slovak day-ahead
+# results were absent from both upstream platforms for a day and a half and
+# nothing in Home Assistant said so.
+
+NOW = "2026-10-10T12:05:00+00:00"
+SLOT = {"start": "2026-10-10T12:00:00Z", "end": "2026-10-10T12:15:00Z", "value": 0.2}
+
+
+def _slot(source: str | None) -> list[dict]:
+    entry = dict(SLOT)
+    if source is not None:
+        entry["source"] = source
+    return [entry]
+
+
+def test_covering_slot_is_strict_where_the_price_sensor_is_forgiving() -> None:
+    """No nearest-neighbour fallback when the question is provenance.
+
+    The price sensors fall back to the closest usable slot so a short gap
+    around now still shows a number. Answering "is the price you are paying
+    published?" with a different slot's provenance would be worse than
+    answering nothing, so this lookup returns None instead.
+    """
+    from custom_components.energypriceforecast.binary_sensor import (
+        _entry_covering_now,
+    )
+
+    around_a_gap = {
+        "entries": [
+            {"start": "2026-10-10T10:00:00Z", "end": "2026-10-10T10:15:00Z",
+             "value": 0.1, "source": "day_ahead"},
+            {"start": "2026-10-10T14:00:00Z", "end": "2026-10-10T14:15:00Z",
+             "value": 0.3, "source": "forecast"},
+        ]
+    }
+    with patch(
+        "custom_components.energypriceforecast.binary_sensor.datetime"
+    ) as clock:
+        clock.now.return_value = datetime(2026, 10, 10, 12, 5, tzinfo=timezone.utc)
+        clock.fromisoformat = datetime.fromisoformat
+        assert _entry_covering_now(around_a_gap) is None
+        assert _entry_covering_now(None) is None
+        assert _entry_covering_now({"entries": "nonsense"}) is None
+
+    # The forgiving lookup the price sensors use does answer, on purpose.
+    assert _current_entry(around_a_gap) is not None
+
+
+async def test_published_prices_missing_stays_off_on_a_normal_day(
+    hass, freezer
+) -> None:
+    freezer.move_to(NOW)
+    entry = await _setup_entry(
+        hass,
+        price_entries=_slot("day_ahead"),
+        price_series_source={"published_until": "2026-10-10T22:00:00.000Z"},
+    )
+    state = _state_for_unique_id(hass, entry, "prices_unpublished")
+
+    assert state.state == "off"
+    assert state.attributes["device_class"] == "problem"
+    assert state.attributes["price_source"] == "day_ahead"
+    assert state.attributes["published_until"] == "2026-10-10T22:00:00.000Z"
+
+
+async def test_published_prices_missing_turns_on_when_now_is_a_forecast(
+    hass, freezer
+) -> None:
+    """The Dutch case of 10 October: a full series, none of it published."""
+    freezer.move_to(NOW)
+    entry = await _setup_entry(
+        hass,
+        price_entries=_slot("forecast"),
+        price_series_source={"published_until": None},
+    )
+    state = _state_for_unique_id(hass, entry, "prices_unpublished")
+
+    assert state.state == "on"
+    assert state.attributes["price_source"] == "forecast"
+    assert state.attributes["published_until"] is None
+
+
+async def test_an_early_auction_price_is_not_a_problem(hass, freezer) -> None:
+    """Traded, not official - and far closer than the model.
+
+    Against the Dutch day-ahead result for 10 October the early auction sat
+    0.94 ct/kWh away where the model forecast sat 3.18 ct away. Raising the
+    alarm for it would train people to ignore the alarm.
+    """
+    freezer.move_to(NOW)
+    entry = await _setup_entry(
+        hass,
+        price_entries=_slot("early_auction"),
+        price_series_source={"published_until": "2026-10-10T13:00:00.000Z"},
+    )
+    state = _state_for_unique_id(hass, entry, "prices_unpublished")
+
+    assert state.state == "off"
+    assert state.attributes["price_source"] == "early_auction"
+
+
+async def test_unknown_provenance_is_unavailable_not_an_all_clear(
+    hass, freezer
+) -> None:
+    """The one answer this entity must never give wrongly is "no problem"."""
+    freezer.move_to(NOW)
+    entry = await _setup_entry(hass, price_entries=_slot(None))
+    state = _state_for_unique_id(hass, entry, "prices_unpublished")
+
+    assert state.state == "unavailable"
+
+
+async def test_the_summary_answers_when_the_series_has_no_covering_slot(
+    hass, freezer
+) -> None:
+    """A response without a usable series still has the summary's own field."""
+    freezer.move_to(NOW)
+    entry = await _setup_entry(
+        hass,
+        price_entries=[],
+        summary_extra={"flat": {**SUMMARY_PAYLOAD["flat"],
+                                "current_price_source": "forecast"}},
+    )
+    state = _state_for_unique_id(hass, entry, "prices_unpublished")
+
+    assert state.state == "on"
+    assert state.attributes["price_source"] == "forecast"

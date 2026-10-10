@@ -262,6 +262,7 @@
       "is_in_weekend_hours": {"name": "Weekend cheapest hours active"},
       "is_in_expensive_hours": {"name": "Most expensive hours active"},
       "is_in_greenest_hours": {"name": "Cleanest hours active"},
+      "prices_unpublished": {"name": "Published prices missing"},
       "combined_window_active": {"name": "Combined window active"},
       "retail_cheapest_window_active": {"name": "Cheapest window active (retail)"}
     }

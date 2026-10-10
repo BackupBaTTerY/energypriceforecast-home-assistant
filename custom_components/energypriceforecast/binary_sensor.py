@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from homeassistant.components.binary_sensor import (
+    BinarySensorDeviceClass,
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
@@ -47,6 +48,29 @@ def _window_is_active(
     if start is None or end is None:
         return bool(flat.get(fallback_key, False))
     return start <= datetime.now(timezone.utc) < end
+
+
+def _entry_covering_now(
+    series_data: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """Return the entry of a prices payload whose slot covers this moment.
+
+    Strictly the covering slot, with no nearest-neighbour fallback: asking
+    whether the price being paid right now is published must not be
+    answered with a neighbouring slot's provenance.
+    """
+    entries = (series_data or {}).get("entries")
+    if not isinstance(entries, list):
+        return None
+    now = datetime.now(timezone.utc)
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        start = _parse_timestamp(entry.get("start"))
+        end = _parse_timestamp(entry.get("end"))
+        if start is not None and end is not None and start <= now < end:
+            return entry
+    return None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -106,6 +130,7 @@ async def async_setup_entry(
     if coordinator.greenest_hours_count > 0:
         entities.append(EnergyPriceForecastGreenestHoursBinarySensor(coordinator, entry))
     entities.append(EnergyPriceForecastCombinedWindowBinarySensor(coordinator, entry))
+    entities.append(EnergyPriceForecastUnpublishedPriceBinarySensor(coordinator, entry))
     async_add_entities(entities)
 
 
@@ -285,6 +310,97 @@ class EnergyPriceForecastGreenestHoursBinarySensor(
             hour["start"] <= now < hour["end"]
             for hour in self.coordinator.greenest_hours or []
         )
+
+
+class EnergyPriceForecastUnpublishedPriceBinarySensor(
+    QuarterHourStateRefreshMixin, EnergyPriceForecastEntity, BinarySensorEntity
+):
+    """On while the price for the slot running now is only a forecast.
+
+    Deliberately narrow. Beyond the published window the series is always a
+    forecast - that is the product, and a flag reporting it would be on
+    every afternoon and read by nobody. The price for *now*, by contrast,
+    was settled at auction yesterday, so a forecast covering the current
+    slot means the published prices never arrived. That happened on
+    2026-10-09/10 for NL, GR, RO and SK, where neither upstream platform
+    had the delivery day.
+
+    A problem flag rather than a repair issue, because there is nothing the
+    owner of this installation can fix. The entities stay available on
+    purpose: the numbers are there, they are only estimates, and an
+    automation that stops dead helps nobody. What such an automation can do
+    is widen its margin or wait, and for that it needs this one Boolean;
+    how far the published prices reach is in the attributes.
+
+    An early-auction price does not raise it. That is not the official
+    price either, but it is a traded one: measured against the NL
+    day-ahead result for 2026-10-10 it sat 0.94 ct/kWh away where the model
+    forecast sat 3.18 ct away. The attribute still names the source, so a
+    template can tell the three cases apart.
+    """
+
+    _attr_translation_key = "prices_unpublished"
+    # No icon on purpose: the problem device class brings its own pair, and
+    # Home Assistant then renders the state as Problem/OK and colours it,
+    # which is the entire point of the entity.
+    _attr_device_class = BinarySensorDeviceClass.PROBLEM
+
+    def __init__(
+        self, coordinator: EnergyPriceForecastCoordinator, entry: ConfigEntry
+    ) -> None:
+        super().__init__(coordinator, entry, "prices_unpublished")
+
+    def _current_source(self) -> str | None:
+        """The provenance of the slot covering now, series first.
+
+        The series carries it per slot; the summary's own field is the
+        fallback for a response that arrived without a series.
+        """
+        entry = _entry_covering_now(self.coordinator.price_series)
+        if entry is not None:
+            source = entry.get("source")
+            if isinstance(source, str) and source:
+                return source
+        flat = (self.coordinator.data or {}).get("flat") or {}
+        source = flat.get("current_price_source")
+        return source if isinstance(source, str) and source else None
+
+    def _published_until(self) -> str | None:
+        source = (self.coordinator.price_series or {}).get("source")
+        if isinstance(source, dict):
+            value = source.get("published_until")
+            if isinstance(value, str) and value:
+                return value
+        return None
+
+    @property
+    def available(self) -> bool:
+        """Unknown provenance is reported as unknown, not as "no problem".
+
+        An older API that names no source at all would otherwise read as a
+        permanent all-clear, which is the one answer this entity must never
+        give wrongly.
+        """
+        return super().available and self._current_source() is not None
+
+    @property
+    def is_on(self) -> bool:
+        return self._current_source() == "forecast"
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """What the flag rests on, so a card can say it in words.
+
+        `published_until` is the end of the last published slot in the
+        series this installation was served, taken from the API, and null
+        while nothing in it is published. How long the flag has been on is
+        not repeated here - Home Assistant keeps that as the entity's own
+        last_changed.
+        """
+        return {
+            "price_source": self._current_source(),
+            "published_until": self._published_until(),
+        }
 
 
 class EnergyPriceForecastCombinedWindowBinarySensor(

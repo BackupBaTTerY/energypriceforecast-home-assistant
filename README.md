@@ -445,6 +445,23 @@ formula it cannot, only its price does.
 | Weekend hours saving *(1.0.0)* | sensor | % |
 | Weekend cheapest hours active | binary sensor | on/off |
 
+These four are **unavailable for most of the week, by design.** The weekend
+plan covers the whole Saturday 00:00 - Monday 00:00 block and is only built
+once your series reaches the end of it; a plan over the part that happens to
+be in view would pick Saturday hours and call them the weekend's cheapest.
+So the entities come alive once `now + your horizon` reaches Monday midnight:
+
+| Horizon | Weekend plan appears from |
+| --- | --- |
+| 48 hours | Saturday 00:00 - during the weekend itself |
+| 72 hours | Friday 00:00 |
+| 96 hours | Thursday 00:00 |
+| 120 hours | Wednesday 00:00 |
+
+On the 48-hour horizon that makes them a weekend-only readout rather than
+something to plan with. **Used horizon** among the diagnostic entities says
+which one you have.
+
 ### With a cleanest-hours count above 0 *(1.2.0)*
 
 | Name | Type | Unit |
@@ -985,6 +1002,13 @@ green check with "Official prices until 22:00" while the prices are
 published, and a warning in its place, directly above the number, when they
 are not.
 
+The line in the tile finds the sensor by itself - it looks for the entity with
+the `problem` device class on the same device as your price sensor, which works
+whatever your entity IDs look like. The badge cannot do that: a badge needs a
+literal entity ID, so that one line is the only part of the card you have to
+point at your own entity. If you would rather not, delete the badge - the line
+in the tile tells you the same thing.
+
 ## How good is the forecast, really?
 
 *Added in 1.0.0 - if you do not see this entity, check your installed
@@ -1513,13 +1537,14 @@ sections:
           <ha-icon icon="mdi:lightning-bolt"></ha-icon> **Electricity price
           now**
 
-          {% set warn =
-          'binary_sensor.energy_price_forecast_eu_de_published_prices_missing'
-          %}{% if is_state(warn, 'on') %}<ha-alert
-          alert-type="warning">Estimated price: the official prices for this
-          hour were never published.</ha-alert>{% else %}{% set pu =
-          state_attr(warn, 'published_until') %}<ha-icon
-          icon="mdi:check-decagram"
+          {% set ns = namespace(warn=none) %}{% for e in
+          device_entities(device_id(p)) %}{% if e.startswith('binary_sensor.')
+          and state_attr(e, 'device_class') == 'problem' %}{% set ns.warn = e
+          %}{% endif %}{% endfor %}{% set warn = ns.warn %}{% if warn and
+          is_state(warn, 'on') %}<ha-alert alert-type="warning">Estimated
+          price: the official prices for this hour were never
+          published.</ha-alert>{% elif warn %}{% set pu = state_attr(warn,
+          'published_until') %}<ha-icon icon="mdi:check-decagram"
           style="color: var(--success-color)"></ha-icon> {% if pu is string
           %}Official prices until **{{ as_timestamp(pu) |
           timestamp_custom('%H:%M') }}**{% else %}Published prices in use{%

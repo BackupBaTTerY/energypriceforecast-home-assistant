@@ -27,13 +27,14 @@ sections:
           <ha-icon icon="mdi:lightning-bolt"></ha-icon> **Electricity price
           now**
 
-          {% set warn =
-          'binary_sensor.energy_price_forecast_eu_de_published_prices_missing'
-          %}{% if is_state(warn, 'on') %}<ha-alert
-          alert-type="warning">Estimated price: the official prices for this
-          hour were never published.</ha-alert>{% else %}{% set pu =
-          state_attr(warn, 'published_until') %}<ha-icon
-          icon="mdi:check-decagram"
+          {% set ns = namespace(warn=none) %}{% for e in
+          device_entities(device_id(p)) %}{% if e.startswith('binary_sensor.')
+          and state_attr(e, 'device_class') == 'problem' %}{% set ns.warn = e
+          %}{% endif %}{% endfor %}{% set warn = ns.warn %}{% if warn and
+          is_state(warn, 'on') %}<ha-alert alert-type="warning">Estimated
+          price: the official prices for this hour were never
+          published.</ha-alert>{% elif warn %}{% set pu = state_attr(warn,
+          'published_until') %}<ha-icon icon="mdi:check-decagram"
           style="color: var(--success-color)"></ha-icon> {% if pu is string
           %}Official prices until **{{ as_timestamp(pu) |
           timestamp_custom('%H:%M') }}**{% else %}Published prices in use{%

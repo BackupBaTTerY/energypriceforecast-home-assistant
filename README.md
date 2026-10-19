@@ -2,9 +2,10 @@
 
 [![Open your Home Assistant instance and open this repository inside HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=BackupBaTTerY&repository=energypriceforecast-home-assistant&category=integration)
 
-Custom Home Assistant integration for electricity-price and consumption-based
-CO2 forecasts from [Energy Price Forecast EU](https://energypriceforecast.eu/),
-for 33 price zones across Europe.
+Home Assistant integration for electricity-price and consumption-based CO2
+forecasts from [Energy Price Forecast EU](https://energypriceforecast.eu/),
+for 33 price zones across Europe. Installable straight from the HACS default
+store.
 
 The integration combines published day-ahead prices with forecast values for
 the remaining horizon. It exposes ready-to-use entities for automations without

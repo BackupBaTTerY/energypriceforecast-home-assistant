@@ -763,6 +763,7 @@ class EnergyPriceForecastConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._data: dict[str, Any] = {}
         # When reconfiguring: the entry the last step updates.
         self._entry: config_entries.ConfigEntry | None = None
+        self._half_hourly_note_shown = False
         # Fetched once per dialog, not on every redisplay of a step.
         self._tariffs: list[DatahubTariff] | None = None
         self._operators: list[Operator] | None = None
@@ -955,7 +956,35 @@ class EnergyPriceForecastConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return await self.async_step_tariff_windows()
         return self._async_save()
 
+    def _needs_half_hourly_note(self) -> bool:
+        """Whether this flow should explain Great Britain's half hours.
+
+        Shown once, and only where it is news: on a new entry for GB, or on a
+        reconfigure that moves an entry to GB. Reconfiguring an entry that was
+        already British says nothing new and would just cost a click.
+        """
+        if self._data.get(CONF_MARKET) != "GB":
+            return False
+        if self._half_hourly_note_shown:
+            return False
+        if self._entry is None:
+            return True
+        return self._entry.data.get(CONF_MARKET) != "GB"
+
+    async def async_step_half_hourly_note(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Acknowledge the note, then save what the flow already collected."""
+        self._half_hourly_note_shown = True
+        return self._async_save()
+
     def _async_save(self) -> ConfigFlowResult:
+        # Hung on the one exit every path reaches, so no branch can skip it.
+        if self._needs_half_hourly_note():
+            return self.async_show_form(
+                step_id="half_hourly_note",
+                data_schema=vol.Schema({}),
+            )
         source = self._data.get(CONF_TOU_SOURCE, TOU_SOURCE_OFF)
         kept = _KEPT_TARIFF_KEYS.get(source, frozenset())
         retail = self._data.get(CONF_RETAIL_SOURCE, RETAIL_SOURCE_OFF)

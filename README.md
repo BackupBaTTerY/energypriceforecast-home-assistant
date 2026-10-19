@@ -139,6 +139,14 @@ before you plan a load by it:
 - **There is no retail estimate**, as for Switzerland and the Italian zones.
   The own retail formula works, and time-of-day grid charges can be entered
   by hand.
+- **The forecast is hourly, British tariffs are half-hourly.** Agile and its
+  kind set a price for every 30 minutes; the day-ahead auction this forecast
+  is built on is hourly. For choosing when to run something the difference is
+  small - over 30 days of real Agile prices, picking by the hour rather than
+  the half hour came out about 0.1 p/kWh worse, some six pence on a 40 kWh
+  charge - but the price shown for *now* is an hourly average, so it sits
+  between the two half-hourly rates you are billed. The setup dialog says so
+  when you pick GB.
 
 **Bulgaria, Greece, Portugal, Romania, Slovakia and Spain are new in
 1.8.0.** Two things to know before you switch a device by them:

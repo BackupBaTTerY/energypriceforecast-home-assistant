@@ -78,6 +78,10 @@
           "tou_winter_rate_peak": "Per kWh, uten mva."
         }
       },
+      "half_hourly_note": {
+        "title": "Storbritannia: halvtimestariffer",
+        "description": "Britiske tariffer som Octopus Agile setter en pris for hver halvtime. Denne prognosen er timebasert, fordi day-ahead-auksjonen den bygger på også er det.\n\nNår du skal velge når noe skal kjøre, koster det nesten ingenting: målt over 30 dager med faktiske Agile-priser var valg etter timer i stedet for halvtimer omtrent 0,1 p/kWh dårligere – rundt seks pence på en lading på 40 kWh.\n\nDet betyr derimot at prisen for nå er et gjennomsnitt over timen, og dermed ligger mellom de to halvtimesprisene du blir fakturert for."
+      },
       "tariff_lookup": {
         "title": "Din danske nettariff",
         "description": "Publisert av Energinet i Energi Data Service og oppdatert daglig, inkludert rabatter nettselskapet fører separat. De fleste husholdninger har «Nettarif C».",

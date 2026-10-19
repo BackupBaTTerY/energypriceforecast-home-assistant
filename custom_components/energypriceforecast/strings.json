@@ -78,6 +78,10 @@
           "tou_winter_rate_peak": "Per kWh, without VAT."
         }
       },
+      "half_hourly_note": {
+        "title": "Great Britain: half-hourly tariffs",
+        "description": "British tariffs such as Octopus Agile set a price for every 30 minutes. This forecast is hourly, because the day-ahead auction it is built on is hourly.\n\nFor deciding when to run something, that difference costs almost nothing: measured over 30 days of real Agile prices, choosing by the hour rather than by the half hour came out about 0.1 p/kWh worse - roughly six pence on a 40 kWh charge.\n\nIt does mean the price shown for now is an average across the hour, so it sits between the two half-hourly rates you are billed."
+      },
       "tariff_lookup": {
         "title": "Your Danish grid tariff",
         "description": "Published by Energinet in Energi Data Service and updated once a day, including discounts the operator books separately. Most households have \"Nettarif C\".",

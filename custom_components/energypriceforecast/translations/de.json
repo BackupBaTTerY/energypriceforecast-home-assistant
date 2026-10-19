@@ -78,6 +78,10 @@
           "tou_winter_rate_peak": "Je kWh, ohne MwSt."
         }
       },
+      "half_hourly_note": {
+        "title": "Großbritannien: halbstündliche Tarife",
+        "description": "Britische Tarife wie Octopus Agile setzen für jede halbe Stunde einen Preis. Diese Prognose ist stündlich, weil die Day-Ahead-Auktion, auf der sie beruht, stündlich ist.\n\nFür die Entscheidung, wann etwas laufen soll, kostet das fast nichts: über 30 Tage echter Agile-Preise gemessen war die Wahl nach Stunden statt nach Halbstunden rund 0,1 p/kWh schlechter – etwa sechs Pence bei einer Ladung von 40 kWh.\n\nEs heißt aber, dass der Preis für „jetzt“ ein Mittel über die Stunde ist und damit zwischen den beiden Halbstundenpreisen liegt, die dir berechnet werden."
+      },
       "tariff_lookup": {
         "title": "Dein dänischer Netztarif",
         "description": "Von Energinet in Energi Data Service veröffentlicht und einmal täglich aktualisiert, samt Rabatten, die der Netzbetreiber gesondert bucht. Die meisten Haushalte haben „Nettarif C“.",

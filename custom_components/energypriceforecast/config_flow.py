@@ -443,11 +443,17 @@ def _price_unit(data: dict[str, Any]) -> str:
     currency = requested_currency(market, bool(data.get(CONF_LOCAL_CURRENCY)))
     if currency:
         return f"{currency}/kWh"
-    # Denmark and Norway are answered in their own currency without asking.
+    # Denmark and Norway are answered in their own currency without asking,
+    # converted from the euro the API stores. Great Britain is answered in
+    # pounds because that is what it stores - the N2EX day-ahead is British
+    # money to begin with - so it belongs here for the same reason and for a
+    # different one.
     if market.startswith("DK"):
         return "DKK/kWh"
     if market.startswith("NO"):
         return "NOK/kWh"
+    if market == "GB":
+        return "GBP/kWh"
     return "EUR/kWh"
 
 

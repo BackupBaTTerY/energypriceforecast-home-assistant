@@ -176,24 +176,21 @@ not exist.
 
 ## Installation with HACS
 
-Until the integration is part of the HACS default repository list, the
-quickest way is this button - it opens HACS in your own Home Assistant with
-the repository already filled in:
+The integration is listed in the HACS default store, so there is nothing to
+add by hand. This button opens it in your own Home Assistant:
 
 [![Open your Home Assistant instance and open this repository inside HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=BackupBaTTerY&repository=energypriceforecast-home-assistant&category=integration)
 
-Then install **Energy Price Forecast EU**, restart Home Assistant and add the
-integration under **Settings > Devices & services > Add integration**.
-
 Or by hand:
 
-1. Open HACS in Home Assistant.
-2. Open the menu and choose **Custom repositories**.
-3. Add `https://github.com/BackupBaTTerY/energypriceforecast-home-assistant`
-   as category **Integration**.
-4. Install **Energy Price Forecast EU** and restart Home Assistant.
-5. Open **Settings > Devices & services > Add integration** and search for
-   **Energy Price Forecast EU**.
+1. Open HACS in Home Assistant and search for **Energy Price Forecast EU**.
+2. Download it and restart Home Assistant.
+3. Open **Settings > Devices & services > Add integration**, search for
+   **Energy Price Forecast EU** and pick your market.
+
+Installed from a custom repository before it was listed? Nothing to do: HACS
+keeps the entry and goes on offering updates. You may remove the custom
+repository entry under the three dots in HACS if you want it tidy.
 
 ## Manual installation
 

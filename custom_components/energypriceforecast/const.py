@@ -9,7 +9,7 @@ NAME: Final = "Energy Price Forecast EU"
 # from. Must equal manifest.json's version - test_version.py enforces that,
 # because this drifted to 0.1.0 for ten releases and every request from
 # every user was mislabelled the whole time.
-VERSION: Final = "1.15.0"
+VERSION: Final = "1.16.0"
 DEFAULT_API_URL: Final = (
     "https://api.energypriceforecast.eu/api/v1/home-assistant/summary"
 )
@@ -128,6 +128,7 @@ MARKET_TIME_ZONES: Final[dict[str, str]] = {
     "ES": "Europe/Madrid",
     "FI": "Europe/Helsinki",
     "FR": "Europe/Paris",
+    "GB": "Europe/London",
     "GR": "Europe/Athens",
     "ITN": "Europe/Rome",
     "IT_CNOR": "Europe/Rome",
@@ -272,6 +273,7 @@ MARKETS: Final[dict[str, str]] = {
     "ES": "Spain",
     "FI": "Finland",
     "FR": "France",
+    "GB": "Great Britain",
     "GR": "Greece",
     "ITN": "Italy North (ITN)",
     "IT_CNOR": "Italy Centre-North (IT_CNOR)",

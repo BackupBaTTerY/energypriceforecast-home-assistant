@@ -4,7 +4,7 @@
 
 Home Assistant integration for electricity-price and consumption-based CO2
 forecasts from [Energy Price Forecast EU](https://energypriceforecast.eu/),
-for 33 price zones across Europe. Installable straight from the HACS default
+for 34 price zones across Europe. Installable straight from the HACS default
 store.
 
 The integration combines published day-ahead prices with forecast values for
@@ -122,9 +122,23 @@ integration shows the figures for yours as entities.
 
 ## Supported markets
 
-AT, BE, BG, CH, CZ, DE, DK1, DK2, ES, FI, FR, GR, NL, NO1-NO5, PL, PT, RO,
-SE1-SE4, SK and the seven Italian price zones: ITN, IT_CNOR, IT_CSUD,
+AT, BE, BG, CH, CZ, DE, DK1, DK2, ES, FI, FR, GB, GR, NL, NO1-NO5, PL, PT,
+RO, SE1-SE4, SK and the seven Italian price zones: ITN, IT_CNOR, IT_CSUD,
 IT_SUD, IT_CALA, IT_SICI and IT_SARD.
+
+**Great Britain is new and still finding its feet.** Three things to know
+before you plan a load by it:
+
+- **Prices are in pence.** GB is the only market whose prices are published
+  in its own currency rather than converted from euro, so the sensors read
+  `GBP/kWh` and a retail formula is typed in pence.
+- **There is no measured forecast quality yet.** Quality is judged over a
+  rolling 30 days and the British forecasts started in October, so the two
+  quality sensors stay empty for a while. That is the same warm-up every
+  market went through; it is not a fault.
+- **There is no retail estimate**, as for Switzerland and the Italian zones.
+  The own retail formula works, and time-of-day grid charges can be entered
+  by hand.
 
 **Bulgaria, Greece, Portugal, Romania, Slovakia and Spain are new in
 1.8.0.** Two things to know before you switch a device by them:

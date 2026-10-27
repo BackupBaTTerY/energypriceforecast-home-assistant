@@ -428,5 +428,16 @@ sections:
           <sub>Measured over the last 30 days: the frozen forecast against the
           day-ahead prices published later, on the exchange price. Forecast by
           [energypriceforecast.eu](https://energypriceforecast.eu/en/).</sub>
+
+          {% set a = 'sensor.energy_price_forecast_eu_de_forecast_accuracy' %}
+          {% set ns = namespace(h=none) %}{% for e in
+          device_entities(device_id(a)) %}{% if state_attr(e, 'icon') ==
+          'mdi:clock-check-outline' %}{% set ns.h = states(e) %}{% endif %}{%
+          endfor %}{% if ns.h is not none and ns.h | is_number and ns.h | float
+          < 120 %}<sub>This view looks {{ ns.h | int }} hours ahead. [Up to 120
+          hours with Private Pro](https://energypriceforecast.eu/en/private-pro/)
+          - 14 days free. [What the extra days were worth in your
+          market](https://energypriceforecast.eu/en/forecast-quality/)</sub>{%
+          endif %}
         grid_options:
           columns: full

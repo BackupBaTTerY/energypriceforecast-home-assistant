@@ -46,3 +46,15 @@ def test_the_card_draws_the_comparable_forecast_and_no_fixed_currency():
     assert example.count("u[:3] == 'EUR'") >= 5
     # Every tile says something when a figure is not there yet.
     assert "still learning" in example
+
+
+def test_the_card_offers_the_longer_horizon_only_to_who_lacks_it():
+    example = (ROOT / "examples/price-card.yaml").read_text(encoding="utf-8")
+    footer = yaml.safe_load(example)["sections"][-1]["cards"][-1]["content"]
+
+    assert "energypriceforecast.eu/en/private-pro/" in footer
+    assert "14 days free" in footer
+    # Found by its icon rather than its entity ID, which follows the HA language.
+    assert "'mdi:clock-check-outline'" in footer
+    # Anyone who already has 120 hours does not see an advert.
+    assert "float < 120" in footer

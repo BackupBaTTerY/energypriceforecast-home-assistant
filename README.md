@@ -26,8 +26,9 @@ or run the heat pump harder tonight, is often decided before that - or
 needs a look further ahead than tomorrow. This integration:
 
 - **fills the hours nobody has published yet** with a forecast, kept apart
-  from the published prices, so an automation can plan before the auction
-  and, with an API key, up to five days ahead;
+  from the published prices, so an automation can plan before the auction:
+  48 hours ahead for free, up to 120 hours - five days - with
+  [Private Pro](#horizon-48-hours-free-120-hours-with-private-pro);
 - **turns it into decisions**: cheapest window, cheapest-hours plan, "is now
   a good time", the same for CO2 - ready-made entities, no templates;
 - **tells you how good the forecast is in your market**, measured every day
@@ -45,6 +46,12 @@ the hours it cannot know yet.
 - Eight times the forecast said *wait, tomorrow is cheaper*. It was right
   **all eight times**, and tomorrow's window was on average **6.9 ct/kWh**
   cheaper - about 2.80 EUR on a 40 kWh car charge.
+
+With [Private Pro](#horizon-48-hours-free-120-hours-with-private-pro) the
+forecast reaches five days, and that has a measured value of its own. Over 29
+evenings from 25 September to 23 October 2026, choosing the charging day among
+four days instead of two was cheaper **12 times** and more expensive twice -
+on average **2.43 ct/kWh** less, about 0.97 EUR per 40 kWh charge.
 
 Quality differs by market. It is strongest where prices swing a lot within
 the day, as in Central Europe and Denmark, and weaker in the hydro-dominated
@@ -822,12 +829,82 @@ there is no VAT on electricity: use a factor of 1.0.
 
 **Updating from 1.6.x** changes nothing: the new option starts off.
 
-## Horizon
+## Horizon: 48 hours free, 120 hours with Private Pro
 
-The public access currently provides up to 48 hours. An eligible API key can
-raise the horizon up to 120 hours. The integration exposes both the requested
-and the actually permitted horizon, so automations can detect the effective
-range.
+Without an API key the integration looks **48 hours** ahead. With a
+[Private Pro](https://energypriceforecast.eu/en/private-pro/) key it looks up
+to **120 hours** - five days. Private Pro costs EUR 2.49 a month or EUR 19.90
+a year, and the first 14 days are free. Enter the key in the integration's
+options and set the horizon to 120. The integration exposes both the requested
+and the actually permitted horizon (*Allowed horizon* and *Used horizon*), so
+automations can detect the effective range.
+
+### Who gains from five days
+
+Only a load that can wait for days. An electric car that does not need a full
+battery every morning, or a home battery, can be moved to the cheapest of the
+next four or five days. A heat pump, a water heater or a dishwasher that has
+to run within the day gains little: 48 hours already covers it.
+
+### What the extra days are worth, measured
+
+The [forecast quality page](https://energypriceforecast.eu/en/forecast-quality/)
+answers two separate questions for every market. Add `?market=NL`,
+`?market=SE3` and so on to the address to jump to yours.
+
+- **What does a longer horizon add compared with 48 hours?** Every evening,
+  the forecast archived at that moment picks the cheapest day for a four-hour
+  charge twice: among two days, and among three or four. Both picks are then
+  priced with the prices published later. In Germany, over 29 evenings from
+  25 September to 23 October 2026, the four-day pick was cheaper 12 times,
+  equal 15 times and more expensive twice - on average **2.43 ct/kWh** less,
+  about 0.97 EUR per 40 kWh charge.
+- **How does accuracy change with forecast lead?** The hourly error of
+  forecasts made 24-48, 48-72, 72-96 and 96-120 hours ahead, and their skill
+  against simply repeating last week's price. In Germany the error grows from
+  1.90 to 3.15 ct/kWh from the first bucket to the last, and five days out the
+  forecast is still 55 % better than last week's prices. That is why the far
+  days can still pick the right day.
+
+Two limits. On most evenings both picks land on the same day, so the typical
+(median) gain is zero; the money comes from the evenings when a cheaper day
+lies beyond tomorrow. And the figure follows the season: it is large when
+cheap and expensive days alternate, as in spring and autumn, and small in a
+calm week. Markets differ too - in Finland and northern Sweden the gain stays
+well under 0.5 ct/kWh.
+
+### Let an AI check it for your setup
+
+Paste the prompt below into your AI assistant of choice. It asks about your
+devices first, reads the measurements for your market and tells you whether
+the longer horizon pays off - or that 48 hours is enough.
+
+<details>
+<summary>Show the copyable prompt</summary>
+
+```
+I use the Energy Price Forecast EU integration in Home Assistant. Without an API key it forecasts electricity prices 48 hours ahead; Private Pro (EUR 2.49 a month or EUR 19.90 a year, the first 14 days free) extends that to 120 hours. Help me find out whether the longer horizon is worth it for me.
+
+Start by asking me:
+1. Whether I want to plan further ahead than 48 hours at all, or only want to get the most out of the free version. If only the free version, help me with that and leave Private Pro out.
+2. My price zone (for example DE, NL, SE3). It appears in the integration's entity names and settings.
+3. Which loads I can shift, how big they are and how long they can wait: an electric car (battery size, kWh per week, how many days it can go without charging), a home battery, a heat pump or water heater, anything else.
+
+Then open https://energypriceforecast.eu/en/forecast-quality/?market=<MY ZONE> and read two sections for my zone:
+- "What does a longer horizon add compared with 48 hours?" Every evening, the forecast archived at that moment picks the cheapest day for a four-hour charge twice: among two days, and among three or four days. Both picks are then priced with the prices published later. Read the number of decisions, how often the longer plan was cheaper, equal or more expensive, and the mean and median additional saving.
+- "How does accuracy change with forecast lead?" The error (MAE), bias, correlation r and skill against last week's prices for forecasts made 24-48, 48-72, 72-96 and 96-120 hours ahead. Positive skill means the forecast beats simply repeating the price of the same hour one week earlier.
+All markets side by side: https://energypriceforecast.eu/en/forecast-quality-expert/
+
+Rules for your answer:
+- Use my zone's figures, never another market's. Quality differs a lot between markets.
+- The first section is the evidence for money saved; the second explains why it works or does not. Good skill at 96-120 hours shows the far days still carry information, but it is not a saving by itself.
+- Turn the mean additional saving into money for my load: ct/kWh times the kWh I can move per charge, times how often I charge. Explain that the median is usually zero because on most evenings both plans pick the same day, and that the gain comes from the evenings when a cheaper day lies beyond tomorrow.
+- Say that the figure covers only the last 30 days and moves with the season: larger when cheap and expensive days alternate, as in spring and autumn, smaller in calm weeks.
+- Compare the result with the price of Private Pro. Recommend it only if my load can really wait for days and the figures for my zone pay the price back. If it is borderline, suggest the 14-day trial to watch the 120-hour forecast on my own dashboard. If everything I have must run within a day, say that 48 hours covers it.
+- If you cannot open the page, say so and ask me to paste the two sections. Do not guess any figure.
+```
+
+</details>
 
 ## Which plan should I use?
 
@@ -1958,6 +2035,17 @@ sections:
           <sub>Measured over the last 30 days: the frozen forecast against the
           day-ahead prices published later, on the exchange price. Forecast by
           [energypriceforecast.eu](https://energypriceforecast.eu/en/).</sub>
+
+          {% set a = 'sensor.energy_price_forecast_eu_de_forecast_accuracy' %}
+          {% set ns = namespace(h=none) %}{% for e in
+          device_entities(device_id(a)) %}{% if state_attr(e, 'icon') ==
+          'mdi:clock-check-outline' %}{% set ns.h = states(e) %}{% endif %}{%
+          endfor %}{% if ns.h is not none and ns.h | is_number and ns.h | float
+          < 120 %}<sub>This view looks {{ ns.h | int }} hours ahead. [Up to 120
+          hours with Private Pro](https://energypriceforecast.eu/en/private-pro/)
+          - 14 days free. [What the extra days were worth in your
+          market](https://energypriceforecast.eu/en/forecast-quality/)</sub>{%
+          endif %}
         grid_options:
           columns: full
 ```
@@ -1989,6 +2077,7 @@ Before writing YAML, ask me:
 4. Did I configure a cheapest-hours count or a weekend plan? If so, offer to mark the planned hours in the chart, using the "hours" attribute of the corresponding sensor (a list of {"start", "end", "average_value"}). Seeing the plan against the price curve is usually the point of the chart.
 5. Do I want a bar chart per hour or a line/area chart?
 6. Do I want to use this to actually switch a device (heat pump, water heater, car charger), rather than only look at it? If so, say that a chart alone will not do that, and offer to write a matching automation triggered on the binary sensor that is on during the planned hours.
+7. Do I have a load that can wait for days, such as an electric car or a home battery? If so, ask me for the state of the "Allowed horizon" diagnostic sensor (unit h). If it is below 120, tell me that Private Pro extends the forecast to 120 hours (14 days free), that the section "What does a longer horizon add compared with 48 hours?" on https://energypriceforecast.eu/en/forecast-quality/?market=<MY ZONE> shows what the extra days were worth in my zone, and that a 120-hour chart needs graph_span: 6d. Quote those figures if you can open the page; do not promise a saving beyond them.
 
 Rules for your result:
 - The same two price sensors also expose raw_forecast_reference: {start, end, value, captured_at, final_value, final_captured_at} slots. value is the first forecast received for each future slot; final_value is the last forecast before the official price arrived and is the value to draw, because the published quality figures measure that same moment. These survive restarts and official publication and are removed after the target market day ends. captured_at and final_captured_at are HA observation times, not model creation times. Offer an optional dashed reference line to compare that saved prediction against official prices; no predictions can be recovered from before the integration began saving them.

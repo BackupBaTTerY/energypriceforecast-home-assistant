@@ -8,9 +8,9 @@ import yaml
 ROOT = Path(__file__).parent.parent
 
 
-def test_chart_is_valid_and_matches_readme():
+def test_chart_is_valid_and_matches_the_docs():
     example = (ROOT / "examples/price-chart-comparison.yaml").read_text(encoding="utf-8")
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    readme = (ROOT / "docs" / "dashboard.md").read_text(encoding="utf-8")
     cards = [yaml.safe_load(block) for block in re.findall(r"```yaml\n(.*?)```", readme, re.S)]
     card = yaml.safe_load(example)
     assert card in cards
@@ -20,9 +20,9 @@ def test_chart_is_valid_and_matches_readme():
     assert "raw_forecast_reference" in card["series"][2]["data_generator"]
 
 
-def test_card_is_valid_and_matches_readme():
+def test_card_is_valid_and_matches_the_docs():
     example = (ROOT / "examples/price-card.yaml").read_text(encoding="utf-8")
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    readme = (ROOT / "docs" / "dashboard.md").read_text(encoding="utf-8")
     cards = [yaml.safe_load(block) for block in re.findall(r"```yaml\n(.*?)```", readme, re.S)]
     card = yaml.safe_load(example)
 

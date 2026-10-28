@@ -1,0 +1,26 @@
+name: An idea
+description: A setting, an entity or a card you are missing
+labels: [enhancement]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: What do you want to achieve?
+      description: The device or the decision behind it helps more than the entity you have in mind - there may already be a way.
+    validations:
+      required: true
+
+  - type: input
+    id: market
+    attributes:
+      label: Market
+      placeholder: "DE"
+    validations:
+      required: false
+
+  - type: textarea
+    id: today
+    attributes:
+      label: How do you do it today?
+    validations:
+      required: false

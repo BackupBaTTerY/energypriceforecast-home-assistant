@@ -80,7 +80,8 @@ async def test_reauth_stores_the_new_key(hass) -> None:
     result = await _start_reauth(hass, entry)
     assert result["type"] is data_entry_flow.FlowResultType.FORM
     assert result["step_id"] == "reauth_confirm"
-    assert result["description_placeholders"] == {"market": "DE"}
+    # Home Assistant adds the entry's name to these on its own.
+    assert result["description_placeholders"]["market"] == "DE"
 
     validate = AsyncMock(return_value=None)
     with (

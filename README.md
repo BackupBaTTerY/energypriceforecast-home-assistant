@@ -16,7 +16,7 @@ requiring YAML or JSON templates.
 *Germany, retail price, a Friday in October 2026. Green is the published
 day-ahead price, orange the forecast for the days after, dashed blue the last
 forecast before each price was published. The whole view is
-[ready to paste](#a-card-that-answers-what-to-do-now-1130).*
+[ready to paste](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/blob/main/docs/dashboard.md#a-card-that-answers-what-to-do-now-1130).*
 
 ## Why install this next to Nord Pool or Tibber?
 
@@ -302,141 +302,8 @@ or paying for an unused hour at 4. One caveat worth knowing: the measured
 **forecast quality** beside it is published per whole hour, so a 3.5-hour
 window is reported with the figures of the 3-hour one.
 
-#### The combined window *(1.2.0)*
-
-The cheapest window and the greenest window are rarely the same hours. The
-**combined window** is the compromise: the API searches the horizon for the
-window that scores best on price *and* CO2 intensity together, weighting the
-two equally. **Combined window start** and **end** say when it is, and
-**Combined window active** switches while it runs.
-
-#### Combined score now *(1.5.0)*
-
-**Combined score now** answers a different question, and the one an
-automation can act on: how good is *this moment*, compared with the rest of
-the coming day, on price and CO2 together? It runs from 0 to 100, higher is
-better, and it reads as a share: **80 means the present stands better than
-80% of the hours ahead**. 100 is the best slot ahead, 0 the worst. It moves on
-at every quarter hour, not only when the integration polls.
-
-How it is worked out:
-
-1. **The reference** is the next 24 hours - but only as far as prices are
-   published. Tomorrow's day-ahead prices appear around 13:00, so from then on
-   the reference is a full day; just before the auction it ends at midnight.
-   Forecast prices stay out on purpose: over 30 days the frozen forecast for
-   tomorrow's early hours ran 1.5 to 4.3 ct/kWh too low in 11 of 12 markets,
-   which would have made every morning look worse than it was.
-2. **A yardstick for each quantity.** For price and for CO2 separately: the
-   median of the reference, and its typical spread - the distance from the
-   10th to the 90th percentile, so a single spike cannot set the scale. The
-   spread never counts as less than 25 gCO2/kWh or 10% of the average price,
-   so a quantity that barely moves barely counts.
-3. **A standing for every slot:** how many typical spreads its price lies
-   below the median, plus the same for its CO2 intensity.
-4. **The score** is the share of the other reference slots whose standing is
-   worse than the present's, ties counting half.
-
-An example with German numbers from September: at 14:00 the price was 16.1
-ct - almost exactly the median of 15.2 ct, a price part of -0.03 - but the grid
-ran at 167 g against a median of 427 g, a CO2 part of +0.83. Of the 23 other
-hours, 19 stood worse, so the score was 19 / 23 = **83**. Clean midday power
-earned it, not cheap power.
-
-The attributes show the workings: `price_part` and `co2_part` for the present;
-`co2_share_percent`, how much of today's ranking comes from CO2 at all;
-`price_spread` and `co2_spread_g_kwh`; and `reference_start`, `reference_end`
-and `reference_hours`.
-
-Since 1.10.0, `score_series` carries the current and every upcoming slot in
-that same reference as `{start, end, value}`. All points use the same medians,
-spreads and competing slots, so an 80 later in the line means the same thing
-as an 80 now. The first point is therefore exactly the sensor's current state.
-The series deliberately ends with the published prices: price forecasts remain
-excluded for the measured bias described above. It is live chart/planning data
-and is excluded from Home Assistant's recorder. It is an outlook rather than a
-locked plan: values can move when new data arrives and as the shared reference
-rolls forward. Loads that require a guaranteed number of daily runtime slots
-still need one of the locked plans.
-
-This ApexCharts card draws the recorded score for the previous six hours and
-the current outlook on the same 0-100 axis. Replace `sensor.CHANGE_ME` twice
-with your **Combined score now** entity:
-
-```yaml
-type: custom:apexcharts-card
-header:
-  show: true
-  title: Combined price / CO2 score
-graph_span: 30h
-span:
-  start: hour
-  offset: -6h
-now:
-  show: true
-  label: Now
-yaxis:
-  - min: 0
-    max: 100
-    decimals: 0
-series:
-  - entity: sensor.CHANGE_ME
-    name: Recorded
-    type: line
-    curve: stepline
-    color: "#78909c"
-    extend_to: false
-    group_by:
-      duration: 15min
-      func: last
-  - entity: sensor.CHANGE_ME
-    name: Outlook
-    type: line
-    curve: stepline
-    color: "#43a047"
-    extend_to: false
-    stroke_width: 2
-    data_generator: |
-      return (entity.attributes.score_series ?? [])
-        .map(e => [new Date(e.start).getTime(), e.value])
-        .sort((a, b) => a[0] - b[0]);
-```
-
-**Use it for loads that can wait**, with a threshold: "start the dishwasher
-when the score reaches 80" runs it among the better hours of what is still
-ahead. **For loads that must run every day, use a plan instead.** The
-cheapest- and cleanest-hours plans pick within a fixed daily block and never
-skip a day, while a score can keep a load waiting when the hours ahead are
-better.
-
-What it does not tell you:
-
-- **It does not compare regions.** It ranks hours within your own market only.
-  On the same September day the worst-rated hour in Norway (NO3) ran at 20 g,
-  eight times cleaner than the best-rated hour in Germany at 167 g. Compare
-  regions with **Current price** and **Current CO2 intensity**.
-- **"Combined" mixes differently by market.** In a hydro grid CO2 sits at
-  20-21 g all day, the floor makes that difference count for nothing, and the
-  score becomes a price score - `co2_share_percent` shows 0. That is right,
-  since there is no CO2 to save by shifting there, but it is worth knowing.
-- **It says nothing about how much you save.** Between the best and the worst
-  hour lay 18 ct in Sweden (SE3) and 54 ct in Germany on the same day. The
-  spreads in the attributes say which kind of day it is.
-- **CO2 is always a forecast.** Future emissions cannot be measured, so the CO2
-  half of the ranking rests on the model even where the prices are published.
-- With no published price for the present, or fewer than 4 published hours
-  ahead, the sensor is **unavailable** rather than ranking against too little.
-
-#### Combined window score (deprecated)
-
-Until 1.5.0 the integration offered **Combined window score** instead. It rated
-the combined window, and in a solar market the cheapest and the cleanest
-windows are nearly always the same midday hours - so it sat at 100 and said
-little more than that the two agree. New installs no longer get it. Existing
-installs keep it, still working and with its `raw_score` attribute, so no
-automation breaks; it will be removed in 2.0. Move automations to **Combined
-score now**, or to **Combined window active** if they act on the window
-itself.
+How the combined window and the combined score are worked out is explained
+in [Entity details](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/blob/main/docs/entities.md#the-combined-window-and-score).
 
 ### With retail pricing enabled
 
@@ -532,312 +399,54 @@ One limitation worth knowing: nothing stops the cheapest and the most expensive
 plan from being configured so tightly that they meet in the middle of a short
 block. They are two independent plans over the same hours, not one schedule.
 
-### Where the CO2 number comes from
+### More about the entities
 
-It is **modelled, not measured**, and it is a forecast in the same sense the
-price is: the generation mix is predicted from weather and demand, and each
-ENTSO-E production type is multiplied by a lifecycle emission factor to give
-gCO2e/kWh.
-
-Four things are worth knowing before an automation acts on it:
-
-- **ENTSO-E categories are coarse.** They say nothing about plant age, fuel
-  quality, efficiency or lifecycle system boundary, and one category can cover
-  very different technologies.
-- **Unknown generation gets a placeholder**, deliberately a high one, so that
-  what we cannot identify is not silently counted as clean. That value is a
-  guard, not a measurement.
-- **Storage is approximated in both directions.** Pumped storage is carried
-  as hydro and battery storage as unidentified generation, where the honest
-  answer would be the intensity of the electricity each was charged with plus
-  its losses. While storage is a small share of generation this barely moves
-  the curve; it will be revisited when that stops being true.
-- **The literature ranges are wide** - UNECE puts photovoltaics at roughly
-  8-83 and wind at 7.8-23 gCO2e/kWh - so a single factor per category is
-  always a choice, not a fact.
-
-The factors themselves are not restated here - a copy would drift from the
-values actually used, and an assumption that disagrees with the computation is
-worse than none. They belong in the API's `co2.assumptions` field instead: the
-versioned profile name, the value per production type, and for each one whether
-it is a published IPCC median or a project stand-in, which you cannot tell by
-looking at the number.
-
-The **CO2 forecast series** sensor carries the same block in its `assumptions`
-attribute *(1.2.1)*, so you can read it in Home Assistant without calling the
-API yourself. A market whose model has not published its factors yet reports
-`available: false` there and says why, rather than showing figures that might
-not be the ones your reading was computed with.
-
-None of this makes the number useless: for deciding *which hour today is
-cleaner than another*, the mix forecast carries the signal and the factor
-uncertainty largely cancels out. It does mean the absolute gCO2e/kWh should
-not be treated as a measured quantity, and that "grams avoided" is a
-comparison against another hour in the same block, nothing more.
-
-### Attributes worth knowing
-
-- **Price forecast series** and **Current retail price** *(improved in 1.9.0)*
-  carry `raw_today`,
-  `raw_tomorrow` and `raw_forecast` - lists of `{start, end, value}` slots for
-  charting (see the chart section below). The integration retains today's
-  published slots after it has seen them as the API's rolling window moves
-  forward, including across a Home Assistant restart. During normal operation,
-  `raw_today` therefore keeps the line visible from local midnight through the
-  chart's Now marker. The cache starts fresh at local midnight. `raw_today` and
-  `raw_tomorrow` hold published day-ahead prices only, so `raw_tomorrow` is
-  **empty until
-  tomorrow's prices are published** (usually early afternoon) - the estimate
-  for those hours is in `raw_forecast` instead, and the two never overlap.
-  Both sensors select the current slot at every quarter hour, independently of
-  the configured API poll interval and without making an extra request.
-- Both price sensors also carry `raw_forecast_reference` *(1.12.0)*: what was
-  predicted for each future slot, as `{start, end, value, captured_at,
-  final_value, final_captured_at}` *(1.13.0)*. `value` is the **first forecast
-  received** - how far ahead that was depends on your horizon. `final_value` is
-  the **last forecast before the official price arrived**, which is the moment
-  our published quality figures measure, so a chart drawn on it can be held
-  against them; the ready-to-paste card below uses it. While a slot is still a
-  forecast, `final_value` follows every update; the first official price settles
-  it, and a forecast the API falls back to later cannot overwrite it. This
-  comparison is stored locally and survives restarts. It keeps today's and
-  upcoming slots;
-  yesterday's are removed on the next successful update after market midnight.
-  `captured_at` is when Home Assistant received the value, not the model's
-  creation time. A slot first seen with an official price, or after it started,
-  cannot be retroactively given a forecast. No extra API request is needed.
-- **CO2 forecast series** carries the same `raw_today` / `raw_tomorrow` /
-  `raw_forecast` attributes as the price series, in gCO2/kWh, so a chart card
-  built for prices works by swapping the entity. CO2 is published hourly where
-  prices can be quarter-hourly. It also carries `assumptions` *(1.2.1)* - the
-  emission factors behind the number, with the source status of each; see
-  above.
-- **Combined score now** carries `score_series`: its current and upcoming
-  published-price slots on one shared 0-100 scale. Use it to chart or inspect
-  when the best combined price/CO2 periods are coming.
-- **Next cheapest hour**, **Next weekend cheapest hour** and **Next cleanest
-  hour** carry `hours`: the full locked plan as a list of
-  `{start, end, average_value}`.
-- The same two price sensors also carry `average`, `min`, `max` and
-  `price_percent_to_average`, named after the Nordpool integration so its
-  templates port across. They cover today's retained and upcoming published
-  slots, never tomorrow or forecast values. `price_percent_to_average` is
-  therefore "this quarter-hour against today's known price average" - 100%
-  means average, 60% means clearly cheap. It is left empty when that average
-  is zero or negative, for the same reason the plan saving is.
-- **Current retail price** says where its number comes from:
-  `retail_source` is `estimate` or `formula`, and with a formula
-  `formula_factor` and `formula_surcharge` show the values in use *(1.6.0)*,
-  and with a time-of-day tariff `network_charge_now` the grid charge it
-  contains right now, without VAT *(1.7.0)*.
-
-**To inspect them, use Developer tools > States**, pick the entity, and read
-the attributes in the panel on the right. They will not show up in the history
-or in the database (see below), so looking there is a dead end - you do not
-need a throwaway automation that logs them.
-
-These attributes are deliberately excluded from the recorder database since
-0.7.2. They hold one entry per 15-minute slot across the whole horizon, which
-exceeds the recorder's 16 KB per-state limit, so it used to drop them and log a
-warning on every update. They are always available live for charts, templates
-and automations - only their *history* is not stored.
-
-The comparison snapshots above use a separate, bounded local storage file,
-not recorder history. Removing the integration's configuration also removes
-its comparison data. Changing the market, currency, price resolution or retail
-formula starts a new comparison rather than mixing incompatible prices.
-
-**No `recorder:` configuration is needed for this, and adding one is a bad
-idea.** Excluding the whole entity (`recorder: exclude: entities:`) would also
-discard its state, so you would lose the price history itself - a much bigger
-loss than the attributes. If you are still seeing "State attributes ... exceed
-maximum size" warnings, you are on a version older than 0.7.2; update instead
-of configuring around it.
+- [Where the CO2 number comes from](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/blob/main/docs/entities.md#where-the-co2-number-comes-from)
+- [Attributes worth knowing](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/blob/main/docs/entities.md#attributes-worth-knowing) - the times, averages and
+  flags each entity carries besides its state
 
 ## Prices in your own currency *(1.4.0)*
 
 For Czechia, Poland and Sweden the API answers in euro unless it is asked
 for something else. Tick **Show prices in local currency** when you set the
-integration up or reconfigure it, and every price it shows - current price,
-windows, plans, the price series, the forecast-quality cost - arrives in
-CZK, PLN or SEK instead.
-
-| Market | With the option ticked |
-|---|---|
-| CZ | CZK |
-| PL | PLN |
-| SE1-SE4 | SEK |
-| DK1, DK2, NO1-NO5 | DKK or NOK - already the default, ticked or not |
-| all other markets | euro - the option changes nothing |
-
-**Which exchange rate.** The conversion uses the European Central Bank's
-daily reference rate, and the API picks up a new one within twelve hours of
-its publication. Czech spot tariffs usually convert OTE's euro price with the
-Czech National Bank's rate instead. On 11 September 2026 the two stood at
-24.264 and 24.260 CZK per euro: 0.016% apart, a thousandth of a koruna per
-kWh, far inside the error of any forecast.
-
-**What switching does.** Home Assistant keeps each sensor's long-term
-statistics in the sensor's unit, and it cannot convert between currencies.
-When a price sensor's unit changes from EUR/kWh to CZK/kWh, Home Assistant
-stops extending the old statistics and offers to fix them under
-*Developer tools > Statistics* - usually by deleting them. Switching
-therefore starts the price history afresh. A plan already picked for the
-current block is picked once more in the new currency; the hours stay the
-same, because converting every price with one rate does not change their
-order.
-
-Switzerland stays in euro: the API does not offer francs. Romania is
-answered in euro too - there are no lei - and Bulgaria has been on the euro
-since January 2026.
+integration up or reconfigure it, and every price arrives in CZK, PLN or
+SEK instead. [Details](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/blob/main/docs/tariffs.md#prices-in-your-own-currency-140)
 
 ## Retail price: estimate or your own formula *(1.6.0)*
 
-The day-ahead price is not what you pay. Taxes, grid charges and your
-supplier's margin come on top, and they decide what a cheap hour is worth.
-Choose a source under **Retail price** when you set the integration up or
-reconfigure it:
-
-| Choice | What you get | Markets |
-|---|---|---|
-| Off | Day-ahead prices only | all |
-| Estimate | Our assumption-based all-in price: grid fee, levies, supplier markup and VAT. Germany needs a postal code for the local grid fee | DE, NL, DK1, DK2, AT, NO1-NO5 |
-| Own formula | Day-ahead price × **factor** + **surcharge** | all |
-
-Since *1.11.0* the choice decides what is asked next, on a page of its own:
-**Own formula** asks for the factor and the surcharge, the **estimate** in
-Germany asks for the postal code, and the estimate elsewhere and **Off** ask
-for nothing more. Reconfiguring opens that page with the values in use. What
-belongs to a source you switch away from is not kept: the entry stores only
-what the chosen source uses, so no postal code is sent for a market that
-prices nothing by it.
-
-**The formula** is *retail price = day-ahead price × factor + surcharge*.
-
-- **Factor** multiplies the day-ahead price. Your VAT goes here: 1.21 for
-  21%, 1.19 for 19%, 1.25 for 25%. A supplier fee charged as a percentage of
-  the exchange price goes here too - 5% on top, with 21% VAT, is
-  1.05 × 1.21 = 1.2705.
-- **Surcharge** is a fixed amount per kWh *including VAT*, added after the
-  factor, in the unit your price sensors show: EUR/kWh in most markets,
-  DKK or NOK in Denmark and Norway, CZK, PLN or SEK with
-  [local currency](#prices-in-your-own-currency-140) ticked. Energy tax, a
-  fixed supplier markup and any grid charge per kWh belong here. It may be
-  negative, for a contract that discounts the exchange price.
-
-A Dutch example: 21% VAT, 9.161 ct/kWh energy tax and a supplier markup of
-2 ct/kWh, both before VAT. Factor **1.21**, surcharge
-(0.09161 + 0.02) × 1.21 = **0.1350**. At a day-ahead price of 10 ct/kWh the
-retail price is 0.10 × 1.21 + 0.1350 = 0.256 EUR/kWh.
-
-**What it changes.** The [retail entities](#with-retail-pricing-enabled)
-appear, and the cheapest-hours and weekend plans are priced in retail terms,
-so their average price and saving match your bill. The hours they pick are
-the ones the day-ahead price would pick: a positive factor and a fixed
-surcharge cannot make one hour cheaper than another if it was not already. The saving shrinks, because the
-surcharge adds the same amount to every hour - that smaller number is the
-honest one. The formula is applied inside Home Assistant to prices the
-integration fetches anyway, so it costs no extra request.
-
-**Grid charges that change with the time of day** do not fit into one
-fixed surcharge, and they are the one thing that does move a plan to other
-hours - see [Time-of-day grid charges](#time-of-day-grid-charges-170).
-
-**Estimate or formula?** The estimate needs nothing from you, but it rests
-on assumptions: a typical grid fee, a typical supplier markup. The
-formula is exactly your contract, as far as you know its numbers. Changing
-the formula later starts the current block's plan afresh in the new
-numbers, because a plan keeps the prices it was built on.
-
-**Updating from 1.5.x.** A ticked *Retail pricing* box becomes **Estimate**,
-and nothing about your prices, entities or plans changes. An unticked box
-becomes **Off**.
+The day-ahead price is not what you pay. Under **Retail price** choose
+**Off**, our **Estimate** of the all-in price (DE, NL, DK1, DK2, AT,
+NO1-NO5; Germany needs a postal code for the local grid fee) or your **Own
+formula** - day-ahead price × factor + surcharge, in every market. The plans
+are then built on the price you actually pay.
+[Details](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/blob/main/docs/tariffs.md#retail-price-estimate-or-your-own-formula-160)
 
 ## Time-of-day grid charges *(1.7.0)*
 
-In much of Europe the network part of the bill no longer costs the same
-around the clock. With your own formula it can now be added hour by hour:
-
-*retail price = (day-ahead price + grid charge of this hour) × factor + surcharge*
-
-The grid charge sits inside the factor because price sheets state it
-without VAT, exactly like the day-ahead price. Choose a source under
-**Time-of-day grid charges** - it needs **Own formula** as the retail price,
-because the estimate already contains a grid fee of its own:
-
-| Choice | Where the amounts come from | Markets |
-|---|---|---|
-| Off | nowhere | all |
-| Enter windows and amounts | your grid operator's price sheet; in Norway prefilled from your operator | all |
-| Denmark: look up my grid operator | Energinet's Energi Data Service, refreshed daily | DK1, DK2 |
-
-**Who has such charges** (as of September 2026):
-
-| Market | What changes with the time of day |
-|---|---|
-| DE | Section 14a EnWG *Modul 3*: three levels with windows each grid operator sets. It applies to the whole metering point, not only the wallbox or heat pump, needs a smart meter and comes together with Modul 1 |
-| DK | Tarifmodel 3.0: night 00-06, peak 17-21, amounts change three times a year - looked up automatically |
-| NO | Energy charge (*energiledd*) by day, night and weekend at most operators - prefilled |
-| SE | *Höglasttid* on weekdays 06-22 from November to March at many operators |
-| FI | Cheaper nights and weekends at many of the 78 operators |
-| BE | Flanders: day rate Monday to Friday 07-22; Wallonia since 2026 also cheap 11-17 on every day |
-| FR | HP/HC, with TURPE 7 four seasonal slots - the hours differ from meter to meter, your bill shows yours |
-| PL | G12/G12w zones, set by each distribution operator |
-| CZ | Low and high tariff, but switched by ripple control: the operator sets and can move the times, so a fixed schedule is only an approximation |
-| AT, NL, IT, CH | Nothing to enter: a flat network charge, or no tariff that follows the exchange |
-
-**The form** has two short steps. First the windows: when the low rate
-starts and ends, when the peak rate starts and ends, whether weekends are
-charged at the low rate, and optionally which months are winter. Hours are
-the market's local time, a window runs from its first hour up to - not
-including - its last, so 22 to 6 is the night, and equal hours mean there is
-no such window. A winter from 11 to 3 crosses New Year as it should. Then
-the amounts, only for the levels and seasons you actually set, per kWh and
-without VAT; fixed per-kWh taxes stay in the surcharge.
-
-**What it changes.** Factor and surcharge never change which hour is
-cheapest. A time-of-day charge does, and that is the point: a cheap night
-rate can make the night cheaper in total than the solar noon, even when the
-exchange price says otherwise. Measured on Danish prices with a winter
-tariff, the cheapest-hours plan moved on up to a third of the days. Only
-the plans are chosen anew: the cheapest *window* still comes from the API,
-which picks it on the exchange price, and is merely priced with the charge.
-The
-retail price sensor shows the charge it contains right now as
-`network_charge_now`. Changing the tariff starts the current block's plan
-afresh, like changing the formula.
-
-**Denmark.** Pick your grid operator and tariff - most households have
-*Nettarif C*. The list is built from the dataset itself, currently 29
-operators. Some operators book a discount as a separate record; it is
-matched by its code and added, because the sum is what you pay. The
-tariffs are published months ahead and reloaded once a day, so a failed
-reload changes nothing. If none could be loaded at all, the retail price is
-shown as unavailable rather than too low. Amounts are in DKK/kWh without
-VAT: set the factor to 1.25 and put elafgift, Energinet's tariffs and your
-supplier's margin, including VAT, into the surcharge.
-
-**Norway.** Pick your grid operator and the fields are filled in from the
-volunteer collection [fri-nettleie](https://github.com/kraftsystemet/fri-nettleie)
-(CC-BY-4.0), whose prices are stated without taxes - exactly what the
-formula needs. They are a starting point, not a live source: when this was
-written, the median entry had last been checked nine months earlier, so
-compare them with your price sheet before saving. The list shows each
-entry's date, and operators marked ⚠ have seasonal or several special
-periods that are only partly prefilled. In Nordland, Troms and Finnmark
-there is no VAT on electricity: use a factor of 1.0.
-
-**Updating from 1.6.x** changes nothing: the new option starts off.
+Where the network charge changes with the time of day, your own formula can
+add it hour by hour: *(day-ahead price + grid charge of this hour) × factor
++ surcharge*. Enter the windows and amounts from your grid operator's price
+sheet - prefilled in Norway - or, in Denmark, let the integration look up
+your operator's tariff every day.
+[Details and who has such charges](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/blob/main/docs/tariffs.md#time-of-day-grid-charges-170)
 
 ## Horizon: 48 hours free, 120 hours with Private Pro
 
 Without an API key the integration looks **48 hours** ahead. With a
 [Private Pro](https://energypriceforecast.eu/en/private-pro/) key it looks up
 to **120 hours** - five days. Private Pro costs EUR 2.49 a month or EUR 19.90
-a year, and the first 14 days are free. Enter the key in the integration's
-options and set the horizon to 120. The integration exposes both the requested
-and the actually permitted horizon (*Allowed horizon* and *Used horizon*), so
-automations can detect the effective range.
+a year, and the first 14 days are free. Enter the key when you set the
+integration up, or under **Reconfigure** later, and set the horizon to 120.
+The integration exposes both the requested and the actually permitted horizon
+(*Allowed horizon* and *Used horizon*), so automations can detect the
+effective range.
+
+**When a key is refused** *(1.17.0)* - because a subscription ended, a key
+was revoked or mistyped - Home Assistant shows the integration as needing
+re-authentication instead of leaving its entities unavailable. Enter a new
+key there, or leave the field empty to carry on with public access and its
+48-hour horizon. A network problem is not mistaken for a bad key: that
+simply retries.
 
 ### Who gains from five days
 
@@ -1011,297 +620,48 @@ memory and without an extra request:
 Everything else - the forecasts, the quality figures, the window times - only
 changes when new data arrives, so those entities keep the poll's rhythm.
 
+**When a request fails** the integration keeps the last good data rather than
+blanking the entities - an hour-old forecast is still a forecast. Since
+*1.17.0* the price series sensor and the current retail price sensor say so in
+two attributes: `data_status` is `fresh` when the last request for that series
+succeeded and `stale` when its data is from an earlier one, and `data_updated`
+is when it last arrived. A card or an automation can test
+`state_attr(entity, 'data_status') == 'stale'` before trusting the series.
+
 ## Hourly or quarter-hourly tariff *(1.12.0)*
 
-The exchanges price every quarter hour, but a large part of the dynamic
-contracts still bills the **hourly mean** of those four quarters. Such a
-household never pays a quarter-hour price: the cheapest quarter of an hour
-costs them exactly as much as the most expensive one.
-
-**Price resolution of your tariff** says which of the two you have:
-
-| Choice | What you get |
-|---|---|
-| Tariff with a quarter-hourly electricity price *(default)* | The market's own slots, unchanged |
-| Tariff with an hourly electricity price | Whole clock hours, averaged from the quarters |
-
-With the hourly tariff the API folds the series onto clock hours before
-anything is derived from it, so the current price, the cheapest window, the
-plans and the combined score all use the price your bill uses. The running
-hour is averaged over all four of its quarters, including the ones that have
-already passed - that is the price being settled. The entities then also move
-on the hour instead of four times within it.
-
-Pick it only if your supplier really settles by the hour. If you are unsure,
-the quarter-hourly setting is the safe one: it is what every entry has been
-using so far.
+The exchanges price every quarter hour, but many dynamic contracts still
+bill the **hourly mean** of those four quarters. **Price resolution of your
+tariff** tells the integration which one you have, so the current price,
+the windows and the plans match your bill.
+[Details](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/blob/main/docs/tariffs.md#hourly-or-quarter-hourly-tariff-1120)
 
 ## When the official prices are missing *(1.15.0)*
 
-**Published prices missing** is a binary sensor with Home Assistant's
-`problem` device class, so it shows up red as "Problem" and can be used in an
-automation as plainly as `state: "on"`.
-
-It is on when the price for the slot running **right now** is a forecast
-rather than a published day-ahead price. That is the narrow case, and
-deliberately so: beyond the published window the series is always a forecast -
-that is what this integration is for - and a flag that reported *that* would
-be on every afternoon and worth nothing. The price for the current hour, on
-the other hand, was settled at auction the day before. If it is a forecast,
-the published prices never arrived.
-
-That is not hypothetical. On 9 and 10 October 2026 the Dutch, Greek, Romanian
-and Slovak day-ahead results were missing from both platforms this project
-reads, for a day and a half. Installations in those markets were served a
-complete series the whole time - all of it estimated.
-
-Two attributes say what the flag rests on:
-
-| Attribute | Meaning |
-| --- | --- |
-| `price_source` | `day_ahead`, `early_auction` or `forecast` for the current slot |
-| `published_until` | end of the last published slot in your series, `null` while none is published |
-
-An early-auction price does **not** raise the flag. It is not the official
-price either, but it is a traded one: measured against the Dutch day-ahead
-result for 10 October 2026 it sat 0.94 ct/kWh away, where the model forecast
-sat 3.18 ct away. The attribute still names it, so a template can tell the
-three cases apart.
-
-What this is not: a repair issue, because there is nothing you can fix at your
-end, and not a reason to make entities unavailable. The numbers are there,
-they are only estimates, and an automation that stops dead helps nobody. What
-an automation that spends money can usefully do is widen its margin or wait -
-there is no point optimising to a third of a cent on a number that is a guess.
-How long the flag has been on is simply the entity's own `last_changed`.
-
-```yaml
-automation:
-  - alias: Charge the car, but not on guessed prices
-    triggers:
-      - trigger: state
-        entity_id: binary_sensor.energy_price_forecast_eu_de_cheapest_hours_active
-        to: "on"
-    conditions:
-      - condition: state
-        entity_id: binary_sensor.energy_price_forecast_eu_de_published_prices_missing
-        state: "off"
-    actions:
-      - action: switch.turn_on
-        target:
-          entity_id: switch.wallbox
-```
-
-The dashboard card below carries it in two places. A badge at the top of the
-view shows the flag itself, so the state is visible whichever card you are
-looking at. And in the price tile there is one line that is always there: a
-green check with "Official prices until 22:00" while the prices are
-published, and a warning in its place, directly above the number, when they
-are not.
-
-The line in the tile finds the sensor by itself - it looks for the entity with
-the `problem` device class on the same device as your price sensor, which works
-whatever your entity IDs look like. The badge cannot do that: a badge needs a
-literal entity ID, so that one line is the only part of the card you have to
-point at your own entity. If you would rather not, delete the badge - the line
-in the tile tells you the same thing.
+**Published prices missing** is a binary sensor with the `problem` device
+class. It is on when the price for the slot running **right now** is a
+forecast rather than a published day-ahead price - which only happens when
+an exchange did not publish - so an automation can stop trusting the
+current price for that hour.
+[Details and a dashboard badge](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/blob/main/docs/forecast-quality.md#when-the-official-prices-are-missing-1150)
 
 ## How good is the forecast, really?
 
-*Added in 1.0.0 - if you do not see this entity, check your installed
-version under HACS before looking anywhere else.*
-
-The **Forecast quality** diagnostic entity answers that with measurements, not
-claims. The API replays its own frozen forecast against the day-ahead prices
-that were published afterwards, over a rolling window of complete days, and
-reports how often it picked the right cheapest window - for your market and
-for your configured best-window duration.
-
-The entity's state is the part that costs money: the average extra price paid
-by following the forecast's window instead of the one that turned out
-cheapest. It is a number in your market's currency with a `state_class`, so
-you can graph it - a rising line means the forecast is getting worse.
-
-The counts sit in attributes: `exact_hit_days`, `within_one_hour_days`,
-`evaluated_days`, `exact_hit_percent`, `within_one_hour_percent`,
-`window_hours`, `price_basis`, `period_start`, `period_end`.
-
-### Two more numbers *(1.8.0)*
-
-**Forecast accuracy** answers a different question: not whether the right
-window was picked, but by how much each hour was off. Its state is the mean
-absolute error against the day-ahead prices published afterwards, over 30
-days, in your market's currency. The attributes add the median, the 90th
-percentile, the share of hours inside the API's two thresholds
-(`within_primary_percent` and `within_secondary_percent`, with the
-thresholds themselves next to them), the correlation `pearson_r` and the
-`sample_count`.
-
-The two entities can disagree, and in both directions: a window can be
-picked correctly from prices that are all too high, and every price can be
-close while the cheapest window is still missed. That is why they are
-separate.
-
-**Cheaper day decision** is for loads that can wait a day - the washing
-machine, the car over a long weekend. The API replays each pair of days and
-checks whether the day it recommended really held the cheaper window. The
-state is that share in percent.
-
-It stays unknown until thirty pairs are in, about a month, while the
-attributes count the progress (`evaluated_pairs`, `minimum_ready_pairs`,
-`ready`). They also say what a wrong day costs (`mean_regret_when_wrong`,
-`median_regret_when_wrong`) and what waiting was worth across every
-recommendation to wait, the ones that backfired included
-(`mean_saving_when_waiting`, `median_saving_when_waiting`).
-
-### As a banner on your dashboard
-
-Add via **Dashboard > Edit > Add card > Manual**, replacing the entity:
-
-```yaml
-type: markdown
-content: >-
-  {% set q = 'sensor.CHANGE_ME_forecast_quality' %}
-  {% if states(q) not in ['unknown', 'unavailable'] %}
-    ### Forecast quality
-
-    Cheapest {{ state_attr(q, 'window_hours') }}-hour window: within one hour
-    on **{{ state_attr(q, 'within_one_hour_days') }} of
-    {{ state_attr(q, 'evaluated_days') }} days**
-    ({{ state_attr(q, 'within_one_hour_percent') }}%).
-
-    Exactly right: {{ state_attr(q, 'exact_hit_days') }} days. Average extra
-    price versus the perfect window:
-    **{{ (states(q) | float * 100) | round(2) }} ct/kWh**.
-
-    <sub>Frozen forecast against published day-ahead prices,
-    {{ state_attr(q, 'period_start') }} to {{ state_attr(q, 'period_end') }}.
-    Complete days only.</sub>
-  {% else %}
-    Forecast quality is unavailable - either this market has too little
-    history yet, or the integration is older than 1.0.0.
-  {% endif %}
-```
-
-The `| float * 100` converts EUR/kWh to ct/kWh for readability - drop it for
-markets quoted in øre or DKK, where the raw unit is already small. The
-`round(2)` is not cosmetic: without it the float arrives as
-`0.43000000000000005`.
-
-### What it does and does not cover
-
-- **The contiguous cheapest window only.** Not the cheapest-hours plan, not
-  the CO2 windows.
-- **Spot prices only.** The API reports `price_basis: "base"` even when you
-  request retail, because the replay runs on spot. Verified: the figure is
-  byte-identical between a base and a retail request.
-- **Your market.** Quality differs a lot between markets, so a number from
-  somewhere else would say nothing about yours.
-- When there is too little history the entity is **unavailable** rather than
-  showing a zero, and the `error` attribute says why.
+With measurements, not claims: the **Forecast quality**, **Forecast
+accuracy** and **Cheaper day decision** entities replay the forecast,
+frozen before each auction, against the day-ahead prices published
+afterwards - for your market and your window length. **Forecast quality**
+is the average extra price paid by following the forecast's cheapest
+window instead of the one that turned out cheapest.
+[Details, attributes and a banner for your dashboard](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/blob/main/docs/forecast-quality.md#how-good-is-the-forecast-really)
 
 ## What is the plan actually worth?
 
-*Added in 1.0.0.*
-
-Two sensors answer that, and they appear as soon as a cheapest-hours count is
-set (the weekend plan gets its own pair):
-
-- **Cheapest hours average price** - what the hours the plan picked cost on
-  average.
-- **Cheapest hours saving** - how far below the *whole block's* average that
-  lands, in percent.
-
-> Plan: 0.087 EUR/kWh - 38.7% below the block average of 0.142 EUR/kWh
-
-Both are computed once, when the block's hours are picked, and are locked
-together with the plan. They do not drift while the plan stays put, which is
-what makes them worth putting on a dashboard. If the day-ahead auction
-re-picks a forecast-planned block (see above), both are recomputed with it -
-comparing settled picks against a guessed average would be meaningless.
-
-**Read the saving for what it is.** It compares the picked hours against
-running at an arbitrary time *in the same block* - it is not a comparison
-against your old tariff, your neighbour, or a fixed-price contract, and it is
-not money. Converting it to money needs your consumption, which this
-integration does not know; see below for how to do that yourself.
-
-**With retail pricing enabled, the plan is built and priced on the retail
-series**, not the spot price. With the estimate that can move the hours it
-picks; with the estimate or your own formula it changes the saving it
-reports. That matters more than it sounds: the retail markup is a large
-addition, so the same hours look far cheaper against a spot baseline than
-against the price actually billed. On live German data, a genuine 43% retail
-saving showed as 100% when measured on spot.
-
-The saving is left empty when the block average is zero or negative. Negative
-prices are routine in these markets, and "40% cheaper than -0.001 EUR/kWh"
-states a number without stating anything true. On spot prices the saving can
-also exceed 100%, which is not a bug: it means the picked hours pay you rather
-than cost you.
-
-### Turning it into euros
-
-The average-price sensor is the piece you need; the rest is standard Home
-Assistant. Multiply it by the energy your device actually used during the
-planned hours:
-
-```yaml
-template:
-  - sensor:
-      - name: Heat pump cost during cheap hours
-        unique_id: heat_pump_cheap_hour_cost
-        unit_of_measurement: EUR
-        state_class: total_increasing
-        device_class: monetary
-        state: >
-          {% set price = states('sensor.CHANGE_ME_cheapest_hours_average_price')
-             | float(0) %}
-          {% set energy = states('sensor.CHANGE_ME_heat_pump_energy')
-             | float(0) %}
-          {{ (price * energy) | round(2) }}
-```
-
-If your prices are in your own currency *(1.4.0)*, use its code - `CZK`,
-`PLN` or `SEK` - as the unit instead of `EUR`.
-
-Point `sensor.CHANGE_ME_heat_pump_energy` at a kWh meter for the device - a
-smart plug's energy sensor, or a `utility_meter` helper that you reset per
-block. For a "what did I save" figure, build the same sensor a second time
-using the `window_average_value` attribute of the average-price sensor as the
-price, and subtract the two.
-
-This is left as a recipe rather than a built-in feature on purpose: it needs
-an entity only you can name, its correctness depends entirely on that meter
-being the right one, and a wrong number here is worse than no number.
-
-### Turning it into grams of CO2 *(1.2.0)*
-
-The same shape, with the cleanest-hours plan. **Cleanest hours average CO2**
-is in gCO2/kWh, so multiplying by kWh gives grams:
-
-```yaml
-template:
-  - sensor:
-      - name: Car charging CO2 during clean hours
-        unique_id: car_charging_clean_hour_co2
-        unit_of_measurement: g
-        state_class: total_increasing
-        state: >
-          {% set intensity = states('sensor.CHANGE_ME_cleanest_hours_average_co2')
-             | float(0) %}
-          {% set energy = states('sensor.CHANGE_ME_wallbox_energy')
-             | float(0) %}
-          {{ (intensity * energy) | round(0) }}
-```
-
-For "what did charging at these hours avoid", build the same sensor with the
-`window_average_value` attribute in place of the state - that is the block's
-own average intensity - and subtract the two. The result is emissions avoided
-**against charging at an arbitrary time in the same block**, which is the only
-comparison this integration can support. It is not a comparison against the
-grid average, against another country, or against not charging at all, and it
-is not a carbon offset.
+As soon as a cheapest-hours count is set, **Cheapest hours average price**
+and **Cheapest hours saving** show what the picked hours cost and how far
+below the whole block's average they land; the weekend and cleanest-hours
+plans get their own pair.
+[Details, including euros and grams of CO2](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/blob/main/docs/forecast-quality.md#what-is-the-plan-actually-worth)
 
 ## Switching a device with the plan
 
@@ -1363,741 +723,30 @@ Two things worth knowing before you rely on this:
 
 If you want a device to run for several hours *without interruption* instead,
 use the cheapest-window entities rather than the plan - see
-[Two similarly-named features](#two-similarly-named-features).
+[Three similarly-named features](#three-similarly-named-features).
 
 ## Build a price chart
 
-Two sensors carry `raw_today` / `raw_tomorrow` attributes - a list of price
-time slots, made for charting with the community card
-[apexcharts-card](https://github.com/RomRider/apexcharts-card) (installed
-separately via HACS): the always-on price series sensor (day-ahead/spot price)
-and, if you enabled retail pricing during setup, the current retail price
-sensor (the all-in price, estimated or from your own formula). Both also
-carry a third attribute,
-`raw_forecast`: the entries beyond the published day-ahead window - the actual
-ML/weather-based forecast, richer with a longer configured horizon.
-
-**If you enabled retail pricing, chart the retail sensor.** The spot price is
-not what you pay, so a chart built on it will disagree with your bill. The
-shape of both sensors' attributes is identical, so the card below works for
-either - just point it at the right entity.
-
-### Ready-to-paste card
-
-Install **apexcharts-card 2.1.0 or newer** through HACS first.
-Replace all three `sensor.CHANGE_ME` lines with your own entity (see
-[Finding your entity IDs](#finding-your-entity-ids-first) - on a German
-instance it is likely `sensor..._preisreihe` or `sensor..._aktueller_endkundenpreis`).
-Add the card via **Dashboard > Edit > Add card > Manual**.
-
-```yaml
-type: custom:apexcharts-card
-header:
-  show: true
-  title: Energy Price Forecast EU
-graph_span: 3d
-span:
-  start: day
-now:
-  show: true
-  label: Now
-yaxis:
-  - id: price
-    decimals: 3
-    apex_config:
-      title:
-        text: EUR/kWh
-all_series_config:
-  yaxis_id: price
-  type: line
-  curve: stepline
-  extend_to: false
-  stroke_width: 2
-  float_precision: 4
-  show:
-    legend_value: false
-series:
-  # Replace ALL three placeholders with the SAME price or retail sensor.
-  - entity: sensor.CHANGE_ME
-    name: Known (day-ahead)
-    color: "#43a047"
-    data_generator: |
-      const raw = [...(entity.attributes.raw_today ?? []),
-                   ...(entity.attributes.raw_tomorrow ?? [])];
-      const slots = raw.map(e => ({
-        start: Date.parse(e.start), end: Date.parse(e.end), value: e.value
-      })).filter(e => Number.isFinite(e.start) && Number.isFinite(e.end)
-        && e.end > e.start && typeof e.value === 'number' && Number.isFinite(e.value))
-        .sort((a, b) => a.start - b.start);
-      const points = [];
-      let previousEnd = null;
-      for (const slot of slots) {
-        if (previousEnd !== null && slot.start > previousEnd) {
-          points.push([previousEnd, null], [slot.start - 1, null]);
-        }
-        points.push([slot.start, slot.value], [slot.end - 1, slot.value]);
-        previousEnd = slot.end;
-      }
-      return points;
-  - entity: sensor.CHANGE_ME
-    name: Current forecast
-    color: "#fb8c00"
-    data_generator: |
-      const raw = entity.attributes.raw_forecast ?? [];
-      const slots = raw.map(e => ({
-        start: Date.parse(e.start), end: Date.parse(e.end), value: e.value
-      })).filter(e => Number.isFinite(e.start) && Number.isFinite(e.end)
-        && e.end > e.start && typeof e.value === 'number' && Number.isFinite(e.value))
-        .sort((a, b) => a.start - b.start);
-      const points = [];
-      let previousEnd = null;
-      for (const slot of slots) {
-        if (previousEnd !== null && slot.start > previousEnd) {
-          points.push([previousEnd, null], [slot.start - 1, null]);
-        }
-        points.push([slot.start, slot.value], [slot.end - 1, slot.value]);
-        previousEnd = slot.end;
-      }
-      return points;
-  - entity: sensor.CHANGE_ME
-    name: Saved forecast (first seen)
-    color: "#1e88e5"
-    stroke_dash: 5
-    data_generator: |
-      const raw = entity.attributes.raw_forecast_reference ?? [];
-      const slots = raw.map(e => ({
-        start: Date.parse(e.start), end: Date.parse(e.end),
-        value: typeof e.final_value === 'number' ? e.final_value : e.value
-      })).filter(e => Number.isFinite(e.start) && Number.isFinite(e.end)
-        && e.end > e.start && typeof e.value === 'number' && Number.isFinite(e.value))
-        .sort((a, b) => a.start - b.start);
-      const points = [];
-      let previousEnd = null;
-      for (const slot of slots) {
-        if (previousEnd !== null && slot.start > previousEnd) {
-          points.push([previousEnd, null], [slot.start - 1, null]);
-        }
-        points.push([slot.start, slot.value], [slot.end - 1, slot.value]);
-        previousEnd = slot.end;
-      }
-      return points;
-```
-
-The known-price line includes the elapsed part of today on the left of the
-Now marker; tomorrow follows as soon as its day-ahead prices are published.
-All series are `extend_to: false` on purpose: without it, apexcharts-card
-stretches the last value to the edge of the graph, inventing prices that were
-never forecast.
-
-The **blue dashed line** is the first forecast Home Assistant saved for each
-slot. The **orange line** is the current forecast and may change. When official
-prices arrive, the orange line is replaced by the **green day-ahead line** for
-those slots, while the saved blue forecast remains for comparison. It is not
-a fixed-lead-time quality measurement: a slot might first have been captured
-48 or 120 hours ahead, depending on your horizon and when HA was running.
-
-Snapshots accumulate only after installing this improvement; an initially
-empty blue line is normal. They stay visible throughout the target day, then
-are pruned at market midnight. There is no multi-day historical archive here.
-Retail snapshots contain the all-in value calculated when captured, not a
-later recalculation. An API retail estimate is still an estimate, not your
-supplier's billed rate. For markets outside EUR, change the axis title to the
-sensor's actual unit. For the full 120-hour horizon use `graph_span: 6d`;
-the chart never creates data beyond what your API access supplies.
-
-Slots include their real end time, gaps remain gaps, and zero and negative
-prices are valid. Official points are never copied into the forecast line.
-The ready-to-paste YAML is also in
-[examples/price-chart-comparison.yaml](examples/price-chart-comparison.yaml).
-The comparison idea was inspired by
-[Frank Hamm's practical dashboard](https://derschreiben.de/strompreisprognosen-mit-energy-price-forecast-und-home-assistant/).
-
-### Showing the planned cheap hours in the chart
-
-If you configured a cheapest-hours count, add this series to mark the hours the
-plan actually picked, so you can see at a glance whether the plan lines up with
-the price valleys. Point it at your *Next cheapest hour* sensor (German:
-`sensor..._naechste_guenstige_stunde`), and use the *Next weekend cheapest
-hour* sensor for the weekend plan.
-
-Add it as the **first** entry under `series:`, before the three price series -
-apexcharts draws series in order, so listing it first keeps the bands behind
-the price lines instead of on top of them.
-
-```yaml
-  - entity: sensor.CHANGE_ME_cheapest_hours
-    name: Planned hours
-    yaxis_id: plan
-    type: area
-    curve: stepline
-    color: "#1e88e5"
-    opacity: 0.22
-    stroke_width: 0
-    extend_to: false
-    show:
-      legend_value: false
-    data_generator: |
-      const raw = (entity.attributes.hours ?? []).map(h => ({
-        start: new Date(h.start).getTime(),
-        end: new Date(h.end).getTime(),
-      })).sort((a, b) => a.start - b.start);
-      // Merge back-to-back hours into one band, otherwise every boundary
-      // between two adjacent planned hours shows up as a zero-width dip.
-      const runs = [];
-      for (const hour of raw) {
-        const last = runs[runs.length - 1];
-        if (last && hour.start <= last.end) last.end = Math.max(last.end, hour.end);
-        else runs.push({ ...hour });
-      }
-      return runs.flatMap(run => [[run.start, 1], [run.end, 0]]);
-```
-
-It needs a second, hidden axis so the bands do not distort the price scale.
-Add this under the existing `yaxis:` list - `max: 1` against a plotted value of
-1 makes each band span the full height of the chart:
-
-```yaml
-  - id: plan
-    show: false
-    min: 0
-    max: 1
-```
-
-A stepped area is used rather than columns on purpose. A column series plots
-one point per planned hour and lets the card derive the bar width from the
-spacing between points, which makes scattered hours render as hairlines over a
-multi-day span. Emitting a start and an end point per hour instead draws a band
-of the hour's real width, at any zoom level, and a run of consecutive planned
-hours becomes one wide band rather than several touching bars.
-
-### A card that answers what to do now *(1.13.0)*
-
-The chart above shows the prices; this one shows the decision. It is a whole
-dashboard view - current price against today's average, today's range, the best
-window, the cheapest-hours plan, the chart, and underneath the three measured
-quality figures, so the numbers and the evidence for them sit on one screen.
-It needs `apexcharts-card` for the chart; everything else is built in.
-
-Add it under **Settings > Dashboards > your dashboard > Edit > Raw configuration
-editor** as a new view, or copy
-[`examples/price-card.yaml`](examples/price-card.yaml).
-
-Three things to adapt:
-
-- **The entity IDs.** They follow your Home Assistant language and your device
-  name. The card uses the English ones of a German market entry
-  (`sensor.energy_price_forecast_eu_de_...`). Look yours up under **Developer
-  Tools > States**, filter for `energypriceforecast`, and replace the prefix
-  everywhere.
-- **Without retail pricing**, replace `_current_retail_price` with
-  `_current_price` and drop the `_retail` suffix on the window entities. The
-  card then shows the exchange price throughout.
-- **Without a cheapest-hours plan**, remove the "Cheapest hours" series from the
-  chart; the plan tile already says what to do and needs no change.
-
-The tiles read the unit from the entity, so a market in DKK, NOK, SEK, CZK or
-PLN shows its own currency instead of cents. The chart's left axis has no unit
-label for the same reason - the caption under it names the price it draws.
-
-One honest detail, repeated in the card's own caption: the chart draws the
-retail price, while the measured figures below are computed on the exchange
-price. The gap you see is therefore your tariff's version of the error the
-numbers describe.
-
-```yaml
-title: Price
-path: price
-icon: mdi:lightning-bolt-outline
-type: sections
-max_columns: 3
-badges:
-  - type: entity
-    entity: binary_sensor.energy_price_forecast_eu_de_published_prices_missing
-    name: Prices
-    state_content: state
-sections:
-  - type: grid
-    cards:
-      - type: heading
-        heading: Now
-        heading_style: title
-        icon: mdi:clock-outline
-      - type: markdown
-        content: >-
-          {% set epf = 'sensor.energy_price_forecast_eu_de' %} {% set p = epf ~
-          '_current_retail_price' %} {% macro money(x) %}{% set u =
-          state_attr(p, 'unit_of_measurement') or '' %}{% if u[:3] == 'EUR'
-          %}{{ '%.1f' | format(x | float(0) * 100) }} ct{% else %}{{ '%.3f' |
-          format(x | float(0)) }} {{ u }}{% endif %}{% endmacro %} {% set v =
-          state_attr(p, 'price_percent_to_average') %}
-
-          <ha-icon icon="mdi:lightning-bolt"></ha-icon> **Electricity price
-          now**
-
-          {% set ns = namespace(warn=none) %}{% for e in
-          device_entities(device_id(p)) %}{% if e.startswith('binary_sensor.')
-          and state_attr(e, 'device_class') == 'problem' %}{% set ns.warn = e
-          %}{% endif %}{% endfor %}{% set warn = ns.warn %}{% if warn and
-          is_state(warn, 'on') %}<ha-alert alert-type="warning">Estimated
-          price: the official prices for this hour were never
-          published.</ha-alert>{% elif warn %}{% set pu = state_attr(warn,
-          'published_until') %}<ha-icon icon="mdi:check-decagram"
-          style="color: var(--success-color)"></ha-icon> {% if pu is string
-          %}Official prices until **{{ as_timestamp(pu) |
-          timestamp_custom('%H:%M') }}**{% else %}Published prices in use{%
-          endif %}{% endif %}
-
-          {% if states(p) | is_number %}
-
-          # {{ money(states(p)) }}
-
-          {% if v is not none %}{% set d = (v - 100) | round | int %}{% if d <=
-          -1 %}<ha-alert alert-type="success">{{ d | abs }}% below today's
-          average</ha-alert>{% elif d >= 1 %}<ha-alert
-          alert-type="warning">{{ d }}% above today's average</ha-alert>{% else
-          %}<ha-alert alert-type="info">Right at today's average</ha-alert>{%
-          endif %}{% endif %}
-
-          {% set all = (state_attr(p, 'raw_today') or []) + (state_attr(p,
-          'raw_tomorrow') or []) %}{% set ns = namespace(s=0, n=0) %}{% set t0
-          = now() %}{% set t1 = now() + timedelta(hours=1) %}{% for e in all %}{%
-          set st = as_datetime(e.start) %}{% if st is not none and st >= t0 and
-          st < t1 and e.value is number %}{% set ns.s = ns.s + e.value %}{% set
-          ns.n = ns.n + 1 %}{% endif %}{% endfor %}{% if ns.n %}Next hour
-          averages **{{ money(ns.s / ns.n) }}**{% endif %}
-
-          {% else %}
-
-          # –
-
-          <ha-alert alert-type="info">No price available right now</ha-alert>
-
-          {% endif %}
-      - type: markdown
-        content: >-
-          {% set s = 'sensor.energy_price_forecast_eu_de_combined_score_now' %}
-
-          <ha-icon icon="mdi:scale-balance"></ha-icon> **How good is this
-          moment**
-
-          {% if states(s) | is_number %}
-
-          ## {{ states(s) | round | int }} of 100
-
-          on price and CO2 together, against the published hours ahead
-
-          {% else %}
-
-          Not available for this market.
-
-          {% endif %}
-  - type: grid
-    cards:
-      - type: heading
-        heading: Today
-        heading_style: title
-        icon: mdi:calendar-today
-      - type: grid
-        columns: 2
-        square: false
-        cards:
-          - type: markdown
-            content: >-
-              {% set b = 'sensor.energy_price_forecast_eu_de_current_price' %}
-              {% macro money(x) %}{% set u = state_attr(b,
-              'unit_of_measurement') or '' %}{% if u[:3] == 'EUR' %}{{ '%.1f' |
-              format(x | float(0) * 100) }} ct{% else %}{{ '%.3f' | format(x |
-              float(0)) }} {{ u }}{% endif %}{% endmacro %}
-
-              Exchange price
-
-              ## {% if states(b) | is_number %}{{ money(states(b)) }}{% else %}–{%
-              endif %}
-          - type: markdown
-            content: >-
-              {% set p = 'sensor.energy_price_forecast_eu_de_current_retail_price'
-              %} {% macro money(x) %}{% set u = state_attr(p,
-              'unit_of_measurement') or '' %}{% if u[:3] == 'EUR' %}{{ '%.1f' |
-              format(x | float(0) * 100) }} ct{% else %}{{ '%.3f' | format(x |
-              float(0)) }} {{ u }}{% endif %}{% endmacro %}
-
-              Today's average
-
-              ## {% set a = state_attr(p, 'average') %}{% if a is not none %}{{
-              money(a) }}{% else %}–{% endif %}
-      - type: markdown
-        content: >-
-          {% set p = 'sensor.energy_price_forecast_eu_de_current_retail_price' %}
-          {% macro money(x) %}{% set u = state_attr(p, 'unit_of_measurement') or
-          '' %}{% if u[:3] == 'EUR' %}{{ '%.1f' | format(x | float(0) * 100) }}
-          ct{% else %}{{ '%.3f' | format(x | float(0)) }} {{ u }}{% endif %}{%
-          endmacro %}
-
-          Today's range
-
-          ## {% set lo = state_attr(p, 'min') %}{% set hi = state_attr(p, 'max')
-          %}{% if lo is not none and hi is not none %}{{ money(lo) }} – {{
-          money(hi) }}{% else %}–{% endif %}
-  - type: grid
-    cards:
-      - type: heading
-        heading: Plan
-        heading_style: title
-        icon: mdi:calendar-check
-      - type: markdown
-        content: >-
-          {% set epf = 'sensor.energy_price_forecast_eu_de' %} {% set a = epf ~
-          '_cheapest_window_average_retail_price' %} {% macro money(x) %}{% set
-          u = state_attr(a, 'unit_of_measurement') or '' %}{% if u[:3] == 'EUR'
-          %}{{ '%.1f' | format(x | float(0) * 100) }} ct{% else %}{{ '%.3f' |
-          format(x | float(0)) }} {{ u }}{% endif %}{% endmacro %} {% set days =
-          ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
-          'Sunday'] %} {% macro day_word(t) %}{% set dd = (t.date() -
-          now().date()).days %}{{ 'today' if dd == 0 else ('tomorrow' if dd == 1
-          else ('the day after tomorrow' if dd == 2 else days[t.weekday()]))
-          }}{% endmacro %} {% set s = states(epf ~
-          '_cheapest_window_start_retail') %} {% set e = states(epf ~
-          '_cheapest_window_end_retail') %}
-
-          {% if as_datetime(s) is not none and as_datetime(e) is not none %}
-
-          {% set sd = as_local(as_datetime(s)) %}{% set ed =
-          as_local(as_datetime(e)) %}{% set h = (ed - sd).total_seconds() / 3600
-          %}
-
-          <ha-icon icon="mdi:clock-time-four-outline"></ha-icon> **Best {{ '%g' |
-          format(h) }}-hour window**
-
-          ## {{ sd.strftime('%H:%M') }} – {{ ed.strftime('%H:%M') }}
-
-          {% if sd <= now() < ed %}running now{% else %}{{ day_word(sd) }}{%
-          endif %}{% if states(a) | is_number %} · avg {{ money(states(a)) }}{%
-          endif %}
-
-          {% else %}
-
-          <ha-icon icon="mdi:clock-time-four-outline"></ha-icon> **Best window**
-
-          Calculated as soon as new prices arrive.
-
-          {% endif %}
-      - type: markdown
-        content: >-
-          {% set epf = 'sensor.energy_price_forecast_eu_de' %} {% set avg = epf ~
-          '_cheapest_hours_average_price' %} {% macro money(x) %}{% set u =
-          state_attr(avg, 'unit_of_measurement') or '' %}{% if u[:3] == 'EUR'
-          %}{{ '%.1f' | format(x | float(0) * 100) }} ct{% else %}{{ '%.3f' |
-          format(x | float(0)) }} {{ u }}{% endif %}{% endmacro %} {% set days =
-          ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
-          'Sunday'] %} {% macro day_word(t) %}{% set dd = (t.date() -
-          now().date()).days %}{{ 'today' if dd == 0 else ('tomorrow' if dd == 1
-          else ('the day after tomorrow' if dd == 2 else days[t.weekday()]))
-          }}{% endmacro %} {% set nx_e = epf ~ '_next_cheapest_hour' %} {% set n
-          = (state_attr(nx_e, 'hours') or []) | count %} {% set sp = states(epf ~
-          '_cheapest_hours_saving') %} {% set active =
-          is_state('binary_sensor.energy_price_forecast_eu_de_cheapest_hours_active',
-          'on') %} {% set nx = as_datetime(states(nx_e)) %}
-
-          {% if n %}
-
-          <ha-icon icon="mdi:format-list-checks"></ha-icon> **The {{ n }}
-          cheapest hours**
-
-          ## {% if sp | is_number %}{{ '%.1f' | format(sp | float) }}% cheaper{%
-          else %}–{% endif %}
-
-          {% if active %}active now{% elif nx is not none %}{% set m =
-          ((as_local(nx) - now()).total_seconds() / 60) | round | int %}{% if m <
-          60 %}next one in {{ m }} minutes{% else %}next one {{
-          day_word(as_local(nx)) }} at {{ as_local(nx).strftime('%H:%M') }}{%
-          endif %}{% else %}none planned{% endif %}{% if states(avg) | is_number
-          %} · avg {{ money(states(avg)) }}{% endif %}
-
-          {% else %}
-
-          <ha-icon icon="mdi:format-list-checks"></ha-icon> **Cheapest hours
-          plan**
-
-          Set a number of cheapest hours when you configure the integration.
-
-          {% endif %}
-  - type: grid
-    column_span: 3
-    cards:
-      - type: heading
-        heading: Price over the coming days
-        heading_style: title
-        icon: mdi:chart-line
-      - type: custom:apexcharts-card
-        header:
-          show: false
-        graph_span: 5d
-        span:
-          start: day
-        now:
-          show: true
-          label: Now
-        apex_config:
-          chart:
-            height: 340
-            toolbar:
-              show: false
-            zoom:
-              enabled: false
-          legend:
-            position: bottom
-            horizontalAlign: left
-            fontSize: 13px
-          grid:
-            strokeDashArray: 3
-          xaxis:
-            labels:
-              datetimeFormatter:
-                day: ddd dd MMM
-                hour: HH:mm
-          tooltip:
-            x:
-              format: ddd dd MMM HH:mm
-        yaxis:
-          - id: price
-            decimals: 0
-            apex_config:
-              tickAmount: 5
-          - id: plan
-            show: false
-            min: 0
-            max: 1
-        series:
-          - entity: sensor.energy_price_forecast_eu_de_next_cheapest_hour
-            name: Cheapest hours
-            yaxis_id: plan
-            type: area
-            curve: stepline
-            color: '#1e88e5'
-            opacity: 0.15
-            stroke_width: 0
-            extend_to: false
-            show:
-              legend_value: false
-            data_generator: |
-              const raw = (entity.attributes.hours ?? []).map(h => ({
-                start: new Date(h.start).getTime(),
-                end: new Date(h.end).getTime(),
-              })).sort((a, b) => a.start - b.start);
-              const runs = [];
-              for (const hour of raw) {
-                const last = runs[runs.length - 1];
-                if (last && hour.start <= last.end) last.end = Math.max(last.end, hour.end);
-                else runs.push({ ...hour });
-              }
-              return runs.flatMap(run => [[run.start, 1], [run.end, 0]]);
-          - entity: sensor.energy_price_forecast_eu_de_current_retail_price
-            name: Published
-            yaxis_id: price
-            type: line
-            curve: stepline
-            color: '#43a047'
-            stroke_width: 2
-            extend_to: false
-            show:
-              legend_value: false
-            data_generator: |
-              // Euro markets read better in cents; everyone else keeps the
-              // market's own unit, so the axis never claims the wrong currency.
-              const f = (entity.attributes.unit_of_measurement ?? '').startsWith('EUR') ? 100 : 1;
-              const known = [...(entity.attributes.raw_today ?? []),
-                             ...(entity.attributes.raw_tomorrow ?? [])];
-              return known.map(e => [new Date(e.start).getTime(), e.value * f]);
-          - entity: sensor.energy_price_forecast_eu_de_current_retail_price
-            name: Forecast
-            yaxis_id: price
-            type: line
-            curve: stepline
-            color: '#fb8c00'
-            stroke_width: 2
-            extend_to: false
-            show:
-              legend_value: false
-            data_generator: |
-              const f = (entity.attributes.unit_of_measurement ?? '').startsWith('EUR') ? 100 : 1;
-              const known = [...(entity.attributes.raw_today ?? []),
-                             ...(entity.attributes.raw_tomorrow ?? [])];
-              const forecast = entity.attributes.raw_forecast ?? [];
-              const join = known.length ? [known[known.length - 1]] : [];
-              return [...join, ...forecast]
-                .map(e => [new Date(e.start).getTime(), e.value * f])
-                .sort((a, b) => a[0] - b[0]);
-          - entity: sensor.energy_price_forecast_eu_de_current_retail_price
-            name: Forecast before publication
-            yaxis_id: price
-            type: line
-            curve: stepline
-            color: '#1e88e5'
-            stroke_width: 2
-            extend_to: false
-            show:
-              legend_value: false
-            data_generator: |
-              const f = (entity.attributes.unit_of_measurement ?? '').startsWith('EUR') ? 100 : 1;
-              const raw = entity.attributes.raw_forecast_reference ?? [];
-              // Only where the price is already published: before that,
-              // final_value follows every update and would lie on the forecast
-              // line anyway.
-              const known = [...(entity.attributes.raw_today ?? []),
-                             ...(entity.attributes.raw_tomorrow ?? [])];
-              const knownEnd = known.reduce((m, e) => Math.max(m, Date.parse(e.end) || 0), 0);
-              const slots = raw.filter(e => Date.parse(e.start) < knownEnd).map(e => ({
-                start: Date.parse(e.start), end: Date.parse(e.end),
-                value: e.final_value ?? e.value
-              })).filter(e => Number.isFinite(e.start) && Number.isFinite(e.end)
-                && e.end > e.start && typeof e.value === 'number' && Number.isFinite(e.value))
-                .sort((a, b) => a.start - b.start);
-              const points = [];
-              let previousEnd = null;
-              for (const slot of slots) {
-                if (previousEnd !== null && slot.start > previousEnd) {
-                  points.push([previousEnd, null], [slot.start - 1, null]);
-                }
-                points.push([slot.start, slot.value * f], [slot.end - 1, slot.value * f]);
-                previousEnd = slot.end;
-              }
-              return points;
-            stroke_dash: 5
-        grid_options:
-          columns: full
-      - type: markdown
-        text_only: true
-        content: >-
-          <sub>Retail price per slot. Green: the published day-ahead prices;
-          orange: the forecast for the days after. Dashed blue over the green
-          line: the last forecast before the price was published. The figures
-          below measure that same gap on the exchange price, so your tariff
-          scales it.</sub>
-        grid_options:
-          columns: full
-  - type: grid
-    column_span: 3
-    cards:
-      - type: heading
-        heading: How good is the forecast?
-        heading_style: title
-        icon: mdi:target
-      - type: grid
-        columns: 3
-        square: false
-        cards:
-          - type: markdown
-            content: >-
-              {% set q = 'sensor.energy_price_forecast_eu_de_forecast_quality' %}
-
-              Best window hit
-
-              ## {% if state_attr(q, 'evaluated_days') %}{{ state_attr(q,
-              'within_one_hour_days') }} of {{ state_attr(q, 'evaluated_days') }}
-              days{% else %}–{% endif %}
-
-              within one hour of the real cheapest start
-          - type: markdown
-            content: >-
-              {% set a = 'sensor.energy_price_forecast_eu_de_forecast_accuracy' %}
-              {% macro money(x) %}{% set u = state_attr(a, 'unit_of_measurement')
-              or '' %}{% if u[:3] == 'EUR' %}{{ '%.1f' | format(x | float(0) *
-              100) }} ct{% else %}{{ '%.3f' | format(x | float(0)) }} {{ u }}{%
-              endif %}{% endmacro %}
-
-              Error per hour
-
-              ## {% if states(a) | is_number %}avg {{ money(states(a)) }}{% else
-              %}–{% endif %}
-
-              {% if state_attr(a, 'median_abs_error') is not none %}median {{
-              money(state_attr(a, 'median_abs_error')) }}{% endif %}
-          - type: markdown
-            content: >-
-              {% set d = 'sensor.energy_price_forecast_eu_de_cheaper_day_decision'
-              %}
-
-              Charge today or tomorrow?
-
-              {% if state_attr(d, 'ready') %}## {{ state_attr(d,
-              'correct_day_count') }} of {{ state_attr(d, 'evaluated_pairs') }}
-              correct
-
-              picking the cheaper day{% else %}## still learning
-
-              {{ state_attr(d, 'evaluated_pairs') or 0 }} of {{ state_attr(d,
-              'minimum_ready_pairs') or 30 }} day pairs{% endif %}
-        grid_options:
-          columns: full
-      - type: markdown
-        text_only: true
-        content: >-
-          <sub>Measured over the last 30 days: the frozen forecast against the
-          day-ahead prices published later, on the exchange price. Forecast by
-          [energypriceforecast.eu](https://energypriceforecast.eu/en/).</sub>
-
-          {% set a = 'sensor.energy_price_forecast_eu_de_forecast_accuracy' %}
-          {% set ns = namespace(h=none) %}{% for e in
-          device_entities(device_id(a)) %}{% if state_attr(e, 'icon') ==
-          'mdi:clock-check-outline' %}{% set ns.h = states(e) %}{% endif %}{%
-          endfor %}{% if ns.h is not none and ns.h | is_number and ns.h | float
-          < 120 %}<sub>This view looks {{ ns.h | int }} hours ahead. [Up to 120
-          hours with Private Pro](https://energypriceforecast.eu/en/private-pro/)
-          - 14 days free. [What the extra days were worth in your
-          market](https://energypriceforecast.eu/en/forecast-quality/)</sub>{%
-          endif %}
-        grid_options:
-          columns: full
-```
-
-### Or let an AI build it for you
-
-Paste the prompt below into your AI assistant of choice to get a card tailored
-to your setup - useful if you want a different layout, only today's prices, or
-CO2 alongside the price.
-
-<details>
-<summary>Show the copyable prompt</summary>
-
-```
-Help me build a Home Assistant Lovelace card that charts electricity prices from the Energy Price Forecast EU integration using the apexcharts-card custom card.
-
-The integration creates a sensor whose entity_id ends in "_price_series" (day-ahead/spot price, the exact name depends on my chosen market, for example sensor.energy_price_forecast_eu_de_price_forecast_series) and, if I enabled retail pricing, a second sensor ending in "_retail_current_price" (all-in price, either the integration's estimate or my own formula) with the same attribute shape. Each sensor's state is its current price; its attributes raw_today, raw_tomorrow and raw_forecast are each a list of objects shaped like {"start": ISO8601 timestamp, "end": ISO8601 timestamp, "value": number}. raw_today retains the published slots it has seen since local midnight so a chart keeps its history left of the Now marker; raw_tomorrow contains tomorrow's published prices once available. Both contain known prices, never estimates. raw_forecast holds only the entries beyond the published day-ahead window - the actual ML/weather-based forecast. The value's unit matches the market's currency (for example EUR/kWh).
-
-Entity IDs follow the Home Assistant language, so do not guess them from the English names above - on a German instance the price series is sensor..._preisreihe and the retail price is sensor..._aktueller_endkundenpreis. Ask me for the exact ID rather than assuming one.
-
-My actual entity_id is: <PASTE YOUR ENTITY ID HERE - find it under Settings > Devices & Services > Energy Price Forecast EU, or Developer Tools > States, filtering for "energypriceforecast">
-
-If you build tiles rather than a chart, five rules keep the card honest. Read the unit from the entity (state_attr(entity, 'unit_of_measurement')) instead of assuming cents - markets settle in EUR, DKK, NOK, SEK, CZK or PLN. Derive the best-window length from the start and end sensors rather than writing "4-hour" into the text, because the duration is configurable in quarter hours. Derive the number of cheapest hours from the "hours" attribute of the next-cheapest-hour sensor instead of writing a number. For raw_forecast_reference use final_value and fall back to value - final_value is the last forecast before the official price arrived, which is the moment the published quality figures measure, while value is whatever this installation happened to see first. And give every tile a visible state for "no number yet": cheaper_day_decision stays unknown until 30 day pairs are scored, price_percent_to_average is empty when the day's average is zero or negative, and Slovakia and Romania have no CO2 at all.
-
-Before writing YAML, ask me:
-1. Do I already have HACS and the apexcharts-card custom card installed? If not, tell me to install apexcharts-card via HACS first (category: Frontend/Plugin).
-2. Did I enable retail pricing? If I did, chart the retail all-in price rather than the spot price unless I explicitly say otherwise - the spot price is not what I pay, so a chart built on it will disagree with my bill. Ask me which entity that is instead of guessing the ID.
-3. Should the chart show today only, today and tomorrow together, or the known prices plus the forecast (raw_today + raw_tomorrow + raw_forecast) as two visually distinct series (e.g. solid vs dashed, different colors)?
-4. Did I configure a cheapest-hours count or a weekend plan? If so, offer to mark the planned hours in the chart, using the "hours" attribute of the corresponding sensor (a list of {"start", "end", "average_value"}). Seeing the plan against the price curve is usually the point of the chart.
-5. Do I want a bar chart per hour or a line/area chart?
-6. Do I want to use this to actually switch a device (heat pump, water heater, car charger), rather than only look at it? If so, say that a chart alone will not do that, and offer to write a matching automation triggered on the binary sensor that is on during the planned hours.
-7. Do I have a load that can wait for days, such as an electric car or a home battery? If so, ask me for the state of the "Allowed horizon" diagnostic sensor (unit h). If it is below 120, tell me that Private Pro extends the forecast to 120 hours (14 days free), that the section "What does a longer horizon add compared with 48 hours?" on https://energypriceforecast.eu/en/forecast-quality/?market=<MY ZONE> shows what the extra days were worth in my zone, and that a 120-hour chart needs graph_span: 6d. Quote those figures if you can open the page; do not promise a saving beyond them.
-
-Rules for your result:
-- The same two price sensors also expose raw_forecast_reference: {start, end, value, captured_at, final_value, final_captured_at} slots. value is the first forecast received for each future slot; final_value is the last forecast before the official price arrived and is the value to draw, because the published quality figures measure that same moment. These survive restarts and official publication and are removed after the target market day ends. captured_at and final_captured_at are HA observation times, not model creation times. Offer an optional dashed reference line to compare that saved prediction against official prices; no predictions can be recovered from before the integration began saving them.
-- Use only raw_today / raw_tomorrow / raw_forecast / raw_forecast_reference. Do not invent other attributes or a different data shape.
-- Use apexcharts-card's data_generator to turn the attribute list into a chart series - do not assume the card accepts the attribute directly as a series.
-- If I asked for known prices and forecast as separate series, use two series against the same entity (one summing raw_today+raw_tomorrow, one for raw_forecast), each with its own data_generator, and set extend_to: false on both - otherwise apexcharts-card visually extends the last value to the edge of the graph, which is misleading here.
-- Draw each slot from start through end (ending one millisecond before end avoids duplicate timestamps). Preserve real gaps using null points. Do not prepend official prices to a forecast series or hide zero/negative prices. Use the sensor's unit consistently.
-- Quote any string value (title, name, tooltip format) that itself contains a colon, like "Known: forecast" or "dd.MM. HH:mm" - an unquoted colon inside a YAML value breaks parsing.
-- Produce a complete, correctly indented YAML block for a manual Lovelace card (type: custom:apexcharts-card).
-- Tell me exactly where to paste it (Dashboard > Edit > Add card > Manual).
-- If information is missing, ask - do not guess my entity_id or market.
-```
-
-</details>
+The price series sensor - and, with retail pricing, the current retail
+price sensor - carry the price slots in `raw_today`, `raw_tomorrow` and
+`raw_forecast`, made for the community card
+[apexcharts-card](https://github.com/RomRider/apexcharts-card). Ready to use:
+
+- [A dashboard that answers what to do now](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/blob/main/docs/dashboard.md#a-card-that-answers-what-to-do-now-1130) - the view in the
+  screenshot at the top, as one paste
+- [A price chart](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/blob/main/docs/dashboard.md#ready-to-paste-card) with known prices, the forecast
+  and the forecast that was made before publication
+- [The planned cheap hours in the chart](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/blob/main/docs/dashboard.md#showing-the-planned-cheap-hours-in-the-chart)
+- [A prompt that lets an AI assistant build a card for your setup](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/blob/main/docs/dashboard.md#or-let-an-ai-build-it-for-you)
+
+The files are also in [`examples/`](examples/).
 
 ## Privacy
 
 The integration sends the selected market, horizon and window duration to the
 public API. If configured, the API key is sent as a bearer token. It is stored
-inside the Home Assistant config entry and is redacted from diagnostics.
+inside the Home Assistant config entry and is redacted from diagnostics,
+as is the postal code - also from the error messages the diagnostics list.
 
 With the retail estimate in Germany the postal code is sent as well, for the
 local grid fee. A Danish grid tariff *(1.7.0)* is fetched once a day from
@@ -2107,6 +756,20 @@ downloads the fri-nettleie collection from GitHub once; nothing is sent there.
 
 ## Support
 
+Something looks wrong? The fastest help starts with the diagnostics: open
+**Settings → Devices & services → Energy Price Forecast EU**, choose the
+three-dot menu of the entry and **Download diagnostics**. Since *1.17.0* the
+file says which data source last failed and why, how old each series is, and
+whether a series has a gap or an overlap - with the times involved, which is
+what a missing hour around a change of daylight-saving time looks like. Your
+API key and postal code are removed from it.
+
+- [Report a problem](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/issues/new/choose) -
+  the form asks for the version, market and time zone, and takes the
+  diagnostics file
 - [Setup documentation](https://energypriceforecast.eu/en/home-assistant-electricity-price-co2-forecast/)
-- [Issue tracker](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/issues)
+- [Home Assistant community topic](https://community.home-assistant.io/t/free-electricity-price-and-co2-forecast-api-for-home-assistant-automations/1014796)
+- Email: [contact@energypriceforecast.eu](mailto:contact@energypriceforecast.eu)
+  - for anything about your API key or Private Pro, which does not belong in
+  a public issue
 - [Home Assistant community topic](https://community.home-assistant.io/t/free-electricity-price-and-co2-forecast-api-for-home-assistant-automations/1014796)

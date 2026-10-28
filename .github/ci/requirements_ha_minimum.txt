@@ -2,3 +2,7 @@
 # repository root so Dependabot does not raise it along with the current one:
 # moving this line is a decision to drop support, not a routine update.
 pytest-homeassistant-custom-component==0.13.254
+# Home Assistant 2025.6 brings aiodns 3.5.0, which asks for pycares>=4.9.0
+# with no upper bound; pycares 5 removed what that aiodns calls. A real
+# 2025.6 installation has the 4.x it was released with.
+pycares==4.11.0

@@ -1,0 +1,115 @@
+name: Something does not work
+description: A wrong value, a missing hour, an error in the log or a setup problem
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time. The diagnostics file answers most of the
+        first questions at once, so please attach it below.
+
+        Anything about your API key or Private Pro does not belong in a public
+        issue - write to **contact@energypriceforecast.eu** instead.
+
+  - type: input
+    id: version
+    attributes:
+      label: Integration version
+      description: HACS → Energy Price Forecast EU, or the diagnostics file (`integration_version`).
+      placeholder: "1.17.0"
+    validations:
+      required: true
+
+  - type: input
+    id: ha_version
+    attributes:
+      label: Home Assistant version
+      description: Settings → About.
+      placeholder: "2026.10.4"
+    validations:
+      required: true
+
+  - type: input
+    id: market
+    attributes:
+      label: Market
+      description: The bidding zone of the entry, as shown in its title.
+      placeholder: "NL"
+    validations:
+      required: true
+
+  - type: input
+    id: time_zone
+    attributes:
+      label: Home Assistant time zone
+      description: Settings → System → General. Many "missing hour" reports depend on it.
+      placeholder: "Europe/Amsterdam"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: retail
+    attributes:
+      label: Retail price
+      options:
+        - "Off"
+        - Estimate
+        - Own formula
+    validations:
+      required: true
+
+  - type: dropdown
+    id: horizon
+    attributes:
+      label: Horizon
+      options:
+        - 48 hours, no API key
+        - Up to 120 hours, with an API key
+    validations:
+      required: true
+
+  - type: textarea
+    id: what_happened
+    attributes:
+      label: What happened
+      description: What you saw, and when - the date and time help with anything that depends on the hour.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+    validations:
+      required: false
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: >-
+        Settings → Devices & services → Energy Price Forecast EU → the entry's
+        three-dot menu → Download diagnostics, then drag the file into this
+        field. Your API key and postal code are removed from it.
+    validations:
+      required: false
+
+  - type: textarea
+    id: excerpt
+    attributes:
+      label: The few slots around the problem (optional)
+      description: >-
+        If one value or hour is wrong, the attribute entries just before and
+        after it are enough - please not the whole series.
+      render: yaml
+    validations:
+      required: false
+
+  - type: textarea
+    id: log
+    attributes:
+      label: Log lines (optional)
+      description: Settings → System → Logs, filtered for "energypriceforecast".
+      render: text
+    validations:
+      required: false

@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Setup documentation
+    url: https://energypriceforecast.eu/en/home-assistant-electricity-price-co2-forecast/
+    about: Installation, every setting and ready-made dashboards.
+  - name: Home Assistant community topic
+    url: https://community.home-assistant.io/t/free-electricity-price-and-co2-forecast-api-for-home-assistant-automations/1014796
+    about: Questions, automation ideas and what others built with it.
+  - name: API key or Private Pro
+    url: https://energypriceforecast.eu/en/private-pro/
+    about: For anything about your key or subscription, write to contact@energypriceforecast.eu - not in a public issue.

@@ -215,7 +215,28 @@ def _forecast_only(entries: Any) -> list[dict[str, Any]]:
 # every update. They are meant to be read live (charts, templates), never
 # from history, so keep them out of the database entirely.
 _SERIES_ATTRIBUTES = frozenset({"raw_today", "raw_tomorrow", "raw_forecast"})
-_PRICE_SERIES_ATTRIBUTES = _SERIES_ATTRIBUTES | {"raw_forecast_reference"}
+# data_updated moves with every successful request; recording it would add a
+# history row per update for nothing a graph could show.
+_PRICE_SERIES_ATTRIBUTES = _SERIES_ATTRIBUTES | {
+    "raw_forecast_reference",
+    "data_updated",
+}
+
+
+def _freshness_attributes(
+    coordinator: EnergyPriceForecastCoordinator, source: str
+) -> dict[str, Any]:
+    """Whether this series is current, or the last good one kept after a failure.
+
+    A failed request keeps the previous series on purpose - an hour-old
+    forecast is still a forecast - so the entity stays available. These two
+    attributes are how a card or an automation can still tell that it is old.
+    """
+    updated = coordinator.health.last_success(source)
+    return {
+        "data_status": coordinator.health.status(source),
+        "data_updated": updated.isoformat() if updated is not None else None,
+    }
 
 # The emission assumptions are static for a model profile: the same ~1 KB
 # would be written to the database on every single update, describing a
@@ -711,6 +732,14 @@ class EnergyPriceForecastRetailPriceSensor(
             "raw_forecast_reference": self.coordinator.retail_forecast_reference,
             **_day_statistics(today, self.native_value),
             **self._source_attributes(),
+            # A formula is computed from the base series, so it is exactly as
+            # fresh as that; the estimate is a request of its own.
+            **_freshness_attributes(
+                self.coordinator,
+                "price_series"
+                if self.coordinator.retail_source == RETAIL_SOURCE_FORMULA
+                else "retail_series",
+            ),
         }
 
     def _source_attributes(self) -> dict[str, Any]:
@@ -786,6 +815,7 @@ class EnergyPriceForecastPriceSeriesSensor(
             "raw_forecast": _forecast_only(entries),
             "raw_forecast_reference": self.coordinator.price_forecast_reference,
             **_day_statistics(today, self.native_value),
+            **_freshness_attributes(self.coordinator, "price_series"),
         }
 
 

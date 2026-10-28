@@ -4,13 +4,16 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   hacs:
     name: HACS
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: hacs/action@main
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: hacs/action@1ebf01c408f29afcb6406bd431bc98fd8cbb15aa # main, 2026-06-08
         with:
           category: integration
 
@@ -18,22 +21,37 @@ jobs:
     name: Hassfest
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: home-assistant/actions/hassfest@master
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: home-assistant/actions/hassfest@86d4564712fa02543c808e3a693dd04f9d3f8361 # master, 2026-10-26
 
   tests:
-    name: Tests
+    # The oldest Home Assistant hacs.json promises, and the current one. A
+    # change that only works on one of them fails here before it ships.
+    name: Tests (${{ matrix.label }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: HA 2025.6, Python 3.13
+            python: "3.13"
+            requirements: .github/ci/requirements_ha_minimum.txt
+          - label: current HA, Python 3.14
+            python: "3.14"
+            requirements: requirements_test.txt
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
-          python-version: "3.13"
+          python-version: ${{ matrix.python }}
           cache: pip
-          cache-dependency-path: requirements_test.txt
-      - run: pip install -r requirements_test.txt
+          cache-dependency-path: ${{ matrix.requirements }}
+      - run: pip install -r ${{ matrix.requirements }}
+      - run: python -c "import homeassistant.const as c; print('Home Assistant', c.__version__)"
       - run: pytest
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        if: matrix.python == '3.14'
         with:
           node-version: "22"
       - run: node --test tests/price_chart.test.cjs
+        if: matrix.python == '3.14'

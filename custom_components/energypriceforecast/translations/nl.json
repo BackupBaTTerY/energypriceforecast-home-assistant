@@ -82,6 +82,16 @@
         "title": "Groot-Brittannië: halfuurtarieven",
         "description": "Britse tarieven zoals Octopus Agile stellen voor elk half uur een prijs vast. Deze prognose is per uur, omdat de day-ahead-veiling waarop ze berust ook per uur werkt.\n\nVoor de keuze wanneer iets moet draaien kost dat vrijwel niets: gemeten over 30 dagen echte Agile-prijzen was kiezen per uur in plaats van per half uur ongeveer 0,1 p/kWh slechter – zo'n zes pence bij een lading van 40 kWh.\n\nHet betekent wel dat de prijs voor nu een gemiddelde over het uur is en dus tussen de twee halfuurtarieven ligt die je in rekening gebracht krijgt."
       },
+      "reauth_confirm": {
+        "title": "API-sleutel wordt niet meer geaccepteerd",
+        "description": "De API heeft de opgeslagen sleutel voor {market} geweigerd – mogelijk is hij verlopen, ingetrokken of verkeerd ingevoerd. Voer een nieuwe sleutel in om de langere horizon te houden, of laat het veld leeg om verder te gaan met openbare toegang en de horizon van 48 uur.",
+        "data": {
+          "api_key": "API-sleutel"
+        },
+        "data_description": {
+          "api_key": "Je Private Pro-sleutel. Leeg laten voor openbare toegang."
+        }
+      },
       "tariff_lookup": {
         "title": "Je Deense nettarief",
         "description": "Gepubliceerd door Energinet in Energi Data Service en dagelijks bijgewerkt, inclusief kortingen die de netbeheerder apart boekt. De meeste huishoudens hebben \"Nettarif C\".",
@@ -185,6 +195,7 @@
       "expensive_hours_exceeds_window": "Het aantal duurste uren mag niet groter zijn dan de bloklengte."
     },
     "abort": {
+      "reauth_successful": "De API-sleutel is bijgewerkt.",
       "already_configured": "Deze markt is al geconfigureerd."
     }
   },

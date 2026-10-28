@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from typing import Any
 
 import voluptuous as vol
@@ -856,6 +857,48 @@ class EnergyPriceForecastConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="reconfigure",
             data_schema=_schema(defaults),
+            errors=errors,
+        )
+
+    async def async_step_reauth(
+        self, entry_data: Mapping[str, Any]
+    ) -> ConfigFlowResult:
+        """The API refused the stored key - expired, revoked or mistyped."""
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Ask for a new key, or for none at all.
+
+        Leaving the field empty is a real answer: it drops the key and keeps
+        the entry running on public access, with its shorter horizon, instead
+        of leaving it stopped until a new key is bought.
+        """
+        entry = self._get_reauth_entry()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            data = dict(entry.data)
+            key = str(user_input.get(CONF_API_KEY, "")).strip()
+            if key:
+                data[CONF_API_KEY] = key
+            else:
+                data.pop(CONF_API_KEY, None)
+            error = await self._async_check(data)
+            if error is None:
+                return self.async_update_reload_and_abort(entry, data=data)
+            errors["base"] = error
+
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(CONF_API_KEY, default=""): TextSelector(
+                        TextSelectorConfig(type=TextSelectorType.PASSWORD)
+                    ),
+                }
+            ),
+            description_placeholders={"market": str(entry.data.get(CONF_MARKET))},
             errors=errors,
         )
 

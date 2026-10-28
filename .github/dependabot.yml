@@ -1,0 +1,16 @@
+version: 2
+updates:
+  # The workflows pin actions to commit SHAs; this keeps those pins moving.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+  # requirements_test.txt only. The minimum-version file lives in .github/ci
+  # on purpose and is not scanned.
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly

@@ -82,6 +82,16 @@
         "title": "Storbritannia: halvtimestariffer",
         "description": "Britiske tariffer som Octopus Agile setter en pris for hver halvtime. Denne prognosen er timebasert, fordi day-ahead-auksjonen den bygger på også er det.\n\nNår du skal velge når noe skal kjøre, koster det nesten ingenting: målt over 30 dager med faktiske Agile-priser var valg etter timer i stedet for halvtimer omtrent 0,1 p/kWh dårligere – rundt seks pence på en lading på 40 kWh.\n\nDet betyr derimot at prisen for nå er et gjennomsnitt over timen, og dermed ligger mellom de to halvtimesprisene du blir fakturert for."
       },
+      "reauth_confirm": {
+        "title": "API-nøkkelen godtas ikke lenger",
+        "description": "API-et avviste den lagrede nøkkelen for {market} – den kan ha utløpt, blitt trukket tilbake eller blitt skrevet feil. Skriv inn en ny nøkkel for å beholde den lengre horisonten, eller la feltet stå tomt for å fortsette med offentlig tilgang og horisonten på 48 timer.",
+        "data": {
+          "api_key": "API-nøkkel"
+        },
+        "data_description": {
+          "api_key": "Din Private Pro-nøkkel. La stå tomt for offentlig tilgang."
+        }
+      },
       "tariff_lookup": {
         "title": "Din danske nettariff",
         "description": "Publisert av Energinet i Energi Data Service og oppdatert daglig, inkludert rabatter nettselskapet fører separat. De fleste husholdninger har «Nettarif C».",
@@ -185,6 +195,7 @@
       "expensive_hours_exceeds_window": "Antallet dyre timer kan ikke være større enn blokklengden."
     },
     "abort": {
+      "reauth_successful": "API-nøkkelen er oppdatert.",
       "already_configured": "Dette markedet er allerede konfigurert."
     }
   },

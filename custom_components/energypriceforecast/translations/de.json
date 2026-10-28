@@ -82,6 +82,16 @@
         "title": "Großbritannien: halbstündliche Tarife",
         "description": "Britische Tarife wie Octopus Agile setzen für jede halbe Stunde einen Preis. Diese Prognose ist stündlich, weil die Day-Ahead-Auktion, auf der sie beruht, stündlich ist.\n\nFür die Entscheidung, wann etwas laufen soll, kostet das fast nichts: über 30 Tage echter Agile-Preise gemessen war die Wahl nach Stunden statt nach Halbstunden rund 0,1 p/kWh schlechter – etwa sechs Pence bei einer Ladung von 40 kWh.\n\nEs heißt aber, dass der Preis für „jetzt“ ein Mittel über die Stunde ist und damit zwischen den beiden Halbstundenpreisen liegt, die dir berechnet werden."
       },
+      "reauth_confirm": {
+        "title": "API-Key wird nicht mehr akzeptiert",
+        "description": "Die API hat den für {market} gespeicherten Key abgelehnt – er ist vielleicht abgelaufen, wurde widerrufen oder falsch eingegeben. Gib einen neuen Key ein, um den längeren Horizont zu behalten, oder lass das Feld leer, um mit dem öffentlichen Zugang und seinem 48-Stunden-Horizont weiterzumachen.",
+        "data": {
+          "api_key": "API-Key"
+        },
+        "data_description": {
+          "api_key": "Dein Private-Pro-Key. Leer lassen für den öffentlichen Zugang."
+        }
+      },
       "tariff_lookup": {
         "title": "Dein dänischer Netztarif",
         "description": "Von Energinet in Energi Data Service veröffentlicht und einmal täglich aktualisiert, samt Rabatten, die der Netzbetreiber gesondert bucht. Die meisten Haushalte haben „Nettarif C“.",
@@ -185,6 +195,7 @@
       "expensive_hours_exceeds_window": "Die Anzahl der teuersten Stunden darf die Blocklänge nicht überschreiten."
     },
     "abort": {
+      "reauth_successful": "Der API-Key wurde aktualisiert.",
       "already_configured": "Dieser Markt ist bereits eingerichtet."
     }
   },

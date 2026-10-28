@@ -9,6 +9,7 @@ from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
@@ -16,7 +17,11 @@ from homeassistant.helpers.update_coordinator import (
 )
 from homeassistant.util import dt as dt_util
 
-from .api import EnergyPriceForecastApi, EnergyPriceForecastApiError
+from .api import (
+    EnergyPriceForecastApi,
+    EnergyPriceForecastApiError,
+    EnergyPriceForecastAuthError,
+)
 from .const import (
     DEFAULT_RETAIL_FACTOR,
     DEFAULT_PRICE_RESOLUTION,
@@ -29,6 +34,7 @@ from .const import (
     RETAIL_SOURCE_OFF,
 )
 from .forecast_reference import reference_entries, update_reference
+from .health import SourceHealth
 from .planning import (
     fixed_repeating_window,
     fixed_weekend_window,
@@ -163,6 +169,10 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._reference_cache: dict[str, Any] | None = None
         self.price_forecast_reference: list[dict[str, Any]] = []
         self.retail_forecast_reference: list[dict[str, Any]] = []
+        # Which request last succeeded and which failed. A failed series
+        # keeps its previous data on purpose; this is how the diagnostics
+        # and the series attributes can still say that it is old.
+        self.health = SourceHealth()
 
     @property
     def retail_pricing(self) -> bool:
@@ -480,8 +490,16 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         now = dt_util.utcnow()
         try:
             summary = await self.api.async_get_summary(include_series=True)
+        except EnergyPriceForecastAuthError as err:
+            # The key itself was refused - expired, revoked or mistyped. No
+            # retry will change that, so Home Assistant asks the user for a
+            # new one instead of showing unavailable entities.
+            self.health.failure("summary", now, err)
+            raise ConfigEntryAuthFailed(str(err)) from err
         except EnergyPriceForecastApiError as err:
+            self.health.failure("summary", now, err)
             raise UpdateFailed(str(err)) from err
+        self.health.success("summary", now)
 
         # A market without CO2 coverage returns no slots. Keeping the last
         # ones would be worse than showing nothing, so this clears.
@@ -501,13 +519,17 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 self.retail_forecast_reference = await self._async_capture_reference(
                     "retail", fresh_retail, f"estimate|{self.postal_code}"
                 )
+                self.health.success("retail_series", now)
             except EnergyPriceForecastApiError as err:
+                self.health.failure("retail_series", now, err)
                 _LOGGER.warning("Retail price update failed: %s", err)
             try:
                 self.retail_summary = await self.api.async_get_summary(
                     price_mode="retail", postal_code=self.postal_code
                 )
+                self.health.success("retail_summary", now)
             except EnergyPriceForecastApiError as err:
+                self.health.failure("retail_summary", now, err)
                 _LOGGER.warning("Retail summary update failed: %s", err)
 
         # The raw price series backs the price-series sensor (for charting,
@@ -523,7 +545,9 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self.price_forecast_reference = await self._async_capture_reference(
                 "base", fresh_prices, "base"
             )
+            self.health.success("price_series", now)
         except EnergyPriceForecastApiError as err:
+            self.health.failure("price_series", now, err)
             _LOGGER.warning("Price series update failed: %s", err)
 
         await self._async_save_series_cache()

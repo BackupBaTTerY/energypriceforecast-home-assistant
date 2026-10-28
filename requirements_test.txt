@@ -1,2 +1,3 @@
-pytest==9.0.0
-pytest-homeassistant-custom-component==0.13.316
+# Current Home Assistant. The test plugin pins Home Assistant, pytest and
+# pytest-asyncio itself, so it is the only line that needs a version.
+pytest-homeassistant-custom-component==0.13.375

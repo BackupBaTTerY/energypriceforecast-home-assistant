@@ -1,0 +1,4 @@
+# The oldest Home Assistant hacs.json allows (2025.6). Kept out of the
+# repository root so Dependabot does not raise it along with the current one:
+# moving this line is a decision to drop support, not a routine update.
+pytest-homeassistant-custom-component==0.13.254

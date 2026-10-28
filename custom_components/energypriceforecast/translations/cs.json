@@ -82,6 +82,16 @@
         "title": "Velká Británie: půlhodinové tarify",
         "description": "Britské tarify jako Octopus Agile stanovují cenu na každou půlhodinu. Tato předpověď je hodinová, protože hodinová je i denní aukce, ze které vychází.\n\nPro rozhodnutí, kdy něco spustit, to stojí téměř nic: měřeno na 30 dnech skutečných cen Agile byla volba po hodinách místo po půlhodinách horší zhruba o 0,1 p/kWh – asi šest pencí na nabití 40 kWh.\n\nZnamená to ale, že cena pro „teď“ je průměr za hodinu, a leží tedy mezi dvěma půlhodinovými cenami, které vám účtují."
       },
+      "reauth_confirm": {
+        "title": "API klíč už není přijímán",
+        "description": "API odmítlo klíč uložený pro {market} – mohl vypršet, být zrušen nebo chybně zadán. Zadejte nový klíč, abyste si ponechali delší horizont, nebo pole nechte prázdné a pokračujte s veřejným přístupem a jeho 48hodinovým horizontem.",
+        "data": {
+          "api_key": "API klíč"
+        },
+        "data_description": {
+          "api_key": "Váš klíč Private Pro. Ponechte prázdné pro veřejný přístup."
+        }
+      },
       "tariff_lookup": {
         "title": "Váš dánský tarif sítě",
         "description": "Zveřejňuje Energinet v Energi Data Service a aktualizuje se jednou denně, včetně slev, které provozovatel účtuje zvlášť. Většina domácností má „Nettarif C“.",
@@ -185,6 +195,7 @@
       "expensive_hours_exceeds_window": "Počet nejdražších hodin nesmí být větší než délka bloku."
     },
     "abort": {
+      "reauth_successful": "API klíč byl aktualizován.",
       "already_configured": "Tento trh je již nakonfigurován."
     }
   },

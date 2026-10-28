@@ -82,6 +82,16 @@
         "title": "Grande-Bretagne : tarifs à la demi-heure",
         "description": "Les tarifs britanniques comme Octopus Agile fixent un prix pour chaque demi-heure. Cette prévision est horaire, car l’enchère day-ahead sur laquelle elle repose l’est aussi.\n\nPour décider quand faire tourner un appareil, l’écart ne coûte presque rien : mesuré sur 30 jours de prix Agile réels, choisir à l’heure plutôt qu’à la demi-heure revenait à environ 0,1 p/kWh de plus – soit six pence pour une charge de 40 kWh.\n\nEn revanche, le prix affiché pour maintenant est une moyenne sur l’heure : il se situe entre les deux tarifs demi-horaires qui vous sont facturés."
       },
+      "reauth_confirm": {
+        "title": "Clé API refusée",
+        "description": "L’API a refusé la clé enregistrée pour {market} : elle a peut-être expiré, été révoquée ou mal saisie. Saisissez une nouvelle clé pour conserver l’horizon plus long, ou laissez le champ vide pour continuer avec l’accès public et son horizon de 48 heures.",
+        "data": {
+          "api_key": "Clé API"
+        },
+        "data_description": {
+          "api_key": "Votre clé Private Pro. Laissez vide pour l’accès public."
+        }
+      },
       "tariff_lookup": {
         "title": "Votre tarif de réseau danois",
         "description": "Publié par Energinet dans Energi Data Service et mis à jour une fois par jour, y compris les remises que le gestionnaire comptabilise à part. La plupart des ménages ont « Nettarif C ».",
@@ -185,6 +195,7 @@
       "expensive_hours_exceeds_window": "Le nombre d'heures chères ne peut pas dépasser la longueur du bloc."
     },
     "abort": {
+      "reauth_successful": "La clé API a été mise à jour.",
       "already_configured": "Ce marché est déjà configuré."
     }
   },

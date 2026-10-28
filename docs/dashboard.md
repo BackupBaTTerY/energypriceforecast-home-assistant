@@ -347,10 +347,17 @@ sections:
               format(x | float(0) * 100) }} ct{% else %}{{ '%.3f' | format(x |
               float(0)) }} {{ u }}{% endif %}{% endmacro %}
 
-              Exchange price
+              Exchange price now
 
               ## {% if states(b) | is_number %}{{ money(states(b)) }}{% else %}–{%
               endif %}
+
+              {% set p =
+              'sensor.energy_price_forecast_eu_de_current_retail_price' %}{% if
+              states(b) | is_number and states(p) | is_number and (states(p) |
+              float - states(b) | float) > 0.0005 %}+ {{ money(states(p) | float
+              - states(b) | float) }} grid fees and taxes = {{ money(states(p))
+              }} now{% endif %}
           - type: markdown
             content: >-
               {% set p = 'sensor.energy_price_forecast_eu_de_current_retail_price'

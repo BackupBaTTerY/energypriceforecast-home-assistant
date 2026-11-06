@@ -68,7 +68,9 @@ async def _until(condition, rounds: int = 200) -> None:
     for _ in range(rounds):
         if condition():
             return
-        await asyncio.sleep(0.01)
+        # sleep(0) only yields: the frozen test clock never lets a timed
+        # sleep end.
+        await asyncio.sleep(0)
 
 
 def test_every_blueprint_names_its_own_source() -> None:

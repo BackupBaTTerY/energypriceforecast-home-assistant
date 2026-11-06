@@ -73,6 +73,13 @@ async def _until(condition, rounds: int = 200) -> None:
         await asyncio.sleep(0)
 
 
+async def _stop_automations(hass) -> None:
+    """Drop the time trigger already scheduled for the next day."""
+    await hass.services.async_call(
+        "automation", "turn_off", {"entity_id": "all"}, blocking=True
+    )
+
+
 def test_every_blueprint_names_its_own_source() -> None:
     files = sorted(p.relative_to(BLUEPRINTS).as_posix() for p in BLUEPRINTS.rglob("*.yaml"))
     assert files == sorted([APPLIANCE, PLAN, TOMORROW])
@@ -255,6 +262,7 @@ async def test_tomorrow_is_summed_up_from_published_prices(hass, freezer) -> Non
     assert "Cheapest at 03:00 (5.0 ct)" in message
     assert "dearest at 18:00 (45.0 ct)" in message
     assert "Based on published prices." in message
+    await _stop_automations(hass)
 
 
 async def test_tomorrow_stays_quiet_while_it_is_incomplete(hass, freezer) -> None:
@@ -277,3 +285,4 @@ async def test_tomorrow_stays_quiet_while_it_is_incomplete(hass, freezer) -> Non
     async_fire_time_changed(hass)
     await hass.async_block_till_done()
     assert notes == []
+    await _stop_automations(hass)

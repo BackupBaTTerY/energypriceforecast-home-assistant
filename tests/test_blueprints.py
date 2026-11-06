@@ -1,6 +1,7 @@
 """The ready-made automations load in Home Assistant and do what they say."""
 from __future__ import annotations
 
+import asyncio
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -56,6 +57,18 @@ async def _automation(hass, path: str, inputs: dict) -> None:
     states = hass.states.async_all("automation")
     assert len(states) == 1
     assert states[0].state == "on", states[0].attributes
+
+
+async def _until(condition, rounds: int = 200) -> None:
+    """Let the event loop run until condition() holds.
+
+    Not async_block_till_done: that would wait for an automation that is
+    deliberately waiting for its start time, and never return.
+    """
+    for _ in range(rounds):
+        if condition():
+            return
+        await asyncio.sleep(0.01)
 
 
 def test_every_blueprint_names_its_own_source() -> None:
@@ -170,7 +183,7 @@ async def test_the_appliance_starts_in_the_cheapest_stretch_before_the_deadline(
     )
 
     hass.states.async_set("input_boolean.dishwasher_ready", "on")
-    await hass.async_block_till_done()
+    await _until(lambda: planned)
     # 00:00-02:00 local averages 0.11, the cheapest two hours before 07:00.
     assert len(planned) == 1
     assert planned[0].data["at"] == "00:00"
@@ -179,13 +192,14 @@ async def test_the_appliance_starts_in_the_cheapest_stretch_before_the_deadline(
 
     freezer.move_to("2026-11-06T22:59:00+00:00")
     async_fire_time_changed(hass)
-    await hass.async_block_till_done()
+    await _until(lambda: started, rounds=20)
     assert started == []
 
     freezer.move_to("2026-11-06T23:00:30+00:00")
     async_fire_time_changed(hass)
-    await hass.async_block_till_done()
+    await _until(lambda: started)
     assert len(started) == 1
+    await hass.async_block_till_done()
 
 
 async def test_the_appliance_starts_at_once_without_enough_data(hass, freezer) -> None:
@@ -205,8 +219,9 @@ async def test_the_appliance_starts_at_once_without_enough_data(hass, freezer) -
         },
     )
     hass.states.async_set("input_boolean.dishwasher_ready", "on")
-    await hass.async_block_till_done()
+    await _until(lambda: started)
     assert len(started) == 1
+    await hass.async_block_till_done()
 
 
 async def test_tomorrow_is_summed_up_from_published_prices(hass, freezer) -> None:

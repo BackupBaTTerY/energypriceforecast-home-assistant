@@ -29,6 +29,8 @@ jobs:
     # change that only works on one of them fails here before it ships.
     name: Tests (${{ matrix.label }})
     runs-on: ubuntu-latest
+    # A run normally takes about four minutes; a hung test should not take an hour.
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:

@@ -725,6 +725,45 @@ If you want a device to run for several hours *without interruption* instead,
 use the cheapest-window entities rather than the plan - see
 [Three similarly-named features](#three-similarly-named-features).
 
+## Ready-made automations (blueprints)
+
+Three automations to import with one click, set up in the Home Assistant UI
+without YAML. Each button opens your own Home Assistant; nothing is installed
+until you confirm there.
+
+**Run a device on a plan** - heat pump, water heater or EV charger on while a
+plan or window is active, off when it ends, with a choice of what to do while
+no plan exists yet. The automation above, ready-made.
+
+[![Import the blueprint: run a device on a plan](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FBackupBaTTerY%2Fenergypriceforecast-home-assistant%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fenergypriceforecast%2Frun_device_on_price_plan.yaml)
+
+**Start an appliance at the cheapest time before a deadline** - load the
+dishwasher, switch a "ready" helper on, and it starts in the cheapest stretch
+that is still finished by, say, 07:00. Unlike the cheapest window, which
+searches the whole forecast and can be days away, this one stays inside your
+deadline. It needs an appliance Home Assistant can start, for example through
+a smart plug or the maker's remote-start action.
+
+[![Import the blueprint: start an appliance before a deadline](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FBackupBaTTerY%2Fenergypriceforecast-home-assistant%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fenergypriceforecast%2Fstart_appliance_before_deadline.yaml)
+
+**Tell me what tomorrow costs** - once a day, tomorrow's average, cheapest and
+dearest time, and whether that is already the published price or still the
+forecast. Optionally only when tomorrow is expensive.
+
+[![Import the blueprint: tomorrow's price summary](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FBackupBaTTerY%2Fenergypriceforecast-home-assistant%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fenergypriceforecast%2Ftomorrow_price_notification.yaml)
+
+The files are in
+[`blueprints/`](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/tree/main/blueprints/automation/energypriceforecast).
+Missing one for your device? Say what you would automate in
+[Discussions](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/discussions).
+
+## Home batteries: EMHASS and Predbat
+
+Battery optimisers plan charging from the prices they know, which usually ends
+at midnight tomorrow. Fed from this integration they see the forecast beyond
+that - up to five days with Private Pro.
+[Set-up for EMHASS and Predbat](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/blob/main/docs/battery-optimisers.md).
+
 ## Build a price chart
 
 The price series sensor - and, with retail pricing, the current retail

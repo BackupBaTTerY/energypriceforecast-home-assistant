@@ -1,0 +1,88 @@
+blueprint:
+  name: Run a device on an Energy Price Forecast plan
+  description: >-
+    Switches devices on while an Energy Price Forecast plan or window is active
+    and off when it ends - a heat pump or water heater on the cheapest-hours
+    plan, an EV charger on the cheapest window, a battery charger on the
+    cleanest hours.
+
+
+    Pick one of the integration's "... active" binary sensors. When the plan is
+    not available yet (the forecast does not cover the whole block), the
+    sensor is unavailable rather than off; choose below what the devices
+    should do then. After a Home Assistant restart the current state is
+    applied again, so a planned hour is not missed for good.
+  domain: automation
+  source_url: https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/blob/main/blueprints/automation/energypriceforecast/run_device_on_price_plan.yaml
+  author: Energy Price Forecast
+  homeassistant:
+    min_version: 2025.6.0
+  input:
+    plan_sensor:
+      name: Plan or window
+      description: >-
+        One of the integration's binary sensors, for example "Cheapest hours
+        active", "Cheapest window active" or "Cleanest hours active".
+      selector:
+        entity:
+          filter:
+            - integration: energypriceforecast
+              domain: binary_sensor
+    devices:
+      name: Devices
+      description: Switched on while the plan is active, off when it is not.
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - domain:
+                - switch
+                - input_boolean
+                - light
+                - fan
+    when_unavailable:
+      name: While no plan is available
+      description: >-
+        What to do when the plan sensor is unavailable, for example before
+        tomorrow's forecast covers the whole block.
+      default: keep
+      selector:
+        select:
+          mode: list
+          options:
+            - label: Leave the devices as they are
+              value: keep
+            - label: Switch them off
+              value: "off"
+            - label: Switch them on
+              value: "on"
+
+mode: queued
+max_exceeded: silent
+
+variables:
+  plan_sensor: !input plan_sensor
+  when_unavailable: !input when_unavailable
+
+triggers:
+  - trigger: state
+    entity_id: !input plan_sensor
+  - trigger: homeassistant
+    event: start
+
+actions:
+  - variables:
+      wanted: >-
+        {% set s = states(plan_sensor) %}
+        {% if s in ['on', 'off'] %}{{ s }}{% else %}{{ when_unavailable }}{% endif %}
+  - choose:
+      - conditions: "{{ wanted == 'on' }}"
+        sequence:
+          - action: homeassistant.turn_on
+            target:
+              entity_id: !input devices
+      - conditions: "{{ wanted == 'off' }}"
+        sequence:
+          - action: homeassistant.turn_off
+            target:
+              entity_id: !input devices

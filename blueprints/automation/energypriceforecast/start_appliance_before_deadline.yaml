@@ -1,0 +1,158 @@
+blueprint:
+  name: Start an appliance at the cheapest time before a deadline
+  description: >-
+    For a dishwasher, washing machine or dryer: load it, switch the "ready"
+    helper on, and it starts in the cheapest stretch that still finishes by
+    the time you set - tonight's cheap hours rather than the cheapest window
+    of the whole forecast, which can be days away.
+
+
+    The start time is worked out from the integration's price series (published
+    prices plus the forecast) when "ready" turns on, and again after a Home
+    Assistant restart while it is still on. If there is not enough time or data
+    before the deadline, the appliance starts straight away. The appliance
+    itself must be startable from Home Assistant (a smart plug in the "on"
+    position, or the maker's remote-start action).
+  domain: automation
+  source_url: https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/blob/main/blueprints/automation/energypriceforecast/start_appliance_before_deadline.yaml
+  author: Energy Price Forecast
+  homeassistant:
+    min_version: 2025.6.0
+  input:
+    price_sensor:
+      name: Price series
+      description: >-
+        "Price forecast series", or "Current retail price" if you set up retail
+        pricing - both carry the slots this automation needs.
+      selector:
+        entity:
+          filter:
+            - integration: energypriceforecast
+              domain: sensor
+    ready_entity:
+      name: Ready
+      description: >-
+        Turned on when the appliance is loaded and may start, for example an
+        input_boolean helper or the appliance's own "remote start enabled"
+        sensor.
+      selector:
+        entity:
+          filter:
+            - domain:
+                - input_boolean
+                - binary_sensor
+                - switch
+    run_hours:
+      name: Programme length
+      description: How long the programme runs, in hours.
+      default: 2
+      selector:
+        number:
+          min: 0.25
+          max: 12
+          step: 0.25
+          unit_of_measurement: h
+    finish_by:
+      name: Finished by
+      description: The programme must be done by this time; the next one after "ready" turns on counts.
+      default: "07:00:00"
+      selector:
+        time: {}
+    start_actions:
+      name: Start the appliance
+      description: What starts it - for example switching its smart plug on.
+      selector:
+        action: {}
+    planned_actions:
+      name: When the start time is chosen (optional)
+      description: >-
+        Runs once the start is planned, for a notification. The variables
+        start_time (local time, HH:MM) and average_price are available.
+      default: []
+      selector:
+        action: {}
+    reset_ready:
+      name: Turn "ready" off after starting
+      description: Only works for an input_boolean or a switch.
+      default: true
+      selector:
+        boolean: {}
+
+mode: restart
+
+variables:
+  price_sensor: !input price_sensor
+  ready_entity: !input ready_entity
+  run_hours: !input run_hours
+  finish_by: !input finish_by
+  reset_ready: !input reset_ready
+
+triggers:
+  - trigger: state
+    entity_id: !input ready_entity
+    to: "on"
+  - trigger: homeassistant
+    event: start
+
+conditions:
+  - condition: state
+    entity_id: !input ready_entity
+    state: "on"
+
+actions:
+  - variables:
+      plan: >-
+        {% set slots = (state_attr(price_sensor, 'raw_today') or [])
+          + (state_attr(price_sensor, 'raw_tomorrow') or [])
+          + (state_attr(price_sensor, 'raw_forecast') or []) %}
+        {% set t = now() %}
+        {% set parts = finish_by.split(':') %}
+        {% set deadline = t.replace(hour=parts[0] | int, minute=parts[1] | int, second=0, microsecond=0) %}
+        {% if deadline <= t %}{% set deadline = deadline + timedelta(days=1) %}{% endif %}
+        {% set run = timedelta(minutes=(run_hours | float(2) * 60) | round(0) | int) %}
+        {% set ns = namespace(rows=[]) %}
+        {% for s in slots | sort(attribute='start') %}
+          {% set a = as_datetime(s.start) %}{% set b = as_datetime(s.end) %}
+          {% if a is not none and b is not none and s.value is number and b > t and a < deadline %}
+            {% set ns.rows = ns.rows + [{'a': a, 'b': b, 'v': s.value | float}] %}
+          {% endif %}
+        {% endfor %}
+        {% set rows = ns.rows %}
+        {% set best = namespace(start=none, avg=none) %}
+        {% for i in range(rows | count) %}
+          {% set first = [rows[i].a, t] | max %}
+          {% if first + run <= deadline %}
+            {% set acc = namespace(cost=0, covered=timedelta(0), last=rows[i].a, ok=true) %}
+            {% for r in rows[i:] if acc.covered < run %}
+              {% if r.a != acc.last %}{% set acc.ok = false %}{% endif %}
+              {% set seg_start = [r.a, first] | max %}
+              {% set seg = [r.b - seg_start, run - acc.covered] | min %}
+              {% set acc.cost = acc.cost + r.v * seg.total_seconds() %}
+              {% set acc.covered = acc.covered + seg %}
+              {% set acc.last = r.b %}
+            {% endfor %}
+            {% if acc.ok and acc.covered >= run %}
+              {% set avg = acc.cost / run.total_seconds() %}
+              {% if best.avg is none or avg < best.avg - 0.0000001 %}
+                {% set best.start = first %}{% set best.avg = avg %}
+              {% endif %}
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+        {{ {'start': (best.start or t).isoformat(), 'average': best.avg, 'found': best.start is not none} }}
+      start_time: "{{ as_local(as_datetime(plan.start)).strftime('%H:%M') }}"
+      average_price: "{{ plan.average }}"
+  - choose: []
+    default: !input planned_actions
+  - wait_template: "{{ now() >= as_datetime(plan.start) }}"
+  - condition: state
+    entity_id: !input ready_entity
+    state: "on"
+  - choose: []
+    default: !input start_actions
+  - if:
+      - "{{ reset_ready and ready_entity.split('.')[0] in ['input_boolean', 'switch'] }}"
+    then:
+      - action: homeassistant.turn_off
+        target:
+          entity_id: !input ready_entity

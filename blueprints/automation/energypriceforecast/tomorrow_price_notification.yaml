@@ -1,0 +1,122 @@
+blueprint:
+  name: Tell me what tomorrow's electricity costs
+  description: >-
+    Once a day, sums up tomorrow from the Energy Price Forecast series: the
+    average, the cheapest and the dearest slot, and whether those are already
+    published prices or still the forecast. Optionally only when tomorrow is
+    expensive.
+
+
+    Before the day-ahead prices are published (usually early afternoon) the
+    numbers are the forecast, so an evening notification is mostly based on
+    published prices and a morning one on the forecast. The default action
+    creates a notification in Home Assistant; replace it with your phone's
+    notify action to get it on your phone.
+  domain: automation
+  source_url: https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/blob/main/blueprints/automation/energypriceforecast/tomorrow_price_notification.yaml
+  author: Energy Price Forecast
+  homeassistant:
+    min_version: 2025.6.0
+  input:
+    price_sensor:
+      name: Price series
+      description: >-
+        "Price forecast series", or "Current retail price" for your all-in
+        price if you set up retail pricing.
+      selector:
+        entity:
+          filter:
+            - integration: energypriceforecast
+              domain: sensor
+    at_time:
+      name: Time
+      default: "18:00:00"
+      selector:
+        time: {}
+    only_above:
+      name: Only if tomorrow's average is above
+      description: >-
+        In the sensor's own unit, for example 0.30 for 30 ct/kWh. Leave at 0 to
+        be told every day.
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 10
+          step: 0.001
+          mode: box
+    notify_actions:
+      name: Notification
+      description: >-
+        Variables available: average, cheapest_time, cheapest_price,
+        dearest_time, dearest_price, unit, based_on ("published prices",
+        "the forecast" or "published prices and the forecast") and summary,
+        a ready-made sentence.
+      default:
+        - action: persistent_notification.create
+          data:
+            title: Electricity tomorrow
+            message: "{{ summary }}"
+            notification_id: energypriceforecast_tomorrow
+      selector:
+        action: {}
+
+mode: single
+
+variables:
+  price_sensor: !input price_sensor
+  only_above: !input only_above
+  day: >-
+    {% set published = state_attr(price_sensor, 'raw_tomorrow') or [] %}
+    {% set forecast = state_attr(price_sensor, 'raw_forecast') or [] %}
+    {% set tomorrow = (now() + timedelta(days=1)).date() %}
+    {% set ns = namespace(rows=[], minutes=0, published=0, forecast=0) %}
+    {% for kind, slots in [('p', published), ('f', forecast)] %}
+      {% for s in slots %}
+        {% set a = as_datetime(s.start) %}{% set b = as_datetime(s.end) %}
+        {% if a is not none and b is not none and s.value is number and as_local(a).date() == tomorrow %}
+          {% set m = ((b - a).total_seconds() / 60) | int %}
+          {% set ns.rows = ns.rows + [{'a': a, 'm': m, 'v': s.value | float}] %}
+          {% set ns.minutes = ns.minutes + m %}
+          {% if kind == 'p' %}{% set ns.published = ns.published + 1 %}{% else %}{% set ns.forecast = ns.forecast + 1 %}{% endif %}
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+    {% set rows = ns.rows | sort(attribute='a') %}
+    {% set acc = namespace(cost=0) %}
+    {% for r in rows %}{% set acc.cost = acc.cost + r.v * r.m %}{% endfor %}
+    {% set lo = rows | min(attribute='v') if rows else none %}
+    {% set hi = rows | max(attribute='v') if rows else none %}
+    {{ {
+      'complete': ns.minutes >= 23 * 60,
+      'average': (acc.cost / ns.minutes) if ns.minutes else none,
+      'cheapest_time': as_local(lo.a).strftime('%H:%M') if lo else none,
+      'cheapest_price': lo.v if lo else none,
+      'dearest_time': as_local(hi.a).strftime('%H:%M') if hi else none,
+      'dearest_price': hi.v if hi else none,
+      'based_on': 'published prices' if ns.forecast == 0 else ('the forecast' if ns.published == 0 else 'published prices and the forecast')
+    } }}
+  unit: "{{ state_attr(price_sensor, 'unit_of_measurement') or '' }}"
+  average: "{{ day.average }}"
+  cheapest_time: "{{ day.cheapest_time }}"
+  cheapest_price: "{{ day.cheapest_price }}"
+  dearest_time: "{{ day.dearest_time }}"
+  dearest_price: "{{ day.dearest_price }}"
+  based_on: "{{ day.based_on }}"
+  summary: >-
+    {% macro money(x) %}{% if unit[:3] == 'EUR' %}{{ '%.1f' | format(x * 100) }} ct{% else %}{{ '%.3f' | format(x) }} {{ unit }}{% endif %}{% endmacro %}
+    Tomorrow averages {{ money(day.average) }}. Cheapest at {{ day.cheapest_time }}
+    ({{ money(day.cheapest_price) }}), dearest at {{ day.dearest_time }}
+    ({{ money(day.dearest_price) }}). Based on {{ day.based_on }}.
+
+triggers:
+  - trigger: time
+    at: !input at_time
+
+conditions:
+  - "{{ day.complete and day.average is not none }}"
+  - "{{ only_above | float(0) <= 0 or day.average > only_above | float(0) }}"
+
+actions:
+  - choose: []
+    default: !input notify_actions

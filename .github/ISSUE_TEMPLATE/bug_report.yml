@@ -11,6 +11,9 @@ body:
         Anything about your API key or Private Pro does not belong in a public
         issue - write to **contact@energypriceforecast.eu** instead.
 
+        A question or a wish rather than a fault? Ask in
+        [Discussions](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/discussions) instead.
+
   - type: input
     id: version
     attributes:

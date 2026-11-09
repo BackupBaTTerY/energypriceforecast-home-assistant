@@ -11,6 +11,10 @@ The integration combines published day-ahead prices with forecast values for
 the remaining horizon. It exposes ready-to-use entities for automations without
 requiring YAML or JSON templates.
 
+**Questions, ideas, or something you would like it to do?** Ask in
+[Discussions](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/discussions) - that is where wishes are collected and answered.
+Something broken? [Report a problem](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/issues/new?template=bug_report.yml).
+
 ![A Home Assistant dashboard built from this integration: the price now, today's range, the best four-hour window and the cheapest-hours plan, a chart of published prices followed by five days of forecast, and the forecast quality measured for the market.](https://raw.githubusercontent.com/BackupBaTTerY/energypriceforecast-home-assistant/main/docs/images/dashboard.png)
 
 *Germany, retail price, a Friday in October 2026. Green is the published
@@ -803,12 +807,15 @@ whether a series has a gap or an overlap - with the times involved, which is
 what a missing hour around a change of daylight-saving time looks like. Your
 API key and postal code are removed from it.
 
-- [Report a problem](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/issues/new/choose) -
-  the form asks for the version, market and time zone, and takes the
-  diagnostics file
+- [Questions and ideas](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/discussions) - setup questions, a feature
+  you are missing, an automation you would like, or what you built with it.
+  This is the place for anything that is not a fault.
+- [Report a problem](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/issues/new?template=bug_report.yml) -
+  for something that is broken; the form asks for the version, market and
+  time zone, and takes the diagnostics file
 - [Setup documentation](https://energypriceforecast.eu/en/home-assistant-electricity-price-co2-forecast/)
-- [Home Assistant community topic](https://community.home-assistant.io/t/free-electricity-price-and-co2-forecast-api-for-home-assistant-automations/1014796)
+- [Home Assistant community topic](https://community.home-assistant.io/t/free-electricity-price-and-co2-forecast-api-for-home-assistant-automations/1014796) -
+  to read along and see what others built
 - Email: [contact@energypriceforecast.eu](mailto:contact@energypriceforecast.eu)
   - for anything about your API key or Private Pro, which does not belong in
-  a public issue
-- [Home Assistant community topic](https://community.home-assistant.io/t/free-electricity-price-and-co2-forecast-api-for-home-assistant-automations/1014796)
+  public

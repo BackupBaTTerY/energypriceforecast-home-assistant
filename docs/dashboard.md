@@ -537,6 +537,34 @@ sections:
               }
               return runs.flatMap(run => [[run.start, 1], [run.end, 0]]);
           - entity: sensor.energy_price_forecast_eu_de_current_retail_price
+            name: Price spike possible
+            yaxis_id: plan
+            type: area
+            curve: stepline
+            color: '#e53935'
+            opacity: 0.15
+            stroke_width: 0
+            extend_to: false
+            show:
+              legend_value: false
+            data_generator: |
+              // Evenings the forecast marks as a possible price spike
+              // (AT BE CZ DE DK1 DK2 FR NL, 1.18.0) - a warning, often a
+              // false alarm; elsewhere this band simply stays empty.
+              const raw = (entity.attributes.raw_forecast ?? [])
+                .filter(e => e.spike_possible === true)
+                .map(e => ({
+                  start: new Date(e.start).getTime(),
+                  end: new Date(e.end).getTime(),
+                })).sort((a, b) => a.start - b.start);
+              const runs = [];
+              for (const slot of raw) {
+                const last = runs[runs.length - 1];
+                if (last && slot.start <= last.end) last.end = Math.max(last.end, slot.end);
+                else runs.push({ ...slot });
+              }
+              return runs.flatMap(run => [[run.start, 1], [run.end, 0]]);
+          - entity: sensor.energy_price_forecast_eu_de_current_retail_price
             name: Published
             yaxis_id: price
             type: line
@@ -615,8 +643,10 @@ sections:
         content: >-
           <sub>Retail price per slot. Green: the published day-ahead prices;
           orange: the forecast for the days after. Dashed blue over the green
-          line: the last forecast before the price was published. The figures
-          below measure that same gap on the exchange price, so your tariff
+          line: the last forecast before the price was published. Blue bands:
+          the planned cheap hours; red bands: evenings where a price spike is
+          possible - a warning, often a false alarm. The figures below
+          measure the forecast gap on the exchange price, so your tariff
           scales it.</sub>
         grid_options:
           columns: full

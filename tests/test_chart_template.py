@@ -36,7 +36,8 @@ def test_the_card_draws_the_comparable_forecast_and_no_fixed_currency():
     example = (ROOT / "examples/price-card.yaml").read_text(encoding="utf-8")
     card = yaml.safe_load(example)
     chart = card["sections"][3]["cards"][1]
-    reference = chart["series"][3]
+    by_name = {series["name"]: series for series in chart["series"]}
+    reference = by_name["Forecast before publication"]
 
     # The line that is held against the published quality figures.
     assert reference["name"] == "Forecast before publication"
@@ -58,3 +59,17 @@ def test_the_card_offers_the_longer_horizon_only_to_who_lacks_it():
     assert "'mdi:clock-check-outline'" in footer
     # Anyone who already has 120 hours does not see an advert.
     assert "float < 120" in footer
+
+
+def test_the_card_bands_the_evenings_marked_as_possible_spikes():
+    example = (ROOT / "examples/price-card.yaml").read_text(encoding="utf-8")
+    chart = yaml.safe_load(example)["sections"][3]["cards"][1]
+    spike = {series["name"]: series for series in chart["series"]}["Price spike possible"]
+
+    # A band on the hidden 0..1 axis, like the cheap hours - never a price.
+    assert spike["yaxis_id"] == "plan"
+    assert spike["type"] == "area"
+    assert "spike_possible === true" in spike["data_generator"]
+    assert "raw_forecast" in spike["data_generator"]
+    # The caption owns up to what it is.
+    assert "often a false alarm" in example

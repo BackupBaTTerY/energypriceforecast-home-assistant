@@ -278,6 +278,7 @@
       "is_in_expensive_hours": {"name": "Heures les plus chères actives"},
       "is_in_greenest_hours": {"name": "Heures les plus propres actives"},
       "prices_unpublished": {"name": "Prix publiés manquants"},
+      "price_spike_possible": {"name": "Pic de prix possible"},
       "combined_window_active": {"name": "Fenêtre combinée active"},
       "retail_cheapest_window_active": {"name": "Fenêtre la moins chère active (détail)"}
     }

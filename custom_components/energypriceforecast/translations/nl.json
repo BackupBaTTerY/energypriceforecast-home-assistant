@@ -278,6 +278,7 @@
       "is_in_expensive_hours": {"name": "Duurste uren actief"},
       "is_in_greenest_hours": {"name": "Schoonste uren actief"},
       "prices_unpublished": {"name": "Gepubliceerde prijzen ontbreken"},
+      "price_spike_possible": {"name": "Prijspiek mogelijk"},
       "combined_window_active": {"name": "Gecombineerd venster actief"},
       "retail_cheapest_window_active": {"name": "Goedkoopste tijdvak actief (consumentenprijs)"}
     }

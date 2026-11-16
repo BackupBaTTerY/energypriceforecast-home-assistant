@@ -16,6 +16,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .const import CONF_MARKET, SPIKE_HINT_MARKETS
 from .coordinator import EnergyPriceForecastCoordinator
 from .entity import EnergyPriceForecastEntity, QuarterHourStateRefreshMixin
 
@@ -131,6 +132,8 @@ async def async_setup_entry(
         entities.append(EnergyPriceForecastGreenestHoursBinarySensor(coordinator, entry))
     entities.append(EnergyPriceForecastCombinedWindowBinarySensor(coordinator, entry))
     entities.append(EnergyPriceForecastUnpublishedPriceBinarySensor(coordinator, entry))
+    if entry.data.get(CONF_MARKET) in SPIKE_HINT_MARKETS:
+        entities.append(EnergyPriceForecastSpikeHintBinarySensor(coordinator, entry))
     async_add_entities(entities)
 
 
@@ -400,6 +403,94 @@ class EnergyPriceForecastUnpublishedPriceBinarySensor(
         return {
             "price_source": self._current_source(),
             "published_until": self._published_until(),
+        }
+
+
+def _spike_runs(series_data: dict[str, Any] | None) -> list[dict[str, str]]:
+    """Upcoming slots marked spike_possible, joined into contiguous runs.
+
+    A run is one evening stretch, so `next_start`/`next_end` say "from 17:00
+    to 20:00" rather than listing twelve quarter hours.
+    """
+    entries = (series_data or {}).get("entries")
+    if not isinstance(entries, list):
+        return []
+    now = datetime.now(timezone.utc)
+    marked: list[tuple[datetime, datetime]] = []
+    for entry in entries:
+        if not isinstance(entry, dict) or entry.get("spike_possible") is not True:
+            continue
+        start = _parse_timestamp(entry.get("start"))
+        end = _parse_timestamp(entry.get("end"))
+        if start is None or end is None or end <= now:
+            continue
+        marked.append((start, end))
+    marked.sort()
+    runs: list[list[datetime]] = []
+    for start, end in marked:
+        if runs and start <= runs[-1][1]:
+            runs[-1][1] = max(runs[-1][1], end)
+        else:
+            runs.append([start, end])
+    return [{"start": start.isoformat(), "end": end.isoformat()} for start, end in runs]
+
+
+class EnergyPriceForecastSpikeHintBinarySensor(
+    QuarterHourStateRefreshMixin, EnergyPriceForecastEntity, BinarySensorEntity
+):
+    """On while the forecast marks an upcoming evening hour as a possible spike.
+
+    The hint the app shows since 13 November 2026: an evening forecast hour
+    (16-23 local) whose regional spike-risk score reaches 0.99. It is a
+    warning, not a price - the series keeps its values - and only ever
+    covers hours whose official price is not published yet; once it is, the
+    price itself says whether the spike came.
+
+    Disabled by default, because it is often wrong: live from 18 October to
+    13 November 106 of 192 marked hours were real spikes, in a November with
+    far more evening spikes than usual; over a whole year about one mark in
+    seven is to be expected. Good for keeping a battery charged or a heat
+    pump ahead, where a false alarm costs little; not for switching
+    something off.
+    """
+
+    _attr_translation_key = "price_spike_possible"
+    _attr_icon = "mdi:flash-alert-outline"
+    _attr_entity_registry_enabled_default = False
+
+    def __init__(
+        self, coordinator: EnergyPriceForecastCoordinator, entry: ConfigEntry
+    ) -> None:
+        super().__init__(coordinator, entry, "price_spike_possible")
+
+    def _hint(self) -> dict[str, Any]:
+        source = (self.coordinator.price_series or {}).get("source")
+        hint = source.get("spike_hint") if isinstance(source, dict) else None
+        return hint if isinstance(hint, dict) else {}
+
+    @property
+    def available(self) -> bool:
+        """Unavailable unless the API says it could judge the hours.
+
+        Without that, "off" would claim no spike is in sight when nobody
+        looked - the index was stale, missing or the API older.
+        """
+        return super().available and self._hint().get("status") == "ok"
+
+    @property
+    def is_on(self) -> bool:
+        return bool(_spike_runs(self.coordinator.price_series))
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        runs = _spike_runs(self.coordinator.price_series)
+        hint = self._hint()
+        return {
+            "next_start": runs[0]["start"] if runs else None,
+            "next_end": runs[0]["end"] if runs else None,
+            "periods": runs,
+            "min_score": hint.get("min_score"),
+            "hint_updated": hint.get("updated_at"),
         }
 
 

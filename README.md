@@ -403,6 +403,35 @@ One limitation worth knowing: nothing stops the cheapest and the most expensive
 plan from being configured so tightly that they meet in the middle of a short
 block. They are two independent plans over the same hours, not one schedule.
 
+### Price spike possible *(1.18.0)*
+
+In AT, BE, CZ, DE, DK1, DK2, FR and NL there is one more binary sensor,
+**Price spike possible** - the same hint the Energy Price Forecast app shows.
+It is **disabled by default**; enable it on the device page if you want it.
+
+| Name | Type | Unit |
+| --- | --- | --- |
+| Price spike possible | binary sensor | on/off |
+
+It is on while the forecast marks an upcoming evening hour (16:00-23:00 local)
+as a possible price spike: a regional spike-risk index across these markets -
+residual load, scarcity and how little wind and sun there is - has reached
+0.99 for that hour. `next_start` and `next_end` give the next marked stretch,
+`periods` all of them. Only hours without a published price are marked; once
+tomorrow's prices are out, they say for themselves whether the spike came.
+The prices in the series are never changed by it. In `raw_forecast` the
+marked slots carry `spike_possible: true`, so a chart can colour them.
+
+**How often it is right** - read this before automating on it. Live from 18
+October to 13 November 2026, 106 of 192 marked hours were real spikes
+(the day-ahead price ended at least 5 ct/kWh above the forecast). That
+November had far more evening spikes than usual; over a whole year, about
+**one mark in seven** is to be expected. So it suits decisions where a false
+alarm costs little - keep the home battery charged for the evening, run the
+heat pump a bit ahead - and not switching something off. Without a fresh
+index the sensor is unavailable rather than claiming that no spike is in
+sight.
+
 ### More about the entities
 
 - [Where the CO2 number comes from](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/blob/main/docs/entities.md#where-the-co2-number-comes-from)

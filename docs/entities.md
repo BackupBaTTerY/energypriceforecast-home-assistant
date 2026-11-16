@@ -199,6 +199,10 @@ comparison against another hour in the same block, nothing more.
   **empty until
   tomorrow's prices are published** (usually early afternoon) - the estimate
   for those hours is in `raw_forecast` instead, and the two never overlap.
+  In the eight markets with a spike hint, a `raw_forecast` slot the forecast
+  marks as a possible evening price spike carries `spike_possible: true`
+  *(1.18.0)*; see
+  [Price spike possible](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/blob/main/README.md#price-spike-possible-1180).
   Both sensors select the current slot at every quarter hour, independently of
   the configured API poll interval and without making an extra request.
 - Both price sensors also carry `raw_forecast_reference` *(1.12.0)*: what was

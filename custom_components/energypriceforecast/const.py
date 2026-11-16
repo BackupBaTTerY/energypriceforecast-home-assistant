@@ -9,7 +9,7 @@ NAME: Final = "Energy Price Forecast EU"
 # from. Must equal manifest.json's version - test_version.py enforces that,
 # because this drifted to 0.1.0 for ten releases and every request from
 # every user was mislabelled the whole time.
-VERSION: Final = "1.17.1"
+VERSION: Final = "1.18.0"
 DEFAULT_API_URL: Final = (
     "https://api.energypriceforecast.eu/api/v1/home-assistant/summary"
 )
@@ -242,6 +242,13 @@ PLATFORMS: Final = ["sensor", "binary_sensor"]
 # Germany prices the grid fee by postal code; every other estimate market
 # uses country-wide assumptions and needs nothing beyond the market.
 POSTAL_CODE_MARKETS: Final[frozenset[str]] = frozenset({"DE"})
+
+# Markets the API marks with "price spike possible": the regional spike-risk
+# index covers the Central-West-European markets that set each other's
+# evening prices. Everywhere else the entity is not created.
+SPIKE_HINT_MARKETS: Final[frozenset[str]] = frozenset(
+    {"AT", "BE", "CZ", "DE", "DK1", "DK2", "FR", "NL"}
+)
 RETAIL_MARKETS: Final[frozenset[str]] = frozenset(
     {"DE", "NL", "DK1", "DK2", "AT", "NO1", "NO2", "NO3", "NO4", "NO5"}
 )

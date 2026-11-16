@@ -203,7 +203,13 @@ def _forecast_only(entries: Any) -> list[dict[str, Any]]:
     if not isinstance(entries, list):
         return []
     return [
-        {"start": entry.get("start"), "end": entry.get("end"), "value": entry.get("value")}
+        {
+            "start": entry.get("start"),
+            "end": entry.get("end"),
+            "value": entry.get("value"),
+            # Only on marked slots, so a card can colour them (1.18.0).
+            **({"spike_possible": True} if entry.get("spike_possible") is True else {}),
+        }
         for entry in entries
         if entry.get("source") == "forecast"
     ]

@@ -137,11 +137,25 @@ because the estimate already contains a grid fee of its own:
 | AT, NL, IT, CH | Nothing to enter: a flat network charge, or no tariff that follows the exchange |
 
 **The form** has two short steps. First the windows: when the low rate
-starts and ends, when the peak rate starts and ends, whether weekends are
-charged at the low rate, and optionally which months are winter. Hours are
-the market's local time, a window runs from its first hour up to - not
-including - its last, so 22 to 6 is the night, and equal hours mean there is
-no such window. A winter from 11 to 3 crosses New Year as it should. Then
+applies, when the peak rate applies, whether weekends are charged at the
+low rate, and optionally which months are winter. Since *1.19.0* each level
+takes several windows on the quarter hour, written as on the price sheet:
+
+| Field | Example |
+|---|---|
+| Low rate windows | `22:00-06:00` or `00:00-06:00, 13:00-15:00` |
+| Peak rate windows | `17:00-21:00` or `07:00-09:00, 17:15-20:45` |
+
+Times are the market's local time. A window runs from its start up to - not
+including - its end, so `22:00-06:00` is the night and `18:00-24:00` ends at
+midnight. Separate windows with commas; leave the peak field empty for a
+tariff with two levels. Times must be on the quarter hour, because that is
+how the meter counts, and a low and a peak window may not share a quarter
+hour. An hour that a window splits - peak from 17:15 - is priced at the
+average of its four quarters; the quarter-hour series gets each quarter's
+own rate. Entries set up before 1.19.0 keep working unchanged and show
+their two whole hours as text the next time you reconfigure. A winter from
+11 to 3 crosses New Year as it should. Then
 the amounts, only for the levels and seasons you actually set, per kWh and
 without VAT; fixed per-kWh taxes stay in the surcharge.
 

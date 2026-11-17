@@ -11,9 +11,15 @@ from custom_components.energypriceforecast.time_of_use import (
     Rates,
     Schedule,
     in_month_range,
+    InvalidWindows,
+    format_windows,
     in_window,
+    in_windows,
     mean_rate,
+    parse_windows,
     schedule_from_config,
+    windows_from_hours,
+    windows_overlap,
     WEEKEND_LIKE_WEEKDAY,
     WEEKEND_LOW,
 )
@@ -29,10 +35,8 @@ WINTER = Rates(low=0.0653, standard=0.1959, peak=0.5877)
 
 def _danish(weekend: str = WEEKEND_LIKE_WEEKDAY, seasonal: bool = True) -> Schedule:
     return Schedule(
-        low_start=0,
-        low_end=6,
-        peak_start=17,
-        peak_end=21,
+        low=windows_from_hours(0, 6),
+        peak=windows_from_hours(17, 21),
         weekend=weekend,
         summer=SUMMER,
         zone=DK,
@@ -158,10 +162,8 @@ def test_the_clock_is_the_markets_own_one() -> None:
 def test_a_two_level_tariff_has_no_peak_window() -> None:
     """Norway, Finland and Belgium: one cheap window, one price for the rest."""
     schedule = Schedule(
-        low_start=22,
-        low_end=6,
-        peak_start=0,
-        peak_end=0,
+        low=windows_from_hours(22, 6),
+        peak=(),
         weekend=WEEKEND_LOW,
         summer=Rates(low=0.1856, standard=0.2456, peak=0.0),
         zone=ZoneInfo("Europe/Oslo"),
@@ -183,10 +185,8 @@ def test_the_key_changes_with_every_amount_and_window() -> None:
     assert base.key() != _danish(weekend=WEEKEND_LOW).key()
     assert base.key() != _danish(seasonal=False).key()
     cheaper = Schedule(
-        low_start=0,
-        low_end=6,
-        peak_start=17,
-        peak_end=21,
+        low=windows_from_hours(0, 6),
+        peak=windows_from_hours(17, 21),
         weekend=WEEKEND_LIKE_WEEKDAY,
         summer=Rates(low=0.0429, standard=0.0644, peak=0.1),
         zone=DK,
@@ -268,7 +268,7 @@ def test_schedule_from_config_reads_the_stored_keys() -> None:
         DK,
     )
 
-    assert schedule.low_end == 6
+    assert schedule.low == ((0, 360),)
     assert schedule.weekend == WEEKEND_LOW
     assert schedule.summer.peak == pytest.approx(0.1674)
     assert schedule.winter is not None
@@ -287,3 +287,133 @@ def test_a_config_without_winter_prices_has_one_season() -> None:
 
     assert schedule.winter is None
     assert schedule.rate_at(datetime(2026, 1, 15, 3, tzinfo=DK)) == pytest.approx(0.04)
+
+
+# Several windows per level, on the quarter hour (1.19.0): the shape of a
+# German Modul 3 price sheet, where each operator sets its own windows.
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("", ()),
+        (None, ()),
+        ("22:00-06:00", ((1320, 360),)),
+        ("22-6", ((1320, 360),)),
+        ("06:00-08:00, 17:15-20:45", ((360, 480), (1035, 1245))),
+        ("06:00 \u2013 08:00; 17:15\u201320:45\n", ((360, 480), (1035, 1245))),
+        # Midnight as an end is a day's end, the same window as "18 to 0".
+        ("18:00-24:00", ((1080, 0),)),
+    ],
+)
+def test_windows_are_read_from_text(text, expected) -> None:
+    assert parse_windows(text) == expected
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "17:10-20:00",  # off the quarter hour: a typo, not a tariff
+        "17:00",
+        "17:00-17:00",
+        "00:00-24:00",
+        "25:00-06:00",
+        "06:60-08:00",
+        "abends",
+    ],
+)
+def test_text_that_is_not_a_window_is_refused(text) -> None:
+    with pytest.raises(InvalidWindows):
+        parse_windows(text)
+
+
+def test_windows_are_written_back_in_one_spelling() -> None:
+    assert format_windows(parse_windows("6-8,17:15 - 20:45")) == "06:00-08:00, 17:15-20:45"
+    assert format_windows(parse_windows("18-24")) == "18:00-00:00"
+    assert format_windows(()) == ""
+    assert windows_from_hours(17, 17) == ()
+
+
+def test_in_windows_covers_every_window_and_the_night() -> None:
+    windows = parse_windows("06:00-08:00, 17:15-20:45, 23:00-01:00")
+    inside = [360, 479, 1035, 1244, 1380, 0, 59]
+    outside = [480, 1034, 1245, 60, 720]
+    assert all(in_windows(m, windows) for m in inside)
+    assert not any(in_windows(m, windows) for m in outside)
+
+
+def test_overlap_is_judged_on_the_quarter_hour() -> None:
+    assert windows_overlap(parse_windows("22:00-06:00"), parse_windows("05:45-08:00"))
+    assert not windows_overlap(parse_windows("22:00-06:00"), parse_windows("06:00-08:00"))
+    assert not windows_overlap((), parse_windows("06:00-08:00"))
+
+
+def _modul_3() -> Schedule:
+    """Two peak windows, one of them starting at a quarter past."""
+    return Schedule(
+        low=parse_windows("00:00-06:00, 13:00-15:00"),
+        peak=parse_windows("07:00-09:00, 17:15-20:45"),
+        weekend=WEEKEND_LIKE_WEEKDAY,
+        summer=Rates(low=0.03, standard=0.08, peak=0.14),
+        zone=ZoneInfo("Europe/Berlin"),
+    )
+
+
+@pytest.mark.parametrize(
+    ("hour", "minute", "rate"),
+    [
+        (5, 45, 0.03),
+        (7, 30, 0.14),
+        (9, 0, 0.08),
+        (14, 0, 0.03),
+        (17, 0, 0.08),
+        (17, 15, 0.14),
+        (20, 30, 0.14),
+        (20, 45, 0.08),
+    ],
+)
+def test_a_modul_3_day_is_priced_quarter_by_quarter(hour, minute, rate) -> None:
+    moment = datetime(2026, 11, 17, hour, minute, tzinfo=ZoneInfo("Europe/Berlin"))
+    assert _modul_3().rate_at(moment) == pytest.approx(rate)
+
+
+def test_an_hour_with_a_quarter_past_start_costs_the_average() -> None:
+    """17:00-18:00: one standard quarter, three peak quarters."""
+    berlin = ZoneInfo("Europe/Berlin")
+    average = mean_rate(
+        _modul_3(),
+        datetime(2026, 11, 17, 17, tzinfo=berlin),
+        datetime(2026, 11, 17, 18, tzinfo=berlin),
+    )
+    assert average == pytest.approx((0.08 + 3 * 0.14) / 4)
+
+
+def test_tariffs_in_whole_hours_keep_their_key() -> None:
+    """Updating must not discard the stored plans of an unchanged tariff."""
+    assert _danish().key() == (
+        "tou|0-6|17-21|like_weekday|0.0429/0.0644/0.1674|1-3:0.0653/0.1959/0.5877"
+    )
+    assert "17:15-20:45" in _modul_3().key()
+
+
+def test_windows_stored_as_text_win_over_old_hours() -> None:
+    data = {
+        "tou_low_start": 0,
+        "tou_low_end": 6,
+        "tou_peak_start": 17,
+        "tou_peak_end": 21,
+        "tou_low_windows": "22:00-06:00",
+        "tou_peak_windows": "",
+        "tou_rate_low": 0.03,
+        "tou_rate_standard": 0.08,
+        "tou_rate_peak": 0.14,
+    }
+    schedule = schedule_from_config(data, DK)
+    assert schedule.low == ((1320, 360),)
+    # Cleared on purpose: no peak window, whatever the old hours said.
+    assert schedule.peak == ()
+    assert schedule.rate_at(datetime(2026, 7, 15, 18, tzinfo=DK)) == pytest.approx(0.08)
+
+
+def test_unreadable_stored_text_means_no_window_rather_than_a_crash() -> None:
+    schedule = schedule_from_config({"tou_peak_windows": "kaputt"}, DK)
+    assert schedule.peak == ()

@@ -678,6 +678,15 @@ TARIFF_INPUT = {
     "tou_source": "manual",
 }
 DANISH_WINDOWS = {
+    "tou_low_windows": "00:00-06:00",
+    "tou_peak_windows": "17:00-21:00",
+    "tou_weekend": "like_weekday",
+    "tou_winter": True,
+    "tou_winter_from": 10,
+    "tou_winter_to": 3,
+}
+# How an entry set up before 1.19.0 stores the same windows: whole hours.
+DANISH_HOURS = {
     "tou_low_start": 0,
     "tou_low_end": 6,
     "tou_peak_start": 17,
@@ -691,6 +700,14 @@ DANISH_WINDOWS = {
 
 def _fields(result) -> set[str]:
     return {str(key) for key in result["data_schema"].schema}
+
+
+def _suggested(result, field: str):
+    """What a form field starts with when it is suggested, not defaulted."""
+    for key in result["data_schema"].schema:
+        if str(key) == field:
+            return (key.description or {}).get("suggested_value")
+    raise KeyError(field)
 
 
 async def test_a_manual_tariff_is_asked_in_two_more_steps(hass) -> None:
@@ -736,7 +753,9 @@ async def test_a_manual_tariff_is_asked_in_two_more_steps(hass) -> None:
     assert result["type"] is data_entry_flow.FlowResultType.CREATE_ENTRY
     data = result["data"]
     assert data["tou_source"] == "manual"
-    assert (data["tou_low_start"], data["tou_low_end"]) == (0, 6)
+    assert data["tou_low_windows"] == "00:00-06:00"
+    assert data["tou_peak_windows"] == "17:00-21:00"
+    assert "tou_low_start" not in data
     assert data["tou_winter"] is True
     assert data["tou_winter_rate_peak"] == pytest.approx(0.5877)
     assert "tou_tariff" not in data
@@ -759,10 +778,8 @@ async def test_a_two_level_tariff_asks_for_two_amounts(hass) -> None:
             result["flow_id"],
             {
                 **DANISH_WINDOWS,
-                "tou_low_start": 22,
-                "tou_low_end": 6,
-                "tou_peak_start": 0,
-                "tou_peak_end": 0,
+                "tou_low_windows": "22:00-06:00",
+                "tou_peak_windows": "",
                 "tou_weekend": "low",
                 "tou_winter": False,
             },
@@ -787,11 +804,67 @@ async def test_overlapping_windows_are_sent_back(hass) -> None:
         result = await _formula_step(hass, result)
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"],
-            {**DANISH_WINDOWS, "tou_low_end": 18},
+            {**DANISH_WINDOWS, "tou_low_windows": "00:00-06:00, 17:00-17:30"},
         )
 
     assert result["step_id"] == "tariff_windows"
     assert result["errors"]["base"] == "tou_windows_overlap"
+
+
+async def _windows_step(hass):
+    """A new flow up to the step that asks for the windows."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], TARIFF_INPUT
+    )
+    return await _formula_step(hass, result)
+
+
+async def test_a_modul_3_sheet_with_two_peaks_on_the_quarter_hour(hass) -> None:
+    """Lars's case: several peak windows a day, not on the full hour."""
+    with patch(
+        "custom_components.energypriceforecast.config_flow._validate_input",
+        new=AsyncMock(return_value=None),
+    ):
+        result = await _windows_step(hass)
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {
+                **DANISH_WINDOWS,
+                "tou_low_windows": "0-6; 13:00 - 15:00",
+                "tou_peak_windows": "07:00–09:00, 17:15-20:45",
+                "tou_winter": False,
+            },
+        )
+        assert result["step_id"] == "tariff_rates"
+        assert _fields(result) == {"tou_rate_low", "tou_rate_standard", "tou_rate_peak"}
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {"tou_rate_low": 0.03, "tou_rate_standard": 0.08, "tou_rate_peak": 0.14},
+        )
+
+    assert result["type"] is data_entry_flow.FlowResultType.CREATE_ENTRY
+    assert result["data"]["tou_low_windows"] == "00:00-06:00, 13:00-15:00"
+    assert result["data"]["tou_peak_windows"] == "07:00-09:00, 17:15-20:45"
+
+
+@pytest.mark.parametrize("text", ["17:10-20:00", "abends", "17:00-17:00"])
+async def test_windows_that_cannot_be_read_are_sent_back(hass, text) -> None:
+    with patch(
+        "custom_components.energypriceforecast.config_flow._validate_input",
+        new=AsyncMock(return_value=None),
+    ):
+        result = await _windows_step(hass)
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {**DANISH_WINDOWS, "tou_peak_windows": text}
+        )
+
+    assert result["step_id"] == "tariff_windows"
+    assert result["errors"]["base"] == "tou_windows_invalid"
+    # What was typed stays in the field, so it can be corrected.
+    assert _suggested(result, "tou_peak_windows") == text
 
 
 @pytest.mark.parametrize(
@@ -916,11 +989,14 @@ async def test_norway_starts_from_the_grid_operators_collected_tariff(hass) -> N
         )
         assert result["step_id"] == "tariff_windows"
         windows = result["data_schema"]({})
-        assert (windows["tou_low_start"], windows["tou_low_end"]) == (22, 6)
+        assert _suggested(result, "tou_low_windows") == "22:00-06:00"
+        assert _suggested(result, "tou_peak_windows") == ""
         assert windows["tou_weekend"] == "low"
 
+        # The form shows the suggestions in the fields, so they come back.
         result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], windows
+            result["flow_id"],
+            {**windows, "tou_low_windows": "22:00-06:00", "tou_peak_windows": ""},
         )
         assert result["step_id"] == "tariff_rates"
         rates = result["data_schema"]({})
@@ -957,7 +1033,7 @@ async def test_norway_without_a_choice_types_everything_in(hass) -> None:
         )
 
     assert result["step_id"] == "tariff_windows"
-    assert result["data_schema"]({})["tou_low_end"] == 0
+    assert _suggested(result, "tou_low_windows") == ""
 
 
 async def test_switching_the_tariff_off_drops_its_fields(hass) -> None:
@@ -1025,8 +1101,59 @@ async def test_reconfiguring_starts_from_the_stored_tariff(hass) -> None:
 
     assert result["step_id"] == "tariff_windows"
     windows = result["data_schema"]({})
-    assert (windows["tou_peak_start"], windows["tou_peak_end"]) == (17, 21)
+    assert _suggested(result, "tou_peak_windows") == "17:00-21:00"
     assert windows["tou_winter_from"] == 10
+
+
+async def test_an_entry_from_before_quarter_hours_moves_to_text(hass) -> None:
+    """Whole hours stored by 1.18 are offered as text and replaced on save."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        version=3,
+        unique_id="DE",
+        data={
+            **TARIFF_INPUT,
+            "horizon_hours": 48,
+            **DANISH_HOURS,
+            "tou_rate_low": 0.04,
+            "tou_rate_standard": 0.06,
+            "tou_rate_peak": 0.17,
+            "tou_winter_rate_low": 0.05,
+            "tou_winter_rate_standard": 0.07,
+            "tou_winter_rate_peak": 0.2,
+        },
+    )
+    entry.add_to_hass(hass)
+    with (
+        patch(
+            "custom_components.energypriceforecast.config_flow._validate_input",
+            new=AsyncMock(return_value=None),
+        ),
+        patch(
+            "custom_components.energypriceforecast.async_setup_entry",
+            return_value=True,
+        ),
+    ):
+        result = await entry.start_reconfigure_flow(hass)
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], TARIFF_INPUT
+        )
+        result = await _formula_step(hass, result)
+        assert _suggested(result, "tou_low_windows") == "00:00-06:00"
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {**DANISH_WINDOWS, "tou_peak_windows": "17:15-20:45"},
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], result["data_schema"]({})
+        )
+        await hass.async_block_till_done()
+
+    assert result["reason"] == "reconfigure_successful"
+    assert entry.data["tou_peak_windows"] == "17:15-20:45"
+    assert not {"tou_low_start", "tou_low_end", "tou_peak_start", "tou_peak_end"} & set(
+        entry.data
+    )
 
 
 async def test_the_tariff_defaults_to_the_markets_own_quarter_hours(hass) -> None:

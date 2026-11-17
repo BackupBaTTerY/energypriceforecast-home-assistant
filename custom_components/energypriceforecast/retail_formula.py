@@ -19,7 +19,7 @@ charges, like the day-ahead price, are published without VAT.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from .time_of_use import TariffSource, mean_rate
@@ -63,6 +63,22 @@ def retail_value(
     return round(factor * (spot + tariff) + surcharge, _DIGITS)
 
 
+def _slot_rate(tariff: TariffSource, entry: dict[str, Any]) -> float | None:
+    """The network charge of one slot: its average when it spans more.
+
+    A quarter-hour slot has one rate. An hourly slot can be a quarter peak
+    and three quarters standard once a window starts at a quarter past
+    (1.19.0), and then the hour costs the average - what the meter bills.
+    """
+    start = _moment(entry.get("start"))
+    if start is None:
+        return None
+    end = _moment(entry.get("end"))
+    if end is not None and end - start > timedelta(minutes=15):
+        return mean_rate(tariff, start, end)
+    return tariff.rate_at(start)
+
+
 def apply_to_series(
     series: dict[str, Any] | None,
     factor: float,
@@ -88,8 +104,7 @@ def apply_to_series(
             continue
         rate = 0.0
         if tariff is not None:
-            moment = _moment(entry.get("start"))
-            rate = tariff.rate_at(moment) if moment is not None else None
+            rate = _slot_rate(tariff, entry)
             if rate is None:
                 continue
         entries.append(

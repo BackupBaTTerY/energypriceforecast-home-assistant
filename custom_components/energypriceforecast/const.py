@@ -9,7 +9,7 @@ NAME: Final = "Energy Price Forecast EU"
 # from. Must equal manifest.json's version - test_version.py enforces that,
 # because this drifted to 0.1.0 for ten releases and every request from
 # every user was mislabelled the whole time.
-VERSION: Final = "1.18.0"
+VERSION: Final = "1.19.0"
 DEFAULT_API_URL: Final = (
     "https://api.energypriceforecast.eu/api/v1/home-assistant/summary"
 )
@@ -87,6 +87,11 @@ CONF_TOU_LOW_START: Final = "tou_low_start"
 CONF_TOU_LOW_END: Final = "tou_low_end"
 CONF_TOU_PEAK_START: Final = "tou_peak_start"
 CONF_TOU_PEAK_END: Final = "tou_peak_end"
+# Since 1.19.0 the windows are text, several per level and on the quarter
+# hour ("06:00-08:00, 17:15-20:45"). The four whole hours above are only
+# read, from entries set up before.
+CONF_TOU_LOW_WINDOWS: Final = "tou_low_windows"
+CONF_TOU_PEAK_WINDOWS: Final = "tou_peak_windows"
 CONF_TOU_WEEKEND: Final = "tou_weekend"
 CONF_TOU_RATE_LOW: Final = "tou_rate_low"
 CONF_TOU_RATE_STANDARD: Final = "tou_rate_standard"

@@ -460,7 +460,9 @@ Where the network charge changes with the time of day, your own formula can
 add it hour by hour: *(day-ahead price + grid charge of this hour) × factor
 + surcharge*. Enter the windows and amounts from your grid operator's price
 sheet - prefilled in Norway - or, in Denmark, let the integration look up
-your operator's tariff every day.
+your operator's tariff every day. Since *1.19.0* each level takes several
+windows on the quarter hour (`07:00-09:00, 17:15-20:45`), as Germany's
+Modul 3 price sheets need.
 [Details and who has such charges](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/blob/main/docs/tariffs.md#time-of-day-grid-charges-170)
 
 ## Horizon: 48 hours free, 120 hours with Private Pro

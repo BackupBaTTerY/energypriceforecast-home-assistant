@@ -33,6 +33,7 @@ exactly the days a household notices.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, tzinfo
 from typing import Any, Final, Mapping, Protocol
@@ -76,6 +77,109 @@ def in_window(hour: int, start: int, end: int) -> bool:
     return hour >= start or hour < end
 
 
+# A window in minutes after local midnight, half-open like ``in_window``.
+# The end is kept modulo a day, so "18:00-24:00" is (1080, 0) - the same
+# window a whole-hour entry "18 to 0" always described.
+Window = tuple[int, int]
+Windows = tuple[Window, ...]
+
+_DAY_MINUTES: Final = 24 * 60
+_QUARTER: Final = 15
+_WINDOW_RE: Final = re.compile(
+    r"^\s*(\d{1,2})(?::(\d{2}))?\s*[-–—]\s*(\d{1,2})(?::(\d{2}))?\s*$"
+)
+
+
+class InvalidWindows(ValueError):
+    """The text is not a list of quarter-hour windows such as 06:00-08:00."""
+
+
+def _minutes(hours: str, minutes: str | None) -> int:
+    value = int(hours) * 60 + int(minutes or 0)
+    if int(minutes or 0) > 59 or value > _DAY_MINUTES:
+        raise InvalidWindows(f"{hours}:{minutes} is not a time of day")
+    if value % _QUARTER:
+        # Meters count in quarter hours, and so do the price sheets: a time
+        # off the quarter is a typo, not a tariff.
+        raise InvalidWindows(f"{hours}:{minutes} is not on the quarter hour")
+    return value
+
+
+def parse_windows(text: str | None) -> Windows:
+    """Read ``06:00-08:00, 17:15-20:45`` into windows of minutes.
+
+    Germany's Modul 3 lets every grid operator set its own windows, and some
+    set two peak windows a day or start one at a quarter past - exactly what
+    a single pair of whole hours cannot hold. Bare hours (``22-6``) are
+    accepted, as are en dashes copied from a price sheet; commas, semicolons
+    and line breaks separate windows. An empty text means no window.
+    """
+    windows: list[Window] = []
+    for part in re.split(r"[,;\n]+", text or ""):
+        if not part.strip():
+            continue
+        match = _WINDOW_RE.match(part)
+        if match is None:
+            raise InvalidWindows(f"{part.strip()!r} is not a window like 06:00-08:00")
+        start = _minutes(match.group(1), match.group(2))
+        end = _minutes(match.group(3), match.group(4))
+        start, end = start % _DAY_MINUTES, end % _DAY_MINUTES
+        if start == end:
+            raise InvalidWindows(f"{part.strip()!r} is empty or the whole day")
+        windows.append((start, end))
+    return tuple(windows)
+
+
+def windows_from_hours(start: int, end: int) -> Windows:
+    """The one whole-hour window an entry from before 1.19.0 describes."""
+    start, end = int(start) % 24, int(end) % 24
+    return () if start == end else ((start * 60, end * 60),)
+
+
+def _clock(minutes: int) -> str:
+    return f"{minutes // 60:02d}:{minutes % 60:02d}"
+
+
+def format_windows(windows: Windows) -> str:
+    """The text the form shows, and stores: ``06:00-08:00, 17:15-20:45``."""
+    return ", ".join(f"{_clock(start)}-{_clock(end)}" for start, end in windows)
+
+
+def in_windows(minute: int, windows: Windows) -> bool:
+    """Whether a minute of the day falls in any of the windows."""
+    for start, end in windows:
+        if start < end:
+            if start <= minute < end:
+                return True
+        elif minute >= start or minute < end:
+            return True
+    return False
+
+
+def windows_overlap(first: Windows, second: Windows) -> bool:
+    """Whether a quarter hour lies in both - every window is on the quarter."""
+    return any(
+        in_windows(minute, first) and in_windows(minute, second)
+        for minute in range(0, _DAY_MINUTES, _QUARTER)
+    )
+
+
+def _key_part(windows: Windows) -> str:
+    """One level's windows in a stored plan's key.
+
+    A single whole-hour window keeps the exact form keys had before 1.19.0
+    ("0-6", "0-0" for none), so updating does not discard the plans of every
+    entry whose tariff did not change.
+    """
+    if not windows:
+        return "0-0"
+
+    def hour(minutes: int) -> str:
+        return str(minutes // 60) if minutes % 60 == 0 else _clock(minutes)
+
+    return ",".join(f"{hour(start)}-{hour(end)}" for start, end in windows)
+
+
 def in_month_range(month: int, first: int, last: int) -> bool:
     """Whether ``month`` lies in the inclusive range, which may wrap a year.
 
@@ -109,15 +213,13 @@ class Rates:
 class Schedule:
     """Windows and amounts as they stand on a grid operator's price sheet.
 
-    A two-level tariff is the same thing with no peak window: leaving
-    ``peak_start`` and ``peak_end`` equal means every hour outside the low
-    window is charged the standard rate.
+    A two-level tariff is the same thing with no peak window: with ``peak``
+    empty, every moment outside the low windows is charged the standard
+    rate. Each level may have several windows, on the quarter hour.
     """
 
-    low_start: int
-    low_end: int
-    peak_start: int
-    peak_end: int
+    low: Windows
+    peak: Windows
     weekend: str
     summer: Rates
     zone: tzinfo
@@ -130,10 +232,10 @@ class Schedule:
         local = moment.astimezone(self.zone)
         if self.weekend == WEEKEND_LOW and local.weekday() >= 5:
             return LEVEL_LOW
-        hour = local.hour
-        if in_window(hour, self.low_start, self.low_end):
+        minute = local.hour * 60 + local.minute
+        if in_windows(minute, self.low):
             return LEVEL_LOW
-        if in_window(hour, self.peak_start, self.peak_end):
+        if in_windows(minute, self.peak):
             return LEVEL_PEAK
         return LEVEL_STANDARD
 
@@ -156,8 +258,8 @@ class Schedule:
         outlive the tariff it was priced with - see coordinator.plan_basis.
         """
         parts = [
-            f"{self.low_start}-{self.low_end}",
-            f"{self.peak_start}-{self.peak_end}",
+            _key_part(self.low),
+            _key_part(self.peak),
             self.weekend,
             f"{self.summer.low:g}/{self.summer.standard:g}/{self.summer.peak:g}",
         ]
@@ -200,11 +302,13 @@ class HourlyTable:
 def mean_rate(
     tariff: TariffSource, start: datetime, end: datetime
 ) -> float | None:
-    """The average rate over a window, sampled hour by hour.
+    """The average rate over a window, sampled quarter hour by quarter hour.
 
     The summary reports one average price for a whole window, and with a
-    time-of-day tariff that window can span several levels. Sampling at the
-    start of each hour matches how the tariff itself is defined.
+    time-of-day tariff that window can span several levels. Since 1.19.0 a
+    level can start at a quarter past, so an hour can be a quarter peak and
+    three quarters standard; sampling every quarter hour prices exactly
+    that, and gives the old result for tariffs in whole hours.
     """
     if end <= start:
         return None
@@ -217,8 +321,28 @@ def mean_rate(
             return None
         total += rate
         samples += 1
-        moment += timedelta(hours=1)
+        moment += timedelta(minutes=_QUARTER)
     return round(total / samples, _DIGITS) if samples else None
+
+
+def stored_windows(data: Mapping[str, Any], level: str) -> Windows:
+    """One level's windows from a config entry, old or new.
+
+    Since 1.19.0 an entry stores the windows as text (``tou_low_windows``);
+    entries from before keep their two whole hours (``tou_low_start`` and
+    ``tou_low_end``) and are read exactly as before - nobody has to set the
+    tariff up again. The text was checked when it was entered; should it
+    still not parse, the level has no window rather than breaking setup.
+    """
+    text = data.get(f"tou_{level}_windows")
+    if text is not None:
+        try:
+            return parse_windows(str(text))
+        except InvalidWindows:
+            return ()
+    return windows_from_hours(
+        data.get(f"tou_{level}_start", 0) or 0, data.get(f"tou_{level}_end", 0) or 0
+    )
 
 
 def schedule_from_config(data: Mapping[str, Any], zone: tzinfo) -> Schedule:
@@ -236,10 +360,8 @@ def schedule_from_config(data: Mapping[str, Any], zone: tzinfo) -> Schedule:
             peak=float(data.get("tou_winter_rate_peak", summer.peak)),
         )
     return Schedule(
-        low_start=int(data.get("tou_low_start", 0)),
-        low_end=int(data.get("tou_low_end", 0)),
-        peak_start=int(data.get("tou_peak_start", 0)),
-        peak_end=int(data.get("tou_peak_end", 0)),
+        low=stored_windows(data, "low"),
+        peak=stored_windows(data, "peak"),
         weekend=str(data.get("tou_weekend", WEEKEND_LIKE_WEEKDAY)),
         summer=summer,
         zone=zone,

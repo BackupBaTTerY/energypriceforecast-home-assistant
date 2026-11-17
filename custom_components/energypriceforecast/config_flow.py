@@ -53,9 +53,11 @@ from .const import (
     CONF_RETAIL_SURCHARGE,
     CONF_TOU_LOW_END,
     CONF_TOU_LOW_START,
+    CONF_TOU_LOW_WINDOWS,
     CONF_TOU_OPERATOR,
     CONF_TOU_PEAK_END,
     CONF_TOU_PEAK_START,
+    CONF_TOU_PEAK_WINDOWS,
     CONF_TOU_RATE_LOW,
     CONF_TOU_RATE_PEAK,
     CONF_TOU_RATE_STANDARD,
@@ -127,7 +129,14 @@ from .no_frinettleie import (
     async_load_operators,
     prefill,
 )
-from .time_of_use import WEEKEND_RULES, in_window
+from .time_of_use import (
+    WEEKEND_RULES,
+    InvalidWindows,
+    format_windows,
+    parse_windows,
+    stored_windows,
+    windows_overlap,
+)
 
 _POSTAL_CODE_RE = re.compile(r"^[0-9]{5}$")
 
@@ -342,23 +351,24 @@ def _schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
 
 
 def _windows_schema(defaults: dict[str, Any]) -> vol.Schema:
-    """When the network is cheap, when it is expensive, and in which months."""
-    hours = NumberSelectorConfig(min=0, max=23, step=1, mode=NumberSelectorMode.BOX)
+    """When the network is cheap, when it is expensive, and in which months.
+
+    The windows are text so a level can have several, on the quarter hour.
+    They are suggested rather than defaulted: a cleared field must arrive
+    as "no window", where a default would quietly put the old one back.
+    """
+    text = TextSelector(TextSelectorConfig(type=TextSelectorType.TEXT))
     months = NumberSelectorConfig(min=1, max=12, step=1, mode=NumberSelectorMode.BOX)
     return vol.Schema(
         {
             vol.Optional(
-                CONF_TOU_LOW_START, default=int(defaults.get(CONF_TOU_LOW_START, 0))
-            ): NumberSelector(hours),
+                CONF_TOU_LOW_WINDOWS,
+                description={"suggested_value": _window_text(defaults, "low")},
+            ): text,
             vol.Optional(
-                CONF_TOU_LOW_END, default=int(defaults.get(CONF_TOU_LOW_END, 0))
-            ): NumberSelector(hours),
-            vol.Optional(
-                CONF_TOU_PEAK_START, default=int(defaults.get(CONF_TOU_PEAK_START, 0))
-            ): NumberSelector(hours),
-            vol.Optional(
-                CONF_TOU_PEAK_END, default=int(defaults.get(CONF_TOU_PEAK_END, 0))
-            ): NumberSelector(hours),
+                CONF_TOU_PEAK_WINDOWS,
+                description={"suggested_value": _window_text(defaults, "peak")},
+            ): text,
             vol.Optional(
                 CONF_TOU_WEEKEND,
                 default=str(defaults.get(CONF_TOU_WEEKEND, WEEKEND_RULES[0])),
@@ -401,9 +411,7 @@ def _rates_schema(defaults: dict[str, Any]) -> vol.Schema:
             min=MIN_TOU_RATE, max=MAX_TOU_RATE, step="any", mode=NumberSelectorMode.BOX
         )
     )
-    has_peak = int(defaults.get(CONF_TOU_PEAK_START, 0)) != int(
-        defaults.get(CONF_TOU_PEAK_END, 0)
-    )
+    has_peak = bool(stored_windows(defaults, "peak"))
     fields: dict[Any, Any] = {
         _rate_field(defaults, CONF_TOU_RATE_LOW): rate,
         _rate_field(defaults, CONF_TOU_RATE_STANDARD): rate,
@@ -418,16 +426,34 @@ def _rates_schema(defaults: dict[str, Any]) -> vol.Schema:
     return vol.Schema(fields)
 
 
+# The whole hours entries stored before 1.19.0. Read as long as an entry has
+# them, and dropped the first time its windows are saved as text.
+_HOUR_WINDOW_KEYS = (
+    CONF_TOU_LOW_START,
+    CONF_TOU_LOW_END,
+    CONF_TOU_PEAK_START,
+    CONF_TOU_PEAK_END,
+)
+
+
+def _window_text(defaults: dict[str, Any], level: str) -> str:
+    """What the window field starts with: as typed, as stored, or converted."""
+    key = CONF_TOU_LOW_WINDOWS if level == "low" else CONF_TOU_PEAK_WINDOWS
+    if key in defaults:
+        return str(defaults[key] or "")
+    return format_windows(stored_windows(defaults, level))
+
+
 def _normalize_windows(user_input: dict[str, Any]) -> dict[str, Any]:
+    """The step's input with the windows in one canonical spelling.
+
+    Raises InvalidWindows for text that is not a list of quarter-hour
+    windows. A field left empty - or cleared - means no window.
+    """
     normalized = dict(user_input)
-    for key in (
-        CONF_TOU_LOW_START,
-        CONF_TOU_LOW_END,
-        CONF_TOU_PEAK_START,
-        CONF_TOU_PEAK_END,
-        CONF_TOU_WINTER_FROM,
-        CONF_TOU_WINTER_TO,
-    ):
+    for key in (CONF_TOU_LOW_WINDOWS, CONF_TOU_PEAK_WINDOWS):
+        normalized[key] = format_windows(parse_windows(normalized.get(key)))
+    for key in (CONF_TOU_WINTER_FROM, CONF_TOU_WINTER_TO):
         if key in normalized:
             normalized[key] = int(normalized[key])
     normalized[CONF_TOU_WINTER] = bool(normalized.get(CONF_TOU_WINTER, False))
@@ -459,17 +485,13 @@ def _price_unit(data: dict[str, Any]) -> str:
 
 
 def _validate_windows(data: dict[str, Any]) -> str | None:
-    """The two windows must not claim the same hour.
+    """The low and the peak windows must not claim the same quarter hour.
 
-    They would not crash - the cheap one is checked first - but an hour that
-    is listed as both cheap and expensive means the user misread their price
-    sheet, and silently picking one of the two would hide that.
+    They would not crash - the cheap one is checked first - but a quarter
+    hour listed as both cheap and expensive means the user misread their
+    price sheet, and silently picking one of the two would hide that.
     """
-    low = (int(data.get(CONF_TOU_LOW_START, 0)), int(data.get(CONF_TOU_LOW_END, 0)))
-    peak = (int(data.get(CONF_TOU_PEAK_START, 0)), int(data.get(CONF_TOU_PEAK_END, 0)))
-    if low[0] == low[1] or peak[0] == peak[1]:
-        return None
-    if any(in_window(hour, *low) and in_window(hour, *peak) for hour in range(24)):
+    if windows_overlap(stored_windows(data, "low"), stored_windows(data, "peak")):
         return "tou_windows_overlap"
     return None
 
@@ -717,6 +739,8 @@ _MANUAL_KEYS = frozenset(
         CONF_TOU_LOW_END,
         CONF_TOU_PEAK_START,
         CONF_TOU_PEAK_END,
+        CONF_TOU_LOW_WINDOWS,
+        CONF_TOU_PEAK_WINDOWS,
         CONF_TOU_WEEKEND,
         CONF_TOU_RATE_LOW,
         CONF_TOU_RATE_STANDARD,
@@ -1064,6 +1088,10 @@ class EnergyPriceForecastConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 None,
             )
             if chosen is not None:
+                # The collection states whole hours; windows stored as text
+                # before would otherwise win over what was just chosen.
+                self._data.pop(CONF_TOU_LOW_WINDOWS, None)
+                self._data.pop(CONF_TOU_PEAK_WINDOWS, None)
                 self._data.update(prefill(chosen))
                 self._prefill_note = f"{chosen.name}, {chosen.updated}"
             return await self.async_step_tariff_windows()
@@ -1115,9 +1143,15 @@ class EnergyPriceForecastConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """When the network is cheap, when it is expensive, and in which months."""
         errors: dict[str, str] = {}
         if user_input is not None:
-            windows = _normalize_windows(user_input)
-            error = _validate_windows(windows)
+            try:
+                windows = _normalize_windows(user_input)
+            except InvalidWindows:
+                error: str | None = "tou_windows_invalid"
+            else:
+                error = _validate_windows(windows)
             if error is None:
+                for key in _HOUR_WINDOW_KEYS:
+                    self._data.pop(key, None)
                 self._data.update(windows)
                 return await self.async_step_tariff_rates()
             errors["base"] = error

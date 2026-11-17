@@ -239,3 +239,36 @@ def test_the_plan_basis_names_the_tariff_too() -> None:
     """Changing the network tariff must start a fresh plan, like the formula."""
     assert plan_basis(1.21, 0.135, _StubTariff()) == "formula|1.21|0.135|tou|stub"
     assert plan_basis(1.21, 0.135) != plan_basis(1.21, 0.135, _StubTariff())
+
+
+def test_an_hour_that_a_window_splits_costs_its_average() -> None:
+    """Modul 3 peak from 17:15 (1.19.0): the hour 17-18 is a quarter standard
+    and three quarters peak, and a quarter-hour slot has its own rate."""
+    from zoneinfo import ZoneInfo
+
+    from custom_components.energypriceforecast.time_of_use import (
+        WEEKEND_LIKE_WEEKDAY,
+        Rates,
+        Schedule,
+        parse_windows,
+    )
+
+    tariff = Schedule(
+        low=(),
+        peak=parse_windows("17:15-20:45"),
+        weekend=WEEKEND_LIKE_WEEKDAY,
+        summer=Rates(low=0.0, standard=0.08, peak=0.14),
+        zone=ZoneInfo("Europe/Berlin"),
+    )
+    series = {
+        "entries": [
+            # 17:00-18:00 Berlin time in November is 16:00-17:00 UTC.
+            {"start": "2026-11-17T16:00:00Z", "end": "2026-11-17T17:00:00Z", "value": 0.0},
+            {"start": "2026-11-17T16:00:00Z", "end": "2026-11-17T16:15:00Z", "value": 0.0},
+            {"start": "2026-11-17T16:15:00Z", "end": "2026-11-17T16:30:00Z", "value": 0.0},
+        ]
+    }
+
+    values = [e["value"] for e in apply_to_series(series, 1.0, 0.0, tariff)["entries"]]
+
+    assert values == pytest.approx([(0.08 + 3 * 0.14) / 4, 0.08, 0.14])

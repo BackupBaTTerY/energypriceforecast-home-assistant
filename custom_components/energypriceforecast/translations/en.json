@@ -36,7 +36,7 @@
       },
       "tariff_windows": {
         "title": "When is the grid cheap or expensive?",
-        "description": "Times in the market's local time, as on your price sheet, on the quarter hour. A window runs from its start up to, not including, its end: 22:00-06:00 is the night. Several windows per level are separated by commas; leave a field empty for no such window. Prefilled from: {prefill}",
+        "description": "Times in local time, as on your price sheet, to the quarter hour. 22:00-06:00, for example, is the night.{prefill}",
         "data": {
           "tou_low_windows": "Low rate windows",
           "tou_peak_windows": "Peak rate windows",
@@ -46,8 +46,8 @@
           "tou_winter_to": "Winter until month"
         },
         "data_description": {
-          "tou_low_windows": "e.g. 22:00-06:00, or 00:00-06:00, 13:00-15:00",
-          "tou_peak_windows": "e.g. 17:00-21:00, or 06:00-08:00, 17:15-20:45. Leave empty for a tariff with two levels.",
+          "tou_low_windows": "Start-end, several separated by commas: 00:00-06:00, 13:00-15:00",
+          "tou_peak_windows": "Start-end, several separated by commas: 06:00-08:00, 17:15-20:45. Leave empty if there is no peak rate.",
           "tou_weekend": "Some operators charge the whole weekend at the low rate.",
           "tou_winter": "Tick if your operator charges more in winter, as in Denmark, Sweden or France.",
           "tou_winter_from": "First winter month, 1-12, e.g. 11 for November.",

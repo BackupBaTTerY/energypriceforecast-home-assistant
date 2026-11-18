@@ -36,7 +36,7 @@
       },
       "tariff_windows": {
         "title": "Wann ist das Netz günstig, wann teuer?",
-        "description": "Uhrzeiten in der Ortszeit des Marktes, wie im Preisblatt, auf die Viertelstunde. Ein Fenster reicht von seinem Beginn bis vor sein Ende: 22:00-06:00 ist die Nacht. Mehrere Fenster je Stufe trennst du mit Kommas; ein leeres Feld heißt, dass es dieses Fenster nicht gibt. Vorbelegt aus: {prefill}",
+        "description": "Uhrzeiten in Ortszeit, wie im Preisblatt, auf die Viertelstunde genau. 22:00-06:00 ist zum Beispiel die Nacht.{prefill}",
         "data": {
           "tou_low_windows": "Niedrigtarif-Fenster",
           "tou_peak_windows": "Hochtarif-Fenster",
@@ -46,8 +46,8 @@
           "tou_winter_to": "Winter bis Monat"
         },
         "data_description": {
-          "tou_low_windows": "z. B. 22:00-06:00 oder 00:00-06:00, 13:00-15:00",
-          "tou_peak_windows": "z. B. 17:00-21:00 oder 06:00-08:00, 17:15-20:45. Bei einem Tarif mit zwei Stufen leer lassen.",
+          "tou_low_windows": "Beginn-Ende, mehrere mit Komma getrennt: 00:00-06:00, 13:00-15:00",
+          "tou_peak_windows": "Beginn-Ende, mehrere mit Komma getrennt: 06:00-08:00, 17:15-20:45. Leer lassen, wenn es keinen Hochtarif gibt.",
           "tou_weekend": "Manche Netzbetreiber rechnen das ganze Wochenende zum Niedrigtarif ab.",
           "tou_winter": "Ankreuzen, wenn der Netzbetreiber im Winter mehr verlangt, wie in Dänemark, Schweden oder Frankreich.",
           "tou_winter_from": "Erster Wintermonat, 1-12, z. B. 11 für November.",

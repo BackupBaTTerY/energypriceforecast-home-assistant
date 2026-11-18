@@ -36,7 +36,7 @@
       },
       "tariff_windows": {
         "title": "Wanneer is het net goedkoop of duur?",
-        "description": "Tijden in de lokale tijd van de markt, zoals op je tariefblad, op het kwartier. Een tijdvak loopt van het begin tot, niet tot en met, het einde: 22:00-06:00 is de nacht. Meerdere tijdvakken per niveau scheid je met komma's; laat een veld leeg als er zo'n tijdvak niet is. Vooraf ingevuld uit: {prefill}",
+        "description": "Tijden in lokale tijd, zoals op je tariefblad, op het kwartier. 22:00-06:00 is bijvoorbeeld de nacht.{prefill}",
         "data": {
           "tou_low_windows": "Tijdvakken laag tarief",
           "tou_peak_windows": "Tijdvakken piektarief",
@@ -46,8 +46,8 @@
           "tou_winter_to": "Winter tot en met maand"
         },
         "data_description": {
-          "tou_low_windows": "bijv. 22:00-06:00, of 00:00-06:00, 13:00-15:00",
-          "tou_peak_windows": "bijv. 17:00-21:00, of 06:00-08:00, 17:15-20:45. Leeg laten voor een tarief met twee niveaus.",
+          "tou_low_windows": "Begin-einde, meerdere gescheiden door komma's: 00:00-06:00, 13:00-15:00",
+          "tou_peak_windows": "Begin-einde, meerdere gescheiden door komma's: 06:00-08:00, 17:15-20:45. Laat leeg als er geen piektarief is.",
           "tou_weekend": "Sommige netbeheerders rekenen het hele weekend het lage tarief.",
           "tou_winter": "Aanvinken als je netbeheerder in de winter meer rekent, zoals in Denemarken, Zweden of Frankrijk.",
           "tou_winter_from": "Eerste wintermaand, 1-12, bijv. 11 voor november.",

@@ -724,6 +724,8 @@ async def test_a_manual_tariff_is_asked_in_two_more_steps(hass) -> None:
         )
         result = await _formula_step(hass, result)
         assert result["step_id"] == "tariff_windows"
+        # Nothing was prefilled, so the form does not mention a source.
+        assert result["description_placeholders"]["prefill"] == ""
 
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], DANISH_WINDOWS
@@ -988,6 +990,9 @@ async def test_norway_starts_from_the_grid_operators_collected_tariff(hass) -> N
             result["flow_id"], {"tou_operator": "7080005046220"}
         )
         assert result["step_id"] == "tariff_windows"
+        assert result["description_placeholders"]["prefill"] == (
+            "\n\nElvia AS, 2026-06-05"
+        )
         windows = result["data_schema"]({})
         assert _suggested(result, "tou_low_windows") == "22:00-06:00"
         assert _suggested(result, "tou_peak_windows") == ""

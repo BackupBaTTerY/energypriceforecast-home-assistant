@@ -36,7 +36,7 @@
       },
       "tariff_windows": {
         "title": "Kdy je síť levná a kdy drahá?",
-        "description": "Časy v místním čase trhu, jako v ceníku, na čtvrthodiny. Pásmo trvá od začátku do konce, bez něj: 22:00-06:00 je noc. Více pásem na úroveň oddělte čárkami; pole nechte prázdné, pokud takové pásmo není. Předvyplněno z: {prefill}",
+        "description": "Časy v místním čase, jako v ceníku, s přesností na čtvrthodinu. 22:00-06:00 je například noc.{prefill}",
         "data": {
           "tou_low_windows": "Pásma nízkého tarifu",
           "tou_peak_windows": "Pásma špičkového tarifu",
@@ -46,8 +46,8 @@
           "tou_winter_to": "Zima do měsíce"
         },
         "data_description": {
-          "tou_low_windows": "např. 22:00-06:00 nebo 00:00-06:00, 13:00-15:00",
-          "tou_peak_windows": "např. 17:00-21:00 nebo 06:00-08:00, 17:15-20:45. U tarifu se dvěma úrovněmi nechte prázdné.",
+          "tou_low_windows": "Začátek-konec, více pásem oddělte čárkou: 00:00-06:00, 13:00-15:00",
+          "tou_peak_windows": "Začátek-konec, více pásem oddělte čárkou: 06:00-08:00, 17:15-20:45. Nechte prázdné, pokud špičkový tarif nemáte.",
           "tou_weekend": "Někteří provozovatelé účtují celý víkend nízkým tarifem.",
           "tou_winter": "Zaškrtněte, pokud provozovatel v zimě účtuje více, jako v Dánsku, Švédsku nebo Francii.",
           "tou_winter_from": "První zimní měsíc, 1-12, např. 11 pro listopad.",

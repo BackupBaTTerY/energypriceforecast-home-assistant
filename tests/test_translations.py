@@ -9,6 +9,7 @@ plugin.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 COMPONENT_DIR = Path(__file__).parent.parent / "custom_components" / "energypriceforecast"
@@ -95,6 +96,19 @@ FIELDS_NEEDING_HELP_TEXT = (
     "cheapest_hours_start_hour",
     "weekend_hours_count",
 )
+
+
+def test_window_fields_show_how_to_write_several_windows() -> None:
+    """The format stands at the field, not only in the text above the form."""
+    example = re.compile(r"\d\d:\d\d-\d\d:\d\d, \d\d:\d\d-\d\d:\d\d")
+    for path in [COMPONENT_DIR / "strings.json", *_translation_files()]:
+        step = _get(_load(path), ("config", "step", "tariff_windows"))
+        for field in ("tou_low_windows", "tou_peak_windows"):
+            assert example.search(step["data_description"][field]), (
+                f"{path.name}: {field} shows no example with two windows"
+            )
+        # The source of prefilled values follows the text only when there is one.
+        assert step["description"].endswith(".{prefill}"), path.name
 
 
 def test_plan_settings_are_explained_in_both_config_steps() -> None:

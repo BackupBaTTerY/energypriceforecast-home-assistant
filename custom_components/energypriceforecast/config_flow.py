@@ -1093,7 +1093,9 @@ class EnergyPriceForecastConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._data.pop(CONF_TOU_LOW_WINDOWS, None)
                 self._data.pop(CONF_TOU_PEAK_WINDOWS, None)
                 self._data.update(prefill(chosen))
-                self._prefill_note = f"{chosen.name}, {chosen.updated}"
+                # Its own paragraph under the step's text; without a
+                # chosen operator the text simply ends.
+                self._prefill_note = f"\n\n{chosen.name}, {chosen.updated}"
             return await self.async_step_tariff_windows()
 
         if self._operators is None:
@@ -1159,7 +1161,7 @@ class EnergyPriceForecastConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="tariff_windows",
             data_schema=_windows_schema({**self._data, **(user_input or {})}),
             errors=errors,
-            description_placeholders={"prefill": self._prefill_note or "-"},
+            description_placeholders={"prefill": self._prefill_note},
         )
 
     async def async_step_tariff_rates(

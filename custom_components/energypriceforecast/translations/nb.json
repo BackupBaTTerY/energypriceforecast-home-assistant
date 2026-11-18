@@ -36,7 +36,7 @@
       },
       "tariff_windows": {
         "title": "Når er nettet billig eller dyrt?",
-        "description": "Klokkeslett i markedets lokale tid, som i prislisten, på kvarteret. Et tidsrom går fra start og opp til, men ikke med, slutten: 22:00-06:00 er natten. Flere tidsrom per nivå skilles med komma; la et felt stå tomt hvis det ikke finnes et slikt tidsrom. Utfylt fra: {prefill}",
+        "description": "Klokkeslett i lokal tid, som i prislisten, på kvarteret. 22:00-06:00 er for eksempel natten.{prefill}",
         "data": {
           "tou_low_windows": "Tidsrom med lav pris",
           "tou_peak_windows": "Tidsrom med topplast",
@@ -46,8 +46,8 @@
           "tou_winter_to": "Vinter til måned"
         },
         "data_description": {
-          "tou_low_windows": "f.eks. 22:00-06:00, eller 00:00-06:00, 13:00-15:00",
-          "tou_peak_windows": "f.eks. 17:00-21:00, eller 06:00-08:00, 17:15-20:45. La det stå tomt for en tariff med to nivåer.",
+          "tou_low_windows": "Start-slutt, flere skilt med komma: 00:00-06:00, 13:00-15:00",
+          "tou_peak_windows": "Start-slutt, flere skilt med komma: 06:00-08:00, 17:15-20:45. La feltet stå tomt hvis det ikke finnes noen topplastpris.",
           "tou_weekend": "Noen netteiere tar lav pris hele helgen.",
           "tou_winter": "Kryss av hvis netteieren tar mer om vinteren, som i Danmark, Sverige eller Frankrike.",
           "tou_winter_from": "Første vintermåned, 1-12, f.eks. 11 for november.",

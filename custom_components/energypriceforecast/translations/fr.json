@@ -36,7 +36,7 @@
       },
       "tariff_windows": {
         "title": "Quand le réseau est-il bon marché ou cher ?",
-        "description": "Heures en heure locale du marché, comme sur votre grille tarifaire, au quart d'heure. Une plage va de son début jusqu'à sa fin, exclue : 22:00-06:00 est la nuit. Séparez plusieurs plages par niveau par des virgules ; laissez un champ vide s'il n'y a pas de telle plage. Prérempli depuis : {prefill}",
+        "description": "Heures locales, comme sur votre grille tarifaire, au quart d'heure près. 22:00-06:00 correspond par exemple à la nuit.{prefill}",
         "data": {
           "tou_low_windows": "Plages tarif bas",
           "tou_peak_windows": "Plages tarif de pointe",
@@ -46,8 +46,8 @@
           "tou_winter_to": "Hiver jusqu'au mois"
         },
         "data_description": {
-          "tou_low_windows": "par ex. 22:00-06:00, ou 00:00-06:00, 13:00-15:00",
-          "tou_peak_windows": "par ex. 17:00-21:00, ou 06:00-08:00, 17:15-20:45. Laissez vide pour un tarif à deux niveaux.",
+          "tou_low_windows": "Début-fin, plusieurs plages séparées par des virgules : 00:00-06:00, 13:00-15:00",
+          "tou_peak_windows": "Début-fin, plusieurs plages séparées par des virgules : 06:00-08:00, 17:15-20:45. Laissez vide s'il n'y a pas de tarif de pointe.",
           "tou_weekend": "Certains gestionnaires facturent tout le week-end au tarif bas.",
           "tou_winter": "Cochez si votre gestionnaire facture davantage en hiver, comme au Danemark, en Suède ou en France.",
           "tou_winter_from": "Premier mois d'hiver, 1-12, par ex. 11 pour novembre.",

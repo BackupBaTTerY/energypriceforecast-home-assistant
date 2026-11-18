@@ -237,6 +237,13 @@ repository entry under the three dots in HACS if you want it tidy.
 An older YAML package using the same API remains fully supported and can run
 in parallel - remove it only after the new entities have been checked.
 
+## Updating
+
+Download the update in HACS, then **restart Home Assistant**. Reloading the
+integration is not enough: until the restart the old version keeps running,
+setup forms included, even though HACS already lists the new one. Your
+settings and entities are kept.
+
 ## Entities
 
 One device is created per configured market.
@@ -252,8 +259,9 @@ The names in the tables below are the English display names. Your `entity_id`
 will usually *not* match them, for two reasons that surprise most people:
 
 - **They follow your Home Assistant language.** On a German instance the
-  "Current price" sensor is `sensor..._aktueller_strompreis`, and the price
-  series is `sensor..._preisreihe`, not `_price_series`. Searching for the
+  "Current price" sensor is `sensor..._aktueller_strompreis`, the price
+  series is `sensor..._preisreihe`, not `_price_series`, and the current
+  retail price is `sensor..._aktueller_endkundenpreis`. Searching for the
   English name finds nothing.
 - **They are generated once, when each entity is first created**, and are never
   renamed afterwards. Entities that an update adds later can therefore pick up
@@ -324,6 +332,12 @@ the estimate or your own formula, see
 [Retail price](#retail-price-estimate-or-your-own-formula-160). With the
 estimate the cheapest window can differ from the spot-price one; with a
 formula it cannot, only its price does.
+
+**Where to find the price you pay.** **Price forecast series** stays the
+day-ahead price and its forecast, without grid charges or taxes. Your own
+price is in **Current retail price**: its state is the price right now, and
+its `raw_today`, `raw_tomorrow` and `raw_forecast` attributes carry the whole
+series in the same shape.
 
 ### With a cheapest-hours count above 0
 
@@ -462,7 +476,10 @@ add it hour by hour: *(day-ahead price + grid charge of this hour) × factor
 sheet - prefilled in Norway - or, in Denmark, let the integration look up
 your operator's tariff every day. Since *1.19.0* each level takes several
 windows on the quarter hour (`07:00-09:00, 17:15-20:45`), as Germany's
-Modul 3 price sheets need.
+Modul 3 price sheets need. The result is in **Current retail price**; the
+price series stays the day-ahead price. The cheapest-hours and weekend plans
+choose their hours with the charge included, while the cheapest *window* is
+still chosen on the day-ahead price alone.
 [Details and who has such charges](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/blob/main/docs/tariffs.md#time-of-day-grid-charges-170)
 
 ## Horizon: 48 hours free, 120 hours with Private Pro

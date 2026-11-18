@@ -89,6 +89,15 @@ surcharge adds the same amount to every hour - that smaller number is the
 honest one. The formula is applied inside Home Assistant to prices the
 integration fetches anyway, so it costs no extra request.
 
+**Where you see it.** **Current retail price** shows the price you pay: its
+state is the price right now, and its `raw_today`, `raw_tomorrow` and
+`raw_forecast` attributes carry the whole series. **Price forecast series**
+stays the day-ahead price and its forecast, without any of this. Entity IDs
+follow your Home Assistant language: on a German instance the sensor is
+usually `sensor.energy_price_forecast_eu_de_aktueller_endkundenpreis`.
+[Look yours up](../README.md#finding-your-entity-ids-first) under
+**Developer tools > States**.
+
 **Grid charges that change with the time of day** do not fit into one
 fixed surcharge, and they are the one thing that does move a plan to other
 hours - see [Time-of-day grid charges](#time-of-day-grid-charges-170).
@@ -163,13 +172,21 @@ without VAT; fixed per-kWh taxes stay in the surcharge.
 cheapest. A time-of-day charge does, and that is the point: a cheap night
 rate can make the night cheaper in total than the solar noon, even when the
 exchange price says otherwise. Measured on Danish prices with a winter
-tariff, the cheapest-hours plan moved on up to a third of the days. Only
-the plans are chosen anew: the cheapest *window* still comes from the API,
-which picks it on the exchange price, and is merely priced with the charge.
-The
-retail price sensor shows the charge it contains right now as
-`network_charge_now`. Changing the tariff starts the current block's plan
-afresh, like changing the formula.
+tariff, the cheapest-hours plan moved on up to a third of the days.
+
+**Plans and the cheapest window differ here.** Only the plans are chosen
+anew. To run a device in the hours that are cheap on your bill, use a plan:
+
+| | Chooses its hours by | Shown price includes the charge |
+|---|---|---|
+| Cheapest-hours and weekend plans | day-ahead price + grid charge | yes |
+| Cheapest window | day-ahead price alone, chosen by the API | yes |
+
+**Checking it against your price sheet.** **Current retail price** shows the
+charge it contains right now, without VAT, as `network_charge_now`. Its
+series is described under
+[Where you see it](#retail-price-estimate-or-your-own-formula-160). Changing
+the tariff starts the current block's plan afresh, like changing the formula.
 
 **Denmark.** Pick your grid operator and tariff - most households have
 *Nettarif C*. The list is built from the dataset itself, currently 29

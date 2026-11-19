@@ -796,7 +796,8 @@ searches the whole forecast and can be days away, this one stays inside your
 deadline. It needs an appliance Home Assistant can start, for example through
 a smart plug or the maker's remote-start action.
 
-**Charge an EV or a battery in the cheapest quarter hours before a deadline** -
+**Charge an EV or a battery in the cheapest quarter hours before a deadline**
+*(1.20.0)* -
 plug in, or switch a "ready" helper on, and it charges in the cheapest quarter
 hours left until, say, 07:00, in as many pieces as the prices have valleys.
 It looks again every quarter hour: a valley that has passed no longer counts,

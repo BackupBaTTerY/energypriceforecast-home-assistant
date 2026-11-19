@@ -21,6 +21,7 @@ BLUEPRINTS = Path(__file__).parent.parent / "blueprints" / "automation"
 PLAN = "energypriceforecast/run_device_on_price_plan.yaml"
 APPLIANCE = "energypriceforecast/start_appliance_before_deadline.yaml"
 TOMORROW = "energypriceforecast/tomorrow_price_notification.yaml"
+CHARGE = "energypriceforecast/charge_cheapest_before_deadline.yaml"
 SERIES = "sensor.energy_price_forecast_eu_de_price_forecast_series"
 
 
@@ -82,7 +83,7 @@ async def _stop_automations(hass) -> None:
 
 def test_every_blueprint_names_its_own_source() -> None:
     files = sorted(p.relative_to(BLUEPRINTS).as_posix() for p in BLUEPRINTS.rglob("*.yaml"))
-    assert files == sorted([APPLIANCE, PLAN, TOMORROW])
+    assert files == sorted([APPLIANCE, CHARGE, PLAN, TOMORROW])
     for path in files:
         meta = _blueprint(path).metadata
         assert meta["source_url"].endswith("/blob/main/blueprints/automation/" + path)
@@ -286,3 +287,199 @@ async def test_tomorrow_stays_quiet_while_it_is_incomplete(hass, freezer) -> Non
     await hass.async_block_till_done()
     assert notes == []
     await _stop_automations(hass)
+
+
+async def _walk(hass, until: datetime, freezer) -> None:
+    """Move the clock on quarter hour by quarter hour, as the charging loop waits."""
+    moment = datetime.now(timezone.utc)
+    moment = moment.replace(minute=moment.minute // 15 * 15, second=1, microsecond=0)
+    while moment < until:
+        moment += timedelta(minutes=15)
+        freezer.move_to(moment)
+        async_fire_time_changed(hass)
+        await _until(lambda: False, rounds=60)
+
+
+async def _charging(hass, inputs: dict) -> dict:
+    calls = {
+        "on": async_mock_service(hass, "test", "on"),
+        "off": async_mock_service(hass, "test", "off"),
+        "planned": async_mock_service(hass, "test", "planned"),
+        "reset": async_mock_service(hass, "homeassistant", "turn_off"),
+    }
+    hass.states.async_set("input_boolean.ev_ready", "off")
+    await _automation(
+        hass,
+        CHARGE,
+        {
+            "price_sensor": SERIES,
+            "ready_entity": "input_boolean.ev_ready",
+            "on_actions": [{"action": "test.on"}],
+            "off_actions": [{"action": "test.off"}],
+            "planned_actions": [
+                {
+                    "action": "test.planned",
+                    "data": {"plan": "{{ planned }}", "price": "{{ average_price }}"},
+                }
+            ],
+            **inputs,
+        },
+    )
+    return calls
+
+
+async def test_charging_uses_two_valleys_and_skips_the_one_already_past(
+    hass, freezer
+) -> None:
+    """Lars comes home at 17:00; the cheapest hour, 13:00, has gone."""
+    await hass.config.async_set_time_zone("Europe/Berlin")
+    freezer.move_to("2026-11-06T16:00:00+00:00")  # 17:00 local
+    noon = datetime(2026, 11, 6, 12, 0, tzinfo=timezone.utc)  # 13:00 local
+    evening = datetime(2026, 11, 6, 16, 0, tzinfo=timezone.utc)
+    # 17:00 ... 06:00 local: valleys at 00:00 and 04:00, a dearer hour between.
+    night = [0.30, 0.32, 0.31, 0.28, 0.26, 0.24, 0.20, 0.10, 0.18, 0.22, 0.21, 0.12, 0.25, 0.29]
+    hass.states.async_set(
+        SERIES,
+        "0.30",
+        {
+            "unit_of_measurement": "EUR/kWh",
+            "raw_today": _slots(noon, [0.01, 0.20, 0.25, 0.28]) + _slots(evening, night[:7]),
+            "raw_tomorrow": _slots(evening + timedelta(hours=7), night[7:])
+            # Cheaper again after the deadline, which must not count.
+            + _slots(evening + timedelta(hours=14), [0.01] * 4),
+            "raw_forecast": [],
+        },
+    )
+    calls = await _charging(hass, {"charge_hours": 2, "finish_by": "07:00:00"})
+
+    hass.states.async_set("input_boolean.ev_ready", "on")
+    await _until(lambda: calls["planned"] and calls["off"])
+    assert calls["planned"][0].data["plan"] == "00:00-01:00, 04:00-05:00"
+    assert float(calls["planned"][0].data["price"]) == pytest.approx(0.11)
+    # Plugged in at a dear hour: the charger is told to wait.
+    assert len(calls["off"]) == 1
+    assert calls["on"] == []
+
+    await _walk(hass, datetime(2026, 11, 6, 22, 45, 1, tzinfo=timezone.utc), freezer)
+    assert calls["on"] == []
+    await _walk(hass, datetime(2026, 11, 6, 23, 0, 1, tzinfo=timezone.utc), freezer)
+    assert len(calls["on"]) == 1  # 00:00 local
+    await _walk(hass, datetime(2026, 11, 7, 0, 0, 1, tzinfo=timezone.utc), freezer)
+    assert len(calls["off"]) == 2  # 01:00 local, the dearer hours in between
+    await _walk(hass, datetime(2026, 11, 7, 3, 0, 1, tzinfo=timezone.utc), freezer)
+    assert len(calls["on"]) == 2  # 04:00 local
+    await _walk(hass, datetime(2026, 11, 7, 4, 0, 1, tzinfo=timezone.utc), freezer)
+    # Two hours charged: off, and "ready" reset.
+    await _until(lambda: calls["reset"])
+    assert len(calls["off"]) == 3
+    assert calls["reset"][0].data["entity_id"] == ["input_boolean.ev_ready"]
+    await hass.async_block_till_done()
+
+
+async def test_charging_at_noon_takes_the_valley_before_the_deadline(
+    hass, freezer
+) -> None:
+    """Home at 12:00, full by 07:00: 13:00 today, not tomorrow's cheaper noon."""
+    await hass.config.async_set_time_zone("Europe/Berlin")
+    freezer.move_to("2026-11-06T11:00:00+00:00")  # 12:00 local
+    first = datetime(2026, 11, 6, 11, 0, tzinfo=timezone.utc)
+    values = [0.25, 0.05] + [0.20] * 17  # 12:00, 13:00, then until 07:00
+    tomorrow_noon = [0.01] * 6  # 07:00 ... 13:00 tomorrow, past the deadline
+    hass.states.async_set(
+        SERIES,
+        "0.25",
+        {
+            "raw_today": _slots(first, values[:12]),
+            "raw_tomorrow": _slots(first + timedelta(hours=12), values[12:] + tomorrow_noon),
+            "raw_forecast": [],
+        },
+    )
+    calls = await _charging(hass, {"charge_hours": 1, "finish_by": "07:00:00"})
+
+    hass.states.async_set("input_boolean.ev_ready", "on")
+    await _until(lambda: calls["planned"])
+    assert calls["planned"][0].data["plan"] == "13:00-14:00"
+    await _walk(hass, datetime(2026, 11, 6, 12, 0, 1, tzinfo=timezone.utc), freezer)
+    assert len(calls["on"]) == 1
+    await _walk(hass, datetime(2026, 11, 6, 13, 0, 1, tzinfo=timezone.utc), freezer)
+    await _until(lambda: calls["reset"])
+    assert len(calls["off"]) == 2
+    await hass.async_block_till_done()
+
+
+async def test_charging_starts_at_once_when_time_is_short_and_stops_when_unplugged(
+    hass, freezer
+) -> None:
+    await hass.config.async_set_time_zone("Europe/Berlin")
+    freezer.move_to("2026-11-07T05:00:00+00:00")  # 06:00 local, one hour left
+    first = datetime(2026, 11, 7, 5, 0, tzinfo=timezone.utc)
+    hass.states.async_set(
+        SERIES, "0.30", {"raw_today": _slots(first, [0.30, 0.10, 0.10]), "raw_forecast": []}
+    )
+    calls = await _charging(hass, {"charge_hours": 2, "finish_by": "07:00:00"})
+
+    hass.states.async_set("input_boolean.ev_ready", "on")
+    await _until(lambda: calls["on"])
+    assert len(calls["on"]) == 1
+    assert calls["off"] == []
+
+    hass.states.async_set("input_boolean.ev_ready", "off")
+    await _until(lambda: calls["off"])
+    assert len(calls["off"]) == 1
+    await hass.async_block_till_done()
+
+
+async def test_charging_time_can_come_from_a_sensor(hass, freezer) -> None:
+    """A state-of-charge sensor saying nothing is needed: no charging at all."""
+    await hass.config.async_set_time_zone("Europe/Berlin")
+    freezer.move_to("2026-11-06T16:00:00+00:00")
+    first = datetime(2026, 11, 6, 16, 0, tzinfo=timezone.utc)
+    hass.states.async_set(
+        SERIES, "0.30", {"raw_today": _slots(first, [0.10] * 8), "raw_forecast": []}
+    )
+    hass.states.async_set("sensor.ev_hours_needed", "0")
+    calls = await _charging(
+        hass,
+        {
+            "charge_hours": 3,
+            "charge_hours_sensor": "sensor.ev_hours_needed",
+            "finish_by": "23:00:00",
+        },
+    )
+    hass.states.async_set("input_boolean.ev_ready", "on")
+    await _until(lambda: calls["off"])
+    await _walk(hass, datetime(2026, 11, 6, 16, 15, 1, tzinfo=timezone.utc), freezer)
+    await _until(lambda: calls["reset"])
+    assert calls["on"] == []
+    assert calls["planned"][0].data["plan"] == ""
+    await hass.async_block_till_done()
+
+
+async def test_charging_follows_prices_published_after_plugging_in(
+    hass, freezer
+) -> None:
+    """The forecast put the valley at 03:00; the published prices put it at 01:00."""
+    await hass.config.async_set_time_zone("Europe/Berlin")
+    freezer.move_to("2026-11-06T16:00:00+00:00")  # 17:00 local
+    evening = datetime(2026, 11, 6, 16, 0, tzinfo=timezone.utc)
+    forecast = [0.30] * 14
+    forecast[10] = 0.10  # 03:00 local
+    hass.states.async_set(
+        SERIES, "0.30", {"raw_today": [], "raw_forecast": _slots(evening, forecast)}
+    )
+    calls = await _charging(hass, {"charge_hours": 1, "finish_by": "07:00:00"})
+    hass.states.async_set("input_boolean.ev_ready", "on")
+    await _until(lambda: calls["planned"])
+    assert calls["planned"][0].data["plan"] == "03:00-04:00"
+
+    published = [0.30] * 14
+    published[8] = 0.05  # 01:00 local
+    hass.states.async_set(
+        SERIES, "0.30", {"raw_today": _slots(evening, published), "raw_forecast": []}
+    )
+    await _walk(hass, datetime(2026, 11, 7, 0, 0, 1, tzinfo=timezone.utc), freezer)
+    assert len(calls["on"]) == 1  # 01:00 local, not 03:00
+    await _walk(hass, datetime(2026, 11, 7, 1, 0, 1, tzinfo=timezone.utc), freezer)
+    await _until(lambda: calls["reset"])
+    assert len(calls["on"]) == 1
+    await hass.async_block_till_done()

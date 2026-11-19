@@ -1,0 +1,259 @@
+blueprint:
+  name: Charge in the cheapest quarter hours before a deadline
+  description: >-
+    For an EV or a home battery: it charges in the cheapest quarter hours left
+    before the time you set, and they need not be in one piece - if the prices
+    have two cheap valleys before the deadline, both are used.
+
+
+    It looks at the prices again every quarter hour. A valley that has passed
+    no longer counts, a car that comes home late gets the next cheap hours, and
+    prices published in the meantime are used as soon as they arrive. It starts
+    when "ready" turns on - a helper, or the car's "plugged in" sensor - and
+    stops at the deadline, once the charging time is used up, or when "ready"
+    turns off. If there is not enough time or data before the deadline, it
+    charges straight away.
+
+
+    The charging time is a fixed number of hours, or comes from a sensor - for
+    example one you work out from the state of charge and your PV forecast, so
+    the sun does part of the work and the grid only the rest.
+  domain: automation
+  source_url: https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/blob/main/blueprints/automation/energypriceforecast/charge_cheapest_before_deadline.yaml
+  author: Energy Price Forecast
+  homeassistant:
+    min_version: 2025.6.0
+  input:
+    price_sensor:
+      name: Price series
+      description: >-
+        "Current retail price" if you set up retail pricing - then grid charges
+        that change with the time of day decide the valleys too - or "Price
+        forecast series" for the exchange price.
+      selector:
+        entity:
+          filter:
+            - integration: energypriceforecast
+              domain: sensor
+    ready_entity:
+      name: Ready
+      description: >-
+        On while it may charge: the car's "plugged in" sensor, or an
+        input_boolean you switch on.
+      selector:
+        entity:
+          filter:
+            - domain:
+                - input_boolean
+                - binary_sensor
+                - switch
+    charge_hours:
+      name: Charging time
+      description: >-
+        How long it has to charge, in hours - for example 1 for 11 kWh at 11 kW.
+        Used when no sensor is set below.
+      default: 1
+      selector:
+        number:
+          min: 0.25
+          max: 24
+          step: 0.25
+          unit_of_measurement: h
+    charge_hours_sensor:
+      name: Charging time from a sensor (optional)
+      description: >-
+        A sensor with the hours still needed, for example worked out from the
+        state of charge. It is read again every quarter hour, so it may shrink
+        while charging or when the sun is forecast to help. While it is not a
+        number, the fixed charging time is used.
+      default: ""
+      selector:
+        entity:
+          filter:
+            - domain:
+                - sensor
+                - input_number
+                - number
+    finish_by:
+      name: Charged by
+      description: The next time of day after "ready" turns on counts.
+      default: "07:00:00"
+      selector:
+        time: {}
+    on_actions:
+      name: Start charging
+      description: For example switching the wallbox on.
+      selector:
+        action: {}
+    off_actions:
+      name: Stop charging
+      description: >-
+        Also runs once at the start when the current quarter hour is not one of
+        the cheap ones, so a charger that starts by itself when plugged in waits.
+      selector:
+        action: {}
+    planned_actions:
+      name: When the charging times are chosen (optional)
+      description: >-
+        Runs once at the start, for a notification. The variables planned (for
+        example "00:00-01:00, 04:00-05:00", local time) and average_price are
+        available.
+      default: []
+      selector:
+        action: {}
+    reset_ready:
+      name: Turn "ready" off when done
+      description: Only works for an input_boolean or a switch.
+      default: true
+      selector:
+        boolean: {}
+
+mode: restart
+
+variables:
+  price_sensor: !input price_sensor
+  ready_entity: !input ready_entity
+  charge_hours: !input charge_hours
+  charge_hours_sensor: !input charge_hours_sensor
+  finish_by: !input finish_by
+  reset_ready: !input reset_ready
+
+triggers:
+  - trigger: state
+    entity_id: !input ready_entity
+    to: "on"
+    id: start
+  - trigger: homeassistant
+    event: start
+    id: start
+  - trigger: state
+    entity_id: !input ready_entity
+    from: "on"
+    id: stop
+
+actions:
+  - if:
+      - "{{ trigger.id == 'stop' }}"
+    then:
+      - choose: []
+        default: !input off_actions
+      - stop: Ready turned off
+  - condition: state
+    entity_id: !input ready_entity
+    state: "on"
+  - variables:
+      deadline: >-
+        {% set t = now() %}
+        {% set parts = finish_by.split(':') %}
+        {% set d = t.replace(hour=parts[0] | int, minute=parts[1] | int, second=0, microsecond=0) %}
+        {% if d <= t %}{% set d = d + timedelta(days=1) %}{% endif %}
+        {{ d.isoformat() }}
+      charged: 0
+      charging: unknown
+      first: true
+      done: false
+  - repeat:
+      sequence:
+        - variables:
+            need: >-
+              {% set h = states(charge_hours_sensor) if charge_hours_sensor else 'none' %}
+              {% if h | is_number %}{{ [h | float * 3600, 0] | max }}
+              {% else %}{{ [charge_hours | float(1) * 3600 - charged | float(0), 0] | max }}{% endif %}
+            decision: >-
+              {% set t = now() %}
+              {% set end = as_datetime(deadline) %}
+              {% set slots = (state_attr(price_sensor, 'raw_today') or [])
+                + (state_attr(price_sensor, 'raw_tomorrow') or [])
+                + (state_attr(price_sensor, 'raw_forecast') or []) %}
+              {% set ns = namespace(pieces=[], seen=[]) %}
+              {% for s in slots %}
+                {% set a = as_datetime(s.start) %}{% set b = as_datetime(s.end) %}
+                {% if a is not none and b is not none and s.value is number and b > t and a < end %}
+                  {% for k in range(((b - a).total_seconds() / 900) | round(0, 'ceil') | int) %}
+                    {% set pa = a + timedelta(minutes=15 * k) %}
+                    {% set pb = [pa + timedelta(minutes=15), b] | min %}
+                    {% if pb > t and pa < end and pa.isoformat() not in ns.seen %}
+                      {% set ns.seen = ns.seen + [pa.isoformat()] %}
+                      {% set ns.pieces = ns.pieces + [{'a': [pa, t] | max, 'b': [pb, end] | min, 'v': s.value | float}] %}
+                    {% endif %}
+                  {% endfor %}
+                {% endif %}
+              {% endfor %}
+              {% set pick = namespace(left=need | float, chosen=[], cost=0, covered=0) %}
+              {% for p in ns.pieces | sort(attribute='a') | sort(attribute='v') %}
+                {% if pick.left > 0 %}
+                  {% set secs = (p.b - p.a).total_seconds() %}
+                  {% set pick.chosen = pick.chosen + [p] %}
+                  {% set pick.cost = pick.cost + p.v * secs %}
+                  {% set pick.covered = pick.covered + secs %}
+                  {% set pick.left = pick.left - secs %}
+                {% endif %}
+              {% endfor %}
+              {% set now_chosen = pick.chosen | selectattr('a', 'le', t) | selectattr('b', 'gt', t) | list | count > 0 %}
+              {% set m = namespace(out=[], s=none, e=none) %}
+              {% for p in pick.chosen | sort(attribute='a') %}
+                {% if m.e is not none and p.a == m.e %}
+                  {% set m.e = p.b %}
+                {% else %}
+                  {% if m.s is not none %}
+                    {% set m.out = m.out + [as_local(m.s).strftime('%H:%M') ~ '-' ~ as_local(m.e).strftime('%H:%M')] %}
+                  {% endif %}
+                  {% set m.s = p.a %}{% set m.e = p.b %}
+                {% endif %}
+              {% endfor %}
+              {% if m.s is not none %}
+                {% set m.out = m.out + [as_local(m.s).strftime('%H:%M') ~ '-' ~ as_local(m.e).strftime('%H:%M')] %}
+              {% endif %}
+              {% set boundary = t.replace(minute=(t.minute // 15) * 15, second=0, microsecond=0) + timedelta(minutes=15) %}
+              {% set wait = (([boundary, end] | min) - t).total_seconds() | round(0, 'ceil') | int %}
+              {{ {
+                'on': need | float > 0 and (pick.left > 0 or now_chosen),
+                'planned': m.out | join(', '),
+                'average': (pick.cost / pick.covered) if pick.covered > 0 else none,
+                'wait': [wait, 1] | max,
+              } }}
+        - if:
+            - "{{ first }}"
+          then:
+            - variables:
+                planned: "{{ decision.planned }}"
+                average_price: "{{ decision.average }}"
+            - choose: []
+              default: !input planned_actions
+        - if:
+            - "{{ decision.on and charging != 'on' }}"
+          then:
+            - choose: []
+              default: !input on_actions
+        - if:
+            - "{{ not decision.on and charging != 'off' }}"
+          then:
+            - choose: []
+              default: !input off_actions
+        - variables:
+            charging: "{{ 'on' if decision.on else 'off' }}"
+            first: false
+            step_start: "{{ now().isoformat() }}"
+        - delay:
+            seconds: "{{ decision.wait }}"
+        - variables:
+            charged: >-
+              {{ charged | float(0) + ((now() - as_datetime(step_start)).total_seconds()
+                 if charging == 'on' else 0) }}
+            done: >-
+              {% set h = states(charge_hours_sensor) if charge_hours_sensor else 'none' %}
+              {% set left = h | float if h | is_number else charge_hours | float(1) - charged | float(0) / 3600 %}
+              {{ now() >= as_datetime(deadline) or left <= 0 }}
+      until:
+        - "{{ done }}"
+  - if:
+      - "{{ charging == 'on' }}"
+    then:
+      - choose: []
+        default: !input off_actions
+  - if:
+      - "{{ reset_ready and ready_entity.split('.')[0] in ['input_boolean', 'switch'] }}"
+    then:
+      - action: homeassistant.turn_off
+        target:
+          entity_id: !input ready_entity

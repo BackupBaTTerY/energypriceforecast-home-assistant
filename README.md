@@ -779,7 +779,7 @@ use the cheapest-window entities rather than the plan - see
 
 ## Ready-made automations (blueprints)
 
-Three automations to import with one click, set up in the Home Assistant UI
+Four automations to import with one click, set up in the Home Assistant UI
 without YAML. Each button opens your own Home Assistant; nothing is installed
 until you confirm there.
 
@@ -795,6 +795,19 @@ that is still finished by, say, 07:00. Unlike the cheapest window, which
 searches the whole forecast and can be days away, this one stays inside your
 deadline. It needs an appliance Home Assistant can start, for example through
 a smart plug or the maker's remote-start action.
+
+**Charge an EV or a battery in the cheapest quarter hours before a deadline** -
+plug in, or switch a "ready" helper on, and it charges in the cheapest quarter
+hours left until, say, 07:00, in as many pieces as the prices have valleys.
+It looks again every quarter hour: a valley that has passed no longer counts,
+a car that comes home late gets the next cheap hours, and prices published in
+the meantime are used. Give each car or battery its own automation with its
+own charging time. The charging time can come from a sensor - for example one
+worked out from the state of charge and your PV forecast - so the grid only
+covers what the sun will not. With **Current retail price** as the price
+series, time-of-day grid charges shape the valleys too.
+
+[![Import the blueprint: charge before a deadline](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FBackupBaTTerY%2Fenergypriceforecast-home-assistant%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fenergypriceforecast%2Fcharge_cheapest_before_deadline.yaml)
 
 [![Import the blueprint: start an appliance before a deadline](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FBackupBaTTerY%2Fenergypriceforecast-home-assistant%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fenergypriceforecast%2Fstart_appliance_before_deadline.yaml)
 

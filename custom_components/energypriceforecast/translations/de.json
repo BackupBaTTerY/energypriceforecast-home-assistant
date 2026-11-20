@@ -196,6 +196,41 @@
       "already_configured": "Dieser Markt ist bereits eingerichtet."
     }
   },
+  "options": {
+    "step": {
+      "own_source": {
+        "title": "Eigene Preisquelle",
+        "description": "Optional. Wähle einen Sensor der Integration Nord Pool oder ENTSO-e, dann gelten dessen Day-Ahead-Preise für jede Stunde, die er schon kennt. Die Preise für morgen hat er meist früher als unsere frei lizenzierte Quelle. Spätere Stunden bleiben unsere Prognose.\n\nDer Sensor muss den reinen Börsenpreis liefern, ohne MwSt., Netzentgelte oder andere Aufschläge. Die kommen aus der Endpreisformel dieser Integration, damit sie auch für die Prognosetage gelten. Bei ENTSO-e den Sensor „Average electricity price“ wählen, er trägt die Preise. Feld leeren, um die Quelle abzuschalten.",
+        "data": {
+          "own_price_entity": "Eigene Preisquelle"
+        },
+        "data_description": {
+          "own_price_entity": "Ein Sensor von Nord Pool (eingebaut oder aus HACS) oder ENTSO-e."
+        }
+      },
+      "own_source_forecast_only": {
+        "title": "Eigene Preisquelle",
+        "description": "Optional. Für deine Zone dürfen wir keine Börsenpreise weitergeben, nur unsere Prognose. Wähle einen Sensor der Integration Nord Pool oder ENTSO-e, dann siehst du die echten Preise für heute und morgen. Danach geht unsere Prognose weiter.\n\nDer Sensor muss den reinen Börsenpreis liefern, ohne MwSt., Netzentgelte oder andere Aufschläge. Die kommen aus der Endpreisformel dieser Integration, damit sie auch für die Prognosetage gelten. Bei ENTSO-e den Sensor „Average electricity price“ wählen, er trägt die Preise. Feld leeren, um die Quelle abzuschalten.",
+        "data": {
+          "own_price_entity": "Eigene Preisquelle"
+        },
+        "data_description": {
+          "own_price_entity": "Ein Sensor von Nord Pool (eingebaut oder aus HACS) oder ENTSO-e."
+        }
+      }
+    },
+    "error": {
+      "own_entity_missing": "Diesen Sensor gibt es nicht.",
+      "own_unavailable": "Der Sensor ist gerade nicht verfügbar. Noch einmal speichern, um ihn trotzdem zu verwenden.",
+      "own_unknown_format": "Dieser Sensor trägt keine Preisliste. Bei Nord Pool aus HACS den Preissensor wählen, bei ENTSO-e „Average electricity price“.",
+      "own_unit_unknown": "Die Einheit {source_unit} wird nicht verstanden. Unterstützt sind zum Beispiel EUR/kWh, c/kWh oder EUR/MWh und dasselbe in deiner Währung.",
+      "own_currency_mismatch": "Der Sensor rechnet in {source_unit}, unsere Preise in {series_unit}. Preise in verschiedenen Währungen werden nie gemischt: Stell die Quelle auf dieselbe Währung oder ändere die Währung in den Einstellungen dieser Integration.",
+      "own_no_prices": "Der Sensor hat gerade keine Preise. Noch einmal speichern, um ihn trotzdem zu verwenden.",
+      "own_service_failed": "Nord Pool hat nicht geantwortet. Noch einmal speichern, um ihn trotzdem zu verwenden.",
+      "own_published_mismatch": "Die Preise des Sensors weichen von den veröffentlichten Day-Ahead-Preisen ab. Wahrscheinlich enthält er MwSt. oder Aufschläge oder ist auf eine andere Zone eingestellt. Wähle einen Sensor mit dem reinen Börsenpreis und trag die Aufschläge stattdessen in die Endpreisformel ein, dann gelten sie auch für die Prognosetage. Noch einmal speichern, um ihn trotzdem zu verwenden.",
+      "own_forecast_mismatch": "Die Preise des Sensors liegen weit über oder unter unserer Prognose für dieselben Stunden. Wahrscheinlich enthält er MwSt. oder Aufschläge oder ist auf eine andere Zone oder Einheit eingestellt. Wähle einen Sensor mit dem reinen Börsenpreis und trag die Aufschläge stattdessen in die Endpreisformel ein, dann gelten sie auch für die Prognosetage. Wenn du sicher bist, dass es der reine Börsenpreis ist: Noch einmal speichern, um ihn trotzdem zu verwenden."
+    }
+  },
   "selector": {
     "tou_source": {
       "options": {

@@ -196,6 +196,41 @@
       "already_configured": "Tento trh je již nakonfigurován."
     }
   },
+  "options": {
+    "step": {
+      "own_source": {
+        "title": "Vlastní zdroj cen",
+        "description": "Volitelné. Vyberte senzor integrace Nord Pool nebo ENTSO-e a jeho ceny day-ahead se použijí pro každou hodinu, kterou už zná. Zítřejší ceny má obvykle dříve než náš volně licencovaný zdroj. Pozdější hodiny zůstávají naší předpovědí.\n\nSenzor musí dávat čistou burzovní cenu, bez DPH, distribučních poplatků a jiných přirážek. Ty přidává vzorec koncové ceny této integrace, takže platí i pro dny předpovědi. U ENTSO-e vyberte senzor \"Average electricity price\", ten nese ceny. Vyprázdněním pole zdroj vypnete.",
+        "data": {
+          "own_price_entity": "Vlastní zdroj cen"
+        },
+        "data_description": {
+          "own_price_entity": "Senzor Nord Pool (vestavěný nebo z HACS) nebo ENTSO-e."
+        }
+      },
+      "own_source_forecast_only": {
+        "title": "Vlastní zdroj cen",
+        "description": "Volitelné. Pro vaši zónu nesmíme předávat burzovní ceny, jen naši předpověď. Vyberte senzor integrace Nord Pool nebo ENTSO-e a uvidíte skutečné ceny pro dnešek a zítřek. Potom pokračuje naše předpověď.\n\nSenzor musí dávat čistou burzovní cenu, bez DPH, distribučních poplatků a jiných přirážek. Ty přidává vzorec koncové ceny této integrace, takže platí i pro dny předpovědi. U ENTSO-e vyberte senzor \"Average electricity price\", ten nese ceny. Vyprázdněním pole zdroj vypnete.",
+        "data": {
+          "own_price_entity": "Vlastní zdroj cen"
+        },
+        "data_description": {
+          "own_price_entity": "Senzor Nord Pool (vestavěný nebo z HACS) nebo ENTSO-e."
+        }
+      }
+    },
+    "error": {
+      "own_entity_missing": "Tento senzor neexistuje.",
+      "own_unavailable": "Senzor je právě nedostupný. Uložte znovu, chcete-li ho přesto použít.",
+      "own_unknown_format": "Tento senzor nenese žádný seznam cen. U Nord Pool z HACS vyberte cenový senzor, u ENTSO-e \"Average electricity price\".",
+      "own_unit_unknown": "Jednotce {source_unit} nerozumíme. Podporovány jsou například EUR/kWh, c/kWh nebo EUR/MWh a totéž ve vaší měně.",
+      "own_currency_mismatch": "Senzor počítá v {source_unit}, naše ceny v {series_unit}. Ceny v různých měnách se nikdy nemíchají: nastavte zdroj na stejnou měnu, nebo změňte měnu v nastavení této integrace.",
+      "own_no_prices": "Senzor právě nemá žádné ceny. Uložte znovu, chcete-li ho přesto použít.",
+      "own_service_failed": "Nord Pool neodpověděl. Uložte znovu, chcete-li ho přesto použít.",
+      "own_published_mismatch": "Ceny senzoru se liší od zveřejněných cen day-ahead. Pravděpodobně přičítá DPH nebo přirážky, nebo je nastaven na jinou zónu. Vyberte senzor s čistou burzovní cenou a přirážky zadejte místo toho do vzorce koncové ceny, pak platí i pro dny předpovědi. Uložte znovu, chcete-li ho přesto použít.",
+      "own_forecast_mismatch": "Ceny senzoru leží daleko nad nebo pod naší předpovědí pro stejné hodiny. Pravděpodobně přičítá DPH nebo přirážky, nebo je nastaven na jinou zónu či jednotku. Vyberte senzor s čistou burzovní cenou a přirážky zadejte místo toho do vzorce koncové ceny, pak platí i pro dny předpovědi. Pokud jste si jisti, že jde o čistou burzovní cenu: Uložte znovu, chcete-li ho přesto použít."
+    }
+  },
   "selector": {
     "tou_source": {
       "options": {

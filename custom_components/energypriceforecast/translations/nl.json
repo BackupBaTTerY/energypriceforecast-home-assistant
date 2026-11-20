@@ -196,6 +196,41 @@
       "already_configured": "Deze markt is al geconfigureerd."
     }
   },
+  "options": {
+    "step": {
+      "own_source": {
+        "title": "Eigen prijsbron",
+        "description": "Optioneel. Kies een sensor van de integratie Nord Pool of ENTSO-e, dan gelden de day-ahead-prijzen daarvan voor elk uur dat hij al kent. De prijzen voor morgen heeft hij meestal eerder dan onze vrij gelicentieerde bron. Latere uren blijven onze voorspelling.\n\nDe sensor moet de kale beursprijs geven, zonder btw, netkosten of andere toeslagen. Die komen uit de eindprijsformule van deze integratie, zodat ze ook voor de voorspelde dagen gelden. Kies bij ENTSO-e de sensor \"Average electricity price\", die draagt de prijzen. Maak het veld leeg om de bron uit te zetten.",
+        "data": {
+          "own_price_entity": "Eigen prijsbron"
+        },
+        "data_description": {
+          "own_price_entity": "Een sensor van Nord Pool (ingebouwd of uit HACS) of ENTSO-e."
+        }
+      },
+      "own_source_forecast_only": {
+        "title": "Eigen prijsbron",
+        "description": "Optioneel. Voor jouw zone mogen we geen beursprijzen doorgeven, alleen onze voorspelling. Kies een sensor van de integratie Nord Pool of ENTSO-e, dan zie je de echte prijzen voor vandaag en morgen. Daarna gaat onze voorspelling verder.\n\nDe sensor moet de kale beursprijs geven, zonder btw, netkosten of andere toeslagen. Die komen uit de eindprijsformule van deze integratie, zodat ze ook voor de voorspelde dagen gelden. Kies bij ENTSO-e de sensor \"Average electricity price\", die draagt de prijzen. Maak het veld leeg om de bron uit te zetten.",
+        "data": {
+          "own_price_entity": "Eigen prijsbron"
+        },
+        "data_description": {
+          "own_price_entity": "Een sensor van Nord Pool (ingebouwd of uit HACS) of ENTSO-e."
+        }
+      }
+    },
+    "error": {
+      "own_entity_missing": "Deze sensor bestaat niet.",
+      "own_unavailable": "De sensor is op dit moment niet beschikbaar. Sla nogmaals op om hem toch te gebruiken.",
+      "own_unknown_format": "Deze sensor draagt geen prijslijst. Kies bij Nord Pool uit HACS de prijssensor, bij ENTSO-e \"Average electricity price\".",
+      "own_unit_unknown": "De eenheid {source_unit} wordt niet begrepen. Ondersteund zijn bijvoorbeeld EUR/kWh, c/kWh of EUR/MWh, en hetzelfde in je eigen valuta.",
+      "own_currency_mismatch": "De sensor rekent in {source_unit}, onze prijzen in {series_unit}. Prijzen in verschillende valuta worden nooit gemengd: zet de bron op dezelfde valuta, of wijzig de valuta in de instellingen van deze integratie.",
+      "own_no_prices": "De sensor heeft op dit moment geen prijzen. Sla nogmaals op om hem toch te gebruiken.",
+      "own_service_failed": "Nord Pool gaf geen antwoord. Sla nogmaals op om hem toch te gebruiken.",
+      "own_published_mismatch": "De prijzen van de sensor wijken af van de gepubliceerde day-ahead-prijzen. Waarschijnlijk telt hij btw of toeslagen mee, of staat hij op een andere zone. Kies een sensor met de kale beursprijs en zet de toeslagen in plaats daarvan in de eindprijsformule, dan gelden ze ook voor de voorspelde dagen. Sla nogmaals op om hem toch te gebruiken.",
+      "own_forecast_mismatch": "De prijzen van de sensor liggen ver boven of onder onze voorspelling voor dezelfde uren. Waarschijnlijk telt hij btw of toeslagen mee, of staat hij op een andere zone of eenheid. Kies een sensor met de kale beursprijs en zet de toeslagen in plaats daarvan in de eindprijsformule, dan gelden ze ook voor de voorspelde dagen. Als je zeker weet dat het de kale beursprijs is: Sla nogmaals op om hem toch te gebruiken."
+    }
+  },
   "selector": {
     "tou_source": {
       "options": {

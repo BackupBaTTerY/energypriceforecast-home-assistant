@@ -9,7 +9,7 @@ NAME: Final = "Energy Price Forecast EU"
 # from. Must equal manifest.json's version - test_version.py enforces that,
 # because this drifted to 0.1.0 for ten releases and every request from
 # every user was mislabelled the whole time.
-VERSION: Final = "1.20.0"
+VERSION: Final = "1.21.0"
 DEFAULT_API_URL: Final = (
     "https://api.energypriceforecast.eu/api/v1/home-assistant/summary"
 )
@@ -239,6 +239,20 @@ COMBINED_SCORE_CO2_FLOOR_G_KWH: Final = 25.0
 COMBINED_SCORE_PRICE_FLOOR_SHARE: Final = 0.10
 
 PLATFORMS: Final = ["sensor", "binary_sensor"]
+
+# The user's own price source (1.21.0): a sensor of Nord Pool or ENTSO-e
+# whose day-ahead prices replace forecast hours - see own_prices.py. Stored
+# in the entry's options, set in its own small dialog.
+CONF_OWN_PRICE_ENTITY: Final = "own_price_entity"
+# Where the API may pass on no exchange prices at all, only its forecast.
+# Only the wording of the dialog depends on it: the source is offered in
+# every market, because elsewhere it is usually earlier than the API.
+FORECAST_ONLY_MARKETS: Final[frozenset[str]] = frozenset(
+    {
+        "NO1", "NO3", "NO4", "NO5", "SE1", "SE2", "FI", "RO", "SK", "GR", "BG",
+        "IT_CNOR", "IT_CSUD", "IT_SUD", "IT_CALA", "IT_SICI", "IT_SARD", "GB",
+    }
+)
 
 # Markets where the API can compute an assumption-based retail (all-in)
 # price - the "estimate" retail source. Germany additionally requires a

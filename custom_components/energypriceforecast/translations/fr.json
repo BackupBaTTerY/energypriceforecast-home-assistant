@@ -196,6 +196,41 @@
       "already_configured": "Ce marché est déjà configuré."
     }
   },
+  "options": {
+    "step": {
+      "own_source": {
+        "title": "Source de prix personnelle",
+        "description": "Facultatif. Choisissez un capteur de l'intégration Nord Pool ou ENTSO-e, et ses prix day-ahead sont utilisés pour chaque heure qu'il connaît déjà. Il a généralement les prix de demain plus tôt que notre source sous licence libre. Les heures suivantes restent notre prévision.\n\nLe capteur doit donner le prix de bourse nu, sans TVA, tarif de réseau ni autre supplément. Ceux-ci viennent de la formule de prix final de cette intégration, afin de s'appliquer aussi aux jours de prévision. Avec ENTSO-e, choisissez le capteur \"Average electricity price\", qui porte les prix. Videz le champ pour désactiver la source.",
+        "data": {
+          "own_price_entity": "Source de prix personnelle"
+        },
+        "data_description": {
+          "own_price_entity": "Un capteur de Nord Pool (intégré ou depuis HACS) ou d'ENTSO-e."
+        }
+      },
+      "own_source_forecast_only": {
+        "title": "Source de prix personnelle",
+        "description": "Facultatif. Pour votre zone, nous ne pouvons pas transmettre les prix de la bourse, seulement notre prévision. Choisissez un capteur de l'intégration Nord Pool ou ENTSO-e, et vous voyez les vrais prix d'aujourd'hui et de demain. Ensuite, notre prévision prend le relais.\n\nLe capteur doit donner le prix de bourse nu, sans TVA, tarif de réseau ni autre supplément. Ceux-ci viennent de la formule de prix final de cette intégration, afin de s'appliquer aussi aux jours de prévision. Avec ENTSO-e, choisissez le capteur \"Average electricity price\", qui porte les prix. Videz le champ pour désactiver la source.",
+        "data": {
+          "own_price_entity": "Source de prix personnelle"
+        },
+        "data_description": {
+          "own_price_entity": "Un capteur de Nord Pool (intégré ou depuis HACS) ou d'ENTSO-e."
+        }
+      }
+    },
+    "error": {
+      "own_entity_missing": "Ce capteur n'existe pas.",
+      "own_unavailable": "Le capteur est indisponible pour le moment. Enregistrez à nouveau pour l'utiliser quand même.",
+      "own_unknown_format": "Ce capteur ne porte aucune liste de prix. Avec Nord Pool depuis HACS, choisissez son capteur de prix, avec ENTSO-e \"Average electricity price\".",
+      "own_unit_unknown": "L'unité {source_unit} n'est pas comprise. Sont prises en charge par exemple EUR/kWh, c/kWh ou EUR/MWh, et la même chose dans votre devise.",
+      "own_currency_mismatch": "Le capteur compte en {source_unit}, nos prix en {series_unit}. Des prix dans des devises différentes ne sont jamais mélangés : réglez la source sur la même devise, ou changez la devise dans les paramètres de cette intégration.",
+      "own_no_prices": "Le capteur n'a pas de prix pour le moment. Enregistrez à nouveau pour l'utiliser quand même.",
+      "own_service_failed": "Nord Pool n'a pas répondu. Enregistrez à nouveau pour l'utiliser quand même.",
+      "own_published_mismatch": "Les prix du capteur diffèrent des prix day-ahead publiés. Il ajoute probablement la TVA ou des suppléments, ou est réglé sur une autre zone. Choisissez un capteur avec le prix de bourse nu et mettez plutôt les suppléments dans la formule de prix final, ils s'appliqueront alors aussi aux jours de prévision. Enregistrez à nouveau pour l'utiliser quand même.",
+      "own_forecast_mismatch": "Les prix du capteur sont très au-dessus ou au-dessous de notre prévision pour les mêmes heures. Il ajoute probablement la TVA ou des suppléments, ou est réglé sur une autre zone ou unité. Choisissez un capteur avec le prix de bourse nu et mettez plutôt les suppléments dans la formule de prix final, ils s'appliqueront alors aussi aux jours de prévision. Si vous êtes sûr qu'il s'agit du prix de bourse nu : Enregistrez à nouveau pour l'utiliser quand même."
+    }
+  },
   "selector": {
     "tou_source": {
       "options": {

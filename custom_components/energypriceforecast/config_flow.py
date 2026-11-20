@@ -10,10 +10,12 @@ import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigFlowResult
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
     BooleanSelector,
+    EntitySelector,
+    EntitySelectorConfig,
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
@@ -45,6 +47,7 @@ from .const import (
     CONF_HORIZON_HOURS,
     CONF_LOCAL_CURRENCY,
     CONF_MARKET,
+    CONF_OWN_PRICE_ENTITY,
     CONF_POSTAL_CODE,
     CONF_PRICE_RESOLUTION,
     CONF_RETAIL_FACTOR,
@@ -91,6 +94,7 @@ from .const import (
     DOMAIN,
     HORIZON_HOURS_OPTIONS,
     DATAHUB_MARKETS,
+    FORECAST_ONLY_MARKETS,
     MARKETS,
     MAX_CHEAPEST_HOURS_COUNT,
     MAX_CHEAPEST_HOURS_WINDOW_HOURS,
@@ -122,6 +126,18 @@ from .const import (
     TOU_SOURCES,
 )
 from .dk_datahub import DatahubError, DatahubTariff, async_list_household_tariffs
+from .own_price_source import (
+    STATUS_CURRENCY_MISMATCH,
+    STATUS_ENTITY_MISSING,
+    STATUS_NO_PRICES,
+    STATUS_OK,
+    STATUS_SERVICE_FAILED,
+    STATUS_UNAVAILABLE,
+    STATUS_UNIT_UNKNOWN,
+    STATUS_UNKNOWN_FORMAT,
+    OwnPriceSource,
+)
+from .own_prices import level_check, series_currency
 from .no_frinettleie import (
     ATTRIBUTION,
     CollectionUnavailable,
@@ -783,6 +799,14 @@ class EnergyPriceForecastConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     # entry after a rollback, ignoring what it does not know.
     VERSION = 3
 
+    @staticmethod
+    @callback
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,
+    ) -> config_entries.OptionsFlow:
+        """The own price source (1.21.0) has its own small dialog."""
+        return OwnPriceSourceOptionsFlow()
+
     def __init__(self) -> None:
         # What the steps have collected; saved as one entry at the end.
         self._data: dict[str, Any] = {}
@@ -1223,3 +1247,131 @@ class EnergyPriceForecastConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 }
             ),
         )
+
+
+# The own price source (1.21.0). Problems the user can overrule by saving
+# the same sensor a second time: they come from a comparison that can be
+# wrong on an odd day, or from a source that is only momentarily empty. A
+# unit or a currency that does not fit is never mixed, whatever is clicked.
+_OVERRULABLE = frozenset(
+    {
+        "own_published_mismatch",
+        "own_forecast_mismatch",
+        "own_no_prices",
+        "own_unavailable",
+        "own_service_failed",
+    }
+)
+_OWN_STATUS_ERRORS = {
+    STATUS_ENTITY_MISSING: "own_entity_missing",
+    STATUS_UNAVAILABLE: "own_unavailable",
+    STATUS_UNKNOWN_FORMAT: "own_unknown_format",
+    STATUS_UNIT_UNKNOWN: "own_unit_unknown",
+    STATUS_CURRENCY_MISMATCH: "own_currency_mismatch",
+    STATUS_NO_PRICES: "own_no_prices",
+    STATUS_SERVICE_FAILED: "own_service_failed",
+}
+
+
+def _own_source_schema(current: str | None) -> vol.Schema:
+    # Only sensors of the two integrations whose format is understood, so
+    # the list is short and nothing else can be picked by mistake.
+    key = (
+        vol.Optional(CONF_OWN_PRICE_ENTITY, description={"suggested_value": current})
+        if current
+        else vol.Optional(CONF_OWN_PRICE_ENTITY)
+    )
+    return vol.Schema(
+        {
+            key: EntitySelector(
+                EntitySelectorConfig(
+                    filter=[
+                        {"integration": "nordpool", "domain": "sensor"},
+                        {"integration": "entsoe", "domain": "sensor"},
+                    ]
+                )
+            )
+        }
+    )
+
+
+class OwnPriceSourceOptionsFlow(config_entries.OptionsFlow):
+    """One small dialog: the own price source, checked before it is saved.
+
+    Kept apart from the main settings on purpose. It is optional, most
+    people never need it, and the main dialog is long enough.
+    """
+
+    def __init__(self) -> None:
+        # The sensor and the problem last shown, so saving the same sensor
+        # again overrules a problem from _OVERRULABLE.
+        self._rejected: tuple[str, str] | None = None
+        self._units = {"source_unit": "-", "series_unit": "-"}
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        if self.config_entry.data.get(CONF_MARKET) in FORECAST_ONLY_MARKETS:
+            return await self.async_step_own_source_forecast_only(user_input)
+        return await self.async_step_own_source(user_input)
+
+    async def async_step_own_source(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        return await self._async_own_source_step("own_source", user_input)
+
+    async def async_step_own_source_forecast_only(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        return await self._async_own_source_step(
+            "own_source_forecast_only", user_input
+        )
+
+    async def _async_own_source_step(
+        self, step_id: str, user_input: dict[str, Any] | None
+    ) -> ConfigFlowResult:
+        errors: dict[str, str] = {}
+        current = self.config_entry.options.get(CONF_OWN_PRICE_ENTITY)
+        if user_input is not None:
+            entity = str(user_input.get(CONF_OWN_PRICE_ENTITY) or "").strip()
+            if not entity:
+                return self.async_create_entry(data={})
+            error = await self._async_check(entity)
+            if error is None or (
+                error in _OVERRULABLE and self._rejected == (entity, error)
+            ):
+                return self.async_create_entry(data={CONF_OWN_PRICE_ENTITY: entity})
+            self._rejected = (entity, error)
+            errors["base"] = error
+            current = entity
+        return self.async_show_form(
+            step_id=step_id,
+            data_schema=_own_source_schema(current),
+            errors=errors,
+            description_placeholders=self._units,
+        )
+
+    async def _async_check(self, entity: str) -> str | None:
+        """Read the sensor once, the way the integration will, and judge it.
+
+        Without a loaded entry there is no series to compare with; then the
+        sensor is taken as it is and the diagnostics report on it later.
+        """
+        entry = self.config_entry
+        if entry.state is not config_entries.ConfigEntryState.LOADED:
+            return None
+        coordinator = entry.runtime_data
+        series = getattr(coordinator, "api_price_series", None)
+        if not isinstance(series, dict):
+            return None
+        unit = series.get("unit")
+        source = OwnPriceSource(self.hass, entity, coordinator.zone)
+        slots = await source.async_read(unit, dt_util.utcnow())
+        self._units = {
+            "source_unit": str(source.unit or "-"),
+            "series_unit": str(unit or "-"),
+        }
+        if source.status != STATUS_OK:
+            return _OWN_STATUS_ERRORS.get(source.status)
+        problem = level_check(slots, series.get("entries"), series_currency(unit))
+        return f"own_{problem}" if problem else None

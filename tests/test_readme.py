@@ -75,6 +75,7 @@ SETTING_SECTIONS = {
     "weekend_hours_count": "### EV charging on weekends",
     "greenest_hours_count": "### Charging on clean power instead of cheap power",
     "expensive_hours_count": "### The hours to stay out of",
+    "own_price_entity": "## Your own price source",
 }
 
 

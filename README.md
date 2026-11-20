@@ -39,7 +39,9 @@ needs a look further ahead than tomorrow. This integration:
   against the prices that were published afterwards.
 
 It does not replace your existing price integration. Keep it; this one adds
-the hours it cannot know yet.
+the hours it cannot know yet. Since 1.21.0 it can also
+[read your Nord Pool or ENTSO-e prices](#your-own-price-source-1210), so
+published hours come from your source and only the rest is a forecast.
 
 **An example from Germany**, rolling 30 days from 9 September to 8 October
 2026, taken from the [public forecast quality page](https://energypriceforecast.eu/en/forecast-quality/):
@@ -126,6 +128,9 @@ integration shows the figures for yours as entities.
   pick the hours that are cheapest on the bill, not just on the exchange
 - Optional prices in your own currency *(1.4.0)* - Czech koruna, Polish złoty
   or Swedish krona instead of euro, at the ECB's daily reference rate
+- Optional **own price source** *(1.21.0)* - day-ahead prices from your Nord
+  Pool or ENTSO-e sensor replace the forecast hours they cover: usually
+  earlier than ours, and in 18 zones the only way to real prices
 - Configurable poll interval (15-120 minutes)
 - Access and horizon diagnostics, with API key and postal code redacted
 - Multiple market entries, for example DK1 and DK2
@@ -697,6 +702,44 @@ an exchange did not publish - so an automation can stop trusting the
 current price for that hour.
 [Details and a dashboard badge](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/blob/main/docs/forecast-quality.md#when-the-official-prices-are-missing-1150)
 
+## Your own price source *(1.21.0)*
+
+If you already run **Nord Pool** (built into Home Assistant or from HACS) or
+**ENTSO-e**, this integration can take the day-ahead prices from there. They
+replace the forecast for every hour your source already knows; the hours
+after that stay our forecast. Your prices are only read inside Home
+Assistant and are never sent anywhere.
+
+- **In every market it is usually earlier.** The exchange prices we pass on
+  come from freely licensed sources, and those can be hours late - on
+  20 November 2026 the German day was missing altogether. Nord Pool and
+  ENTSO-e usually have tomorrow's prices shortly after the auction at
+  midday, and the plans and the current price use them straight away.
+- **In 18 zones it is the only way to real prices.** For NO1, NO3-NO5, SE1,
+  SE2, FI, RO, SK, GR, BG, GB and the six Italian zones other than ITN we may
+  not pass on exchange prices, only our forecast. With your own source you
+  see the real prices for today and tomorrow there too.
+
+**Setting it up**, in three steps:
+
+1. Install Nord Pool or ENTSO-e and set it to the **bare exchange price**:
+   no VAT, no additional costs, no price modifier. Already using it with
+   VAT for your dashboard? Keep that sensor and add a second one without.
+2. In Home Assistant go to **Settings > Devices & services > Energy Price
+   Forecast EU** and click **Configure**.
+3. Pick the sensor - for Nord Pool its price sensor, for ENTSO-e **Average
+   electricity price**, the one that carries the price list - and save.
+
+Why the bare price: VAT and grid charges must be added in one place, so that
+they reach every hour alike. Your source only knows today and tomorrow; if
+it added them, the forecast days after would look cheaper than they are.
+Put them into the [retail formula](#retail-price-estimate-or-your-own-formula-160)
+instead, which adds them to the forecast days as well. The dialog checks
+this when you save: a sensor whose prices sit clearly above the published
+prices or our forecast, or that uses another currency, is pointed out with
+what to change.
+[Details, units and limits](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/blob/main/docs/own-price-source.md)
+
 ## How good is the forecast, really?
 
 With measurements, not claims: the **Forecast quality**, **Forecast
@@ -858,6 +901,9 @@ local grid fee. A Danish grid tariff *(1.7.0)* is fetched once a day from
 Energinet's Energi Data Service; the request names the grid operator and the
 tariff, nothing about you. Choosing a Norwegian grid operator during setup
 downloads the fri-nettleie collection from GitHub once; nothing is sent there.
+
+An [own price source](#your-own-price-source-1210) *(1.21.0)* is read inside
+Home Assistant only. Its prices are never sent to our API or anywhere else.
 
 ## Support
 

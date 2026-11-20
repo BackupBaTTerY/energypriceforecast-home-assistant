@@ -196,6 +196,41 @@
       "already_configured": "Dette markedet er allerede konfigurert."
     }
   },
+  "options": {
+    "step": {
+      "own_source": {
+        "title": "Egen priskilde",
+        "description": "Valgfritt. Velg en sensor fra integrasjonen Nord Pool eller ENTSO-e, så brukes dens day-ahead-priser for hver time den allerede kjenner. Morgendagens priser har den som regel før vår fritt lisensierte kilde. Senere timer forblir vår prognose.\n\nSensoren må gi den rene børsprisen, uten mva., nettleie eller andre påslag. De kommer fra denne integrasjonens sluttprisformel, slik at de også gjelder for prognosedagene. Velg ved ENTSO-e sensoren \"Average electricity price\", den bærer prisene. Tøm feltet for å slå kilden av.",
+        "data": {
+          "own_price_entity": "Egen priskilde"
+        },
+        "data_description": {
+          "own_price_entity": "En sensor fra Nord Pool (innebygd eller fra HACS) eller ENTSO-e."
+        }
+      },
+      "own_source_forecast_only": {
+        "title": "Egen priskilde",
+        "description": "Valgfritt. For din sone kan vi ikke videreformidle børspriser, bare vår prognose. Velg en sensor fra integrasjonen Nord Pool eller ENTSO-e, så ser du de faktiske prisene for i dag og i morgen. Deretter fortsetter vår prognose.\n\nSensoren må gi den rene børsprisen, uten mva., nettleie eller andre påslag. De kommer fra denne integrasjonens sluttprisformel, slik at de også gjelder for prognosedagene. Velg ved ENTSO-e sensoren \"Average electricity price\", den bærer prisene. Tøm feltet for å slå kilden av.",
+        "data": {
+          "own_price_entity": "Egen priskilde"
+        },
+        "data_description": {
+          "own_price_entity": "En sensor fra Nord Pool (innebygd eller fra HACS) eller ENTSO-e."
+        }
+      }
+    },
+    "error": {
+      "own_entity_missing": "Denne sensoren finnes ikke.",
+      "own_unavailable": "Sensoren er ikke tilgjengelig akkurat nå. Lagre igjen for å bruke den likevel.",
+      "own_unknown_format": "Denne sensoren bærer ingen prisliste. Velg ved Nord Pool fra HACS prissensoren, ved ENTSO-e \"Average electricity price\".",
+      "own_unit_unknown": "Enheten {source_unit} forstås ikke. Støttet er for eksempel EUR/kWh, c/kWh eller EUR/MWh og det samme i din valuta.",
+      "own_currency_mismatch": "Sensoren regner i {source_unit}, våre priser i {series_unit}. Priser i ulike valutaer blandes aldri: sett kilden til samme valuta, eller endre valutaen i innstillingene til denne integrasjonen.",
+      "own_no_prices": "Sensoren har ingen priser akkurat nå. Lagre igjen for å bruke den likevel.",
+      "own_service_failed": "Nord Pool svarte ikke. Lagre igjen for å bruke den likevel.",
+      "own_published_mismatch": "Sensorens priser avviker fra de publiserte day-ahead-prisene. Den legger sannsynligvis til mva. eller påslag, eller er satt til en annen sone. Velg en sensor med den rene børsprisen og legg påslagene i sluttprisformelen i stedet, så gjelder de også for prognosedagene. Lagre igjen for å bruke den likevel.",
+      "own_forecast_mismatch": "Sensorens priser ligger langt over eller under vår prognose for de samme timene. Den legger sannsynligvis til mva. eller påslag, eller er satt til en annen sone eller enhet. Velg en sensor med den rene børsprisen og legg påslagene i sluttprisformelen i stedet, så gjelder de også for prognosedagene. Hvis du er sikker på at det er den rene børsprisen: Lagre igjen for å bruke den likevel."
+    }
+  },
   "selector": {
     "tou_source": {
       "options": {

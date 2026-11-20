@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections.abc import Awaitable, Callable
 from datetime import date, datetime, timedelta, timezone, tzinfo
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import Event, EventStateChangedData, HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
@@ -29,12 +31,16 @@ from .const import (
     DEFAULT_UPDATE_INTERVAL_MINUTES,
     DOMAIN,
     NAME,
+    PRICE_RESOLUTION_HOURLY,
     RETAIL_SOURCE_ESTIMATE,
     RETAIL_SOURCE_FORMULA,
     RETAIL_SOURCE_OFF,
 )
 from .forecast_reference import reference_entries, update_reference
 from .health import SourceHealth
+from .own_price_source import OwnPriceSource
+from .own_prices import merge as merge_own_prices
+from .own_prices import series_currency, signature
 from .planning import (
     fixed_repeating_window,
     fixed_weekend_window,
@@ -103,6 +109,7 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         tariff: TariffSource | None = None,
         tariff_loader: Callable[[date], Awaitable[TariffSource | None]] | None = None,
         zone: tzinfo = timezone.utc,
+        own_price_entity: str | None = None,
     ) -> None:
         super().__init__(
             hass,
@@ -173,6 +180,18 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # keeps its previous data on purpose; this is how the diagnostics
         # and the series attributes can still say that it is old.
         self.health = SourceHealth()
+        # The user's own price source (1.21.0), see own_prices.py. The API's
+        # series is kept as it came, so the source can be mixed in afresh
+        # whenever either of the two changes; price_series is the mix.
+        self.own_source = (
+            OwnPriceSource(hass, own_price_entity, zone) if own_price_entity else None
+        )
+        self.api_price_series: dict[str, Any] | None = None
+        self.own_price_report: dict[str, Any] | None = None
+        self._own_signature: tuple[Any, ...] = ()
+        # A change of the source rebuilds plans outside the regular update;
+        # the two must not interleave at an await.
+        self._derive_lock = asyncio.Lock()
 
     @property
     def retail_pricing(self) -> bool:
@@ -539,9 +558,10 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         fresh_prices = None
         try:
             fresh_prices = await self.api.async_get_prices(price_mode="base")
-            self.price_series = await self._async_retain_today(
+            self.api_price_series = await self._async_retain_today(
                 "base", fresh_prices, now
             )
+            self.price_series = self.api_price_series
             self.price_forecast_reference = await self._async_capture_reference(
                 "base", fresh_prices, "base"
             )
@@ -552,6 +572,70 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         await self._async_save_series_cache()
 
+        async with self._derive_lock:
+            await self._async_apply_own_prices(now)
+            await self._async_derive(summary, now, fresh_prices)
+        return summary
+
+    async def _async_apply_own_prices(self, now: datetime) -> None:
+        """Mix the user's own price source into the API's series.
+
+        Only forecast slots are replaced, and only where the source covers
+        them fully; published slots of the API stay. Without a source, or
+        when it cannot be read, the series is the API's unchanged - the
+        status in the diagnostics says why.
+        """
+        if self.own_source is None or self.api_price_series is None:
+            return
+        unit = self.api_price_series.get("unit")
+        slots = await self.own_source.async_read(unit, now)
+        self._own_signature = signature(slots)
+        merged, report = merge_own_prices(
+            self.api_price_series,
+            slots,
+            now=now,
+            zone=self.zone,
+            step_minutes=60 if self.price_resolution == PRICE_RESOLUTION_HOURLY else 15,
+            currency=series_currency(unit),
+        )
+        self.price_series = merged
+        self.own_price_report = report.as_dict()
+
+    @callback
+    def async_listen_own_source(self) -> Callable[[], None] | None:
+        """Mix new prices in as soon as the source has them.
+
+        Tomorrow's prices arrive at the source around midday; waiting for
+        the next API poll could cost half an hour. Only the mix and what is
+        built on it are redone - no request goes to the API.
+        """
+        if self.own_source is None:
+            return None
+        return async_track_state_change_event(
+            self.hass, [self.own_source.entity_id], self._async_own_source_changed
+        )
+
+    async def _async_own_source_changed(
+        self, event: Event[EventStateChangedData]
+    ) -> None:
+        if self.data is None or self.api_price_series is None:
+            return
+        now = dt_util.utcnow()
+        async with self._derive_lock:
+            before = self._own_signature
+            await self._async_apply_own_prices(now)
+            if self._own_signature == before:
+                return
+            await self._async_derive(self.data, now, None)
+        self.async_update_listeners()
+
+    async def _async_derive(
+        self,
+        summary: dict[str, Any],
+        now: datetime,
+        fresh_prices: dict[str, Any] | None,
+    ) -> None:
+        """The retail formula and the plans, from the series as it stands."""
         if self.retail_source == RETAIL_SOURCE_FORMULA:
             # The formula needs no request of its own: it is applied to the
             # base series and summary this update already fetched. A failed
@@ -710,5 +794,3 @@ class EnergyPriceForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self.greenest_hours_window_average = (
                 plan["window_average_value"] if plan else None
             )
-
-        return summary

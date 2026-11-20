@@ -59,4 +59,19 @@ async def async_get_config_entry_diagnostics(
         "last_update_success": coordinator.last_update_success,
         "sources": health.snapshot(dt_util.utcnow()) if health is not None else {},
         "series_continuity": _continuity(coordinator),
+        "own_price_source": _own_source(coordinator),
+    }
+
+
+def _own_source(coordinator: Any) -> dict[str, Any] | None:
+    """What the own price source delivered and how it was mixed in (1.21.0).
+
+    Counts and a few disagreeing slots, not the source's whole series.
+    """
+    source = getattr(coordinator, "own_source", None)
+    if source is None:
+        return None
+    return {
+        **source.snapshot(),
+        "merge": getattr(coordinator, "own_price_report", None),
     }

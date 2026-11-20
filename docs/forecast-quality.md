@@ -27,7 +27,7 @@ Two attributes say what the flag rests on:
 
 | Attribute | Meaning |
 | --- | --- |
-| `price_source` | `day_ahead`, `early_auction` or `forecast` for the current slot |
+| `price_source` | `day_ahead`, `early_auction` or `forecast` for the current slot, or `own_source` when it comes from [your own price source](own-price-source.md) *(1.21.0)* |
 | `published_until` | end of the last published slot in your series, `null` while none is published |
 
 An early-auction price does **not** raise the flag. It is not the official

@@ -21,6 +21,7 @@ from .const import (
     CONF_HORIZON_HOURS,
     CONF_LOCAL_CURRENCY,
     CONF_MARKET,
+    CONF_OWN_PRICE_ENTITY,
     CONF_POSTAL_CODE,
     CONF_PRICE_RESOLUTION,
     CONF_RETAIL_FACTOR,
@@ -172,11 +173,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         tariff=tariff,
         tariff_loader=tariff_loader,
         zone=zone,
+        # Kept in the options, not the data: the settings dialog rewrites
+        # the data as a whole, and must not drop a source set elsewhere.
+        own_price_entity=entry.options.get(CONF_OWN_PRICE_ENTITY) or None,
     )
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_reload_entry))
+    if (unsubscribe := coordinator.async_listen_own_source()) is not None:
+        entry.async_on_unload(unsubscribe)
     return True
 
 

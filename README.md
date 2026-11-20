@@ -195,16 +195,14 @@ before you plan a load by it:
   between the two half-hourly rates you are billed. The setup dialog says so
   when you pick GB.
 
-**Bulgaria, Greece, Portugal, Romania, Slovakia and Spain are new in
-1.8.0.** Two things to know before you switch a device by them:
-
-- **Slovakia and Romania have no CO2 data.** Prices, plans and forecast
-  quality work there; the CO2 entities, the CO2 series and the
-  cleanest-hours plan stay empty, and the combined score is a price score.
-- **Their forecast quality is young.** Every market is judged against a
-  rolling 30-day history, and these have about two weeks. The numbers are
-  published as they are measured, so they currently look weaker than those
-  of markets that have been running for months.
+**Bulgaria, Greece, Portugal, Romania, Slovakia and Spain joined in 1.8.0**
+(September 2026). Prices, plans, CO2 and forecast quality work there as in
+every other market, Slovakia and Romania included: the API now delivers
+CO2 data for both, so the CO2 entities, the CO2 series, the cleanest-hours
+plan and the CO2 half of the combined score are filled there too. How good
+the forecast is in each of them is measured like everywhere else, over a
+rolling 30 days, on the
+[forecast quality page](https://energypriceforecast.eu/en/forecast-quality/).
 
 There is no retail estimate for Switzerland or the Italian zones; they
 provide spot price and CO2. The own retail formula *(1.6.0)* can be set up

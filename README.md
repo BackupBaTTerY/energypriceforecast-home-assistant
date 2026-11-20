@@ -22,6 +22,37 @@ day-ahead price, orange the forecast for the days after, dashed blue the last
 forecast before each price was published. The whole view is
 [ready to paste](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/blob/main/docs/dashboard.md#a-card-that-answers-what-to-do-now-1130).*
 
+## Quick start
+
+1. **Install** it with the HACS button above, then restart Home Assistant.
+2. **Add it** under **Settings > Devices & services > Add integration**:
+   search for **Energy Price Forecast EU** and pick your price zone. No
+   account and no API key needed.
+3. **Use it.** The quickest wins:
+   - switch a heat pump, water heater or charger with a
+     [ready-made blueprint](#ready-made-automations-blueprints), no YAML;
+   - put **Current price** and the price chart on a dashboard
+     ([ready to paste](#build-a-price-chart));
+   - let an [AI assistant](#using-it-with-an-ai-assistant) write the
+     automation for your device.
+
+Everything else is optional and can be added later: the price you actually
+pay, grid charges, your own Nord Pool or ENTSO-e prices.
+
+## Find your way
+
+| You want to | Read |
+| --- | --- |
+| Know whether this is for you | [Why next to Nord Pool or Tibber](#why-install-this-next-to-nord-pool-or-tibber) · [Supported markets](#supported-markets) · [How good is the forecast](#how-good-is-the-forecast-really) |
+| Install and update | [Installation](#installation-with-hacs) · [Updating](#updating) · [Your entity IDs](#finding-your-entity-ids-first) |
+| Run devices at the right time | [Which plan should I use?](#which-plan-should-i-use) · [Switching a device](#switching-a-device-with-the-plan) · [Blueprints](#ready-made-automations-blueprints) · [Home batteries](#home-batteries-emhass-and-predbat) |
+| See the price you actually pay | [Retail price](#retail-price-estimate-or-your-own-formula-160) · [Grid charges](#time-of-day-grid-charges-170) · [Hourly or quarter-hourly](#hourly-or-quarter-hourly-tariff-1120) · [Your currency](#prices-in-your-own-currency-140) |
+| Get official prices sooner | [Your own price source](#your-own-price-source-1210) · [When official prices are missing](#when-the-official-prices-are-missing-1150) |
+| Look further ahead | [48 or 120 hours](#horizon-48-hours-free-120-hours-with-private-pro) |
+| Chart it | [Build a price chart](#build-a-price-chart) |
+| Let an AI help | [Using it with an AI assistant](#using-it-with-an-ai-assistant) |
+| Get help | [Support](#support) · [Privacy](#privacy) |
+
 ## Why install this next to Nord Pool or Tibber?
 
 Those integrations show prices once they are published: today's, and
@@ -888,6 +919,101 @@ price sensor - carry the price slots in `raw_today`, `raw_tomorrow` and
 - [A prompt that lets an AI assistant build a card for your setup](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/blob/main/docs/dashboard.md#or-let-an-ai-build-it-for-you)
 
 The files are also in [`examples/`](examples/).
+
+## Using it with an AI assistant
+
+An AI assistant - ChatGPT, Claude, Gemini, or Home Assistant's own Assist
+with an AI model - can write the automation or card for your setup, as long
+as it knows what the entities mean. Copy the facts below into the chat
+first, then one of the prompts. The assistant reads, you decide: check what
+it writes before you save it, and never paste your API key.
+
+<details>
+<summary>Facts for the AI assistant (copy this first)</summary>
+
+```
+Facts about the Home Assistant integration "Energy Price Forecast EU" (version 1.21.0)
+
+What it is: a custom integration, domain energypriceforecast, installed from the HACS default store. It shows published day-ahead electricity prices, a forecast for the hours after them, and the CO2 intensity of the grid, for 34 European price zones: AT, BE, BG, CH, CZ, DE, DK1, DK2, ES, FI, FR, GB, GR, NL, NO1-NO5, PL, PT, RO, SE1-SE4, SK, ITN, IT_CNOR, IT_CSUD, IT_SUD, IT_CALA, IT_SICI, IT_SARD.
+Horizon: 48 hours free, up to 120 hours with a Private Pro API key.
+Units: market currency per kWh, usually EUR/kWh (GB: GBP/kWh; optionally CZK, PLN or SEK). CO2 in gCO2/kWh.
+
+Entity IDs follow the Home Assistant language and differ per installation. Never guess one. Ask me to copy mine from Settings > Devices & services > Energy Price Forecast EU, or from Developer tools > States filtered by "energypriceforecast".
+
+Entities (English display names):
+- Current price (sensor): the price of the slot running now; changes on the quarter hour.
+- Price forecast series (sensor): attributes raw_today and raw_tomorrow hold the known prices, raw_forecast the forecast slots, each a list of {start, end, value} with ISO timestamps. Forecast slots may carry spike_possible: true. raw_forecast_reference holds the first forecast seen for each slot.
+- Price source (diagnostic sensor): day_ahead = published by the exchange, forecast = our forecast, own_source = taken from my Nord Pool or ENTSO-e sensor.
+- Cheapest window start / end / average price and Cheapest window active (binary sensor): the single contiguous cheapest stretch of the configured length. Greenest window (CO2) and Combined window (price and CO2) work the same way.
+- Cheapest hours active (binary sensor): on during the N cheapest hours of each block; they need not be contiguous. Next cheapest hour carries the whole plan in its hours attribute. Only exists when a cheapest-hours count is set. Weekend cheapest hours active, Most expensive hours active and Cleanest hours active work the same way.
+- A plan is locked once picked. It is re-picked once when published prices replace the forecast it was built on. While the forecast does not cover a whole block, the plan entities are unavailable, not off.
+- Combined score now (sensor): 0-100, higher is better, price and CO2 together.
+- Current retail price (sensor, only if enabled): the price I pay, from the integration's estimate (DE, NL, DK, AT, NO) or my own formula, including time-of-day grid charges. Same raw_* attributes.
+- Published prices missing (binary sensor): on while the current slot is still a forecast.
+- Price spike possible (binary sensor, disabled by default, AT BE CZ DE DK1 DK2 FR NL): about one mark in seven is a real spike over a year; use it only for cheap precautions.
+- Forecast quality, Forecast accuracy, Cheaper day decision (sensors): measured forecast quality for my market.
+
+Ready-made blueprints: run a device on a plan; start an appliance at the cheapest time before a deadline; charge an EV or battery in the cheapest quarter hours before a deadline; tomorrow's price summary.
+
+Rules for your answer:
+- Prefer the plan binary sensors or a blueprint over long templates.
+- Handle the state unavailable explicitly in automations.
+- Forecast hours are estimates; how good they are differs by market: https://energypriceforecast.eu/en/forecast-quality/
+- Use current Home Assistant YAML syntax (triggers:, actions:, trigger: state).
+- Full documentation: https://github.com/BackupBaTTerY/energypriceforecast-home-assistant
+```
+
+</details>
+
+<details>
+<summary>Prompt: an automation for my device</summary>
+
+```
+Using the facts above, help me run one of my devices at the cheapest time.
+
+First ask me, one question at a time:
+1. Which device it is (heat pump, water heater, EV charger, home battery, dishwasher, ...), how Home Assistant switches it (switch, climate, a charger integration, a smart plug) and its entity ID.
+2. Whether it may run in pieces or must run in one go, how long it needs, and whether it has a deadline (for example "charged by 07:00").
+3. Which of the integration's entities I have. Ask me to paste the entity IDs from Settings > Devices & services > Energy Price Forecast EU.
+4. Whether I pay the exchange price or a retail price with grid charges, and whether Current retail price exists in my setup.
+
+Then pick the simplest fitting option and explain why: one of the four blueprints, the cheapest-hours plan, or the cheapest window. If a setting in the integration is needed (for example a cheapest-hours count), tell me where to set it. Write the YAML with my entity IDs, handle unavailable, and tell me how to test it once.
+```
+
+</details>
+
+<details>
+<summary>Prompt: my price sheet into the retail formula</summary>
+
+```
+Using the facts above, help me set up the integration so it shows what I actually pay per kWh.
+
+I will paste my electricity contract or price sheet (or describe it). From it, work out:
+- whether my energy price follows the exchange hourly, per quarter hour, or not at all - if not at all, tell me the retail formula does not apply to me;
+- the factor and the surcharge for the integration's retail formula (day-ahead price x factor + surcharge), with VAT and fixed per-kWh charges included the way my contract adds them;
+- whether my grid charge changes with the time of day, and if so the windows and amounts for the time-of-day grid charges setting.
+
+Show the calculation step by step with one example hour, and say which setting each number goes into. If something on the sheet is unclear, ask instead of guessing. If I also use Nord Pool or ENTSO-e as my own price source, remind me that sensor must stay at the bare exchange price, because VAT and charges come from this formula.
+```
+
+</details>
+
+<details>
+<summary>Prompt: why does a number look wrong?</summary>
+
+```
+Using the facts above, help me find out why the integration shows something I did not expect.
+
+I will describe what I see and paste the integration's diagnostics file (Settings > Devices & services > Energy Price Forecast EU > three dots > Download diagnostics; the API key and postal code are already removed from it).
+
+Read the sources section (which data source last failed and why), series_continuity (gaps or overlaps in a series) and, if present, own_price_source (status and how many slots were replaced). Tell me in plain words what is going on, whether it is a setting I can change or something to report, and if it should be reported, draft a short bug report with the version, market and the relevant lines.
+```
+
+</details>
+
+Two more prompts sit next to what they are for: one
+[builds a price card for your dashboard](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/blob/main/docs/dashboard.md#or-let-an-ai-build-it-for-you),
+one [checks whether 120 hours pay off for you](#let-an-ai-check-it-for-your-setup).
 
 ## Privacy
 

@@ -95,8 +95,9 @@ The integration's diagnostics have an `own_price_source` section: the
 sensor, its format and unit, a status (`ok`, `currency_mismatch`,
 `unit_unknown`, `unknown_format`, `no_prices`, `unavailable`,
 `service_failed`, `entity_missing`), how many slots were read and replaced,
-and up to five slots where your source and our published prices disagree.
-The source's prices themselves are not included.
+and up to five slots where your source and our published prices disagree,
+with both prices. Apart from those examples the source's prices are not
+included. The file stays on your computer until you share it yourself.
 
 ## Switching it off
 

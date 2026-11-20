@@ -1,6 +1,6 @@
 """Day-ahead prices from another integration, mixed into the forecast series.
 
-New in 1.21.0. In 18 zones the API may only pass on its forecast, and even
+New in 1.21.0. In 19 zones the API may only pass on its forecast, and even
 where it passes on the official prices its free source can be hours late.
 Many households already run an integration that fetches the day-ahead prices
 itself - Nord Pool or ENTSO-e. With "own price source" set, those prices take

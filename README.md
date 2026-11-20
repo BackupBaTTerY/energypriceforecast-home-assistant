@@ -4,7 +4,7 @@
 
 Home Assistant integration for electricity-price and consumption-based CO2
 forecasts from [Energy Price Forecast EU](https://energypriceforecast.eu/),
-for 34 price zones across Europe. Installable straight from the HACS default
+for 37 price zones across Europe. Installable straight from the HACS default
 store.
 
 The integration combines published day-ahead prices with forecast values for
@@ -161,7 +161,7 @@ integration shows the figures for yours as entities.
   or Swedish krona instead of euro, at the ECB's daily reference rate
 - Optional **own price source** *(1.21.0)* - day-ahead prices from your Nord
   Pool or ENTSO-e sensor replace the forecast hours they cover: usually
-  earlier than ours, and in 18 zones the only way to real prices
+  earlier than ours, and in 19 zones the only way to real prices
 - Configurable poll interval (15-120 minutes)
 - Access and horizon diagnostics, with API key and postal code redacted
 - Multiple market entries, for example DK1 and DK2
@@ -169,9 +169,9 @@ integration shows the figures for yours as entities.
 
 ## Supported markets
 
-AT, BE, BG, CH, CZ, DE, DK1, DK2, ES, FI, FR, GB, GR, NL, NO1-NO5, PL, PT,
-RO, SE1-SE4, SK and the seven Italian price zones: ITN, IT_CNOR, IT_CSUD,
-IT_SUD, IT_CALA, IT_SICI and IT_SARD.
+AT, BE, BG, CH, CZ, DE, DK1, DK2, ES, FI, FR, GB, GR, HR, HU, NL, NO1-NO5,
+PL, PT, RO, SE1-SE4, SI, SK and the seven Italian price zones: ITN, IT_CNOR,
+IT_CSUD, IT_SUD, IT_CALA, IT_SICI and IT_SARD.
 
 **Great Britain is new and still finding its feet.** Three things to know
 before you plan a load by it:
@@ -203,6 +203,15 @@ plan and the CO2 half of the combined score are filled there too. How good
 the forecast is in each of them is measured like everywhere else, over a
 rolling 30 days, on the
 [forecast quality page](https://energypriceforecast.eu/en/forecast-quality/).
+
+**Hungary, Slovenia and Croatia joined in 1.22.0** (November 2026), in euro.
+Hungary and Slovenia show the real day-ahead prices once the auction is
+published; Croatia shows only our forecast, as Slovakia did at first - an
+[own price source](#your-own-price-source-1210) from ENTSO-e brings the real
+Croatian prices. Two things fill in over the coming days: CO2 is not
+available for the three yet, so the CO2 entities stay empty until the API
+delivers it, and forecast quality appears after seven days of forecasts.
+Neither needs an update of the integration.
 
 There is no retail estimate for Switzerland or the Italian zones; they
 provide spot price and CO2. The own retail formula *(1.6.0)* can be set up
@@ -745,9 +754,9 @@ Assistant and are never sent anywhere.
   20 November 2026 the German day was missing altogether. Nord Pool and
   ENTSO-e usually have tomorrow's prices shortly after the auction at
   midday, and the plans and the current price use them straight away.
-- **In 18 zones it is the only way to real prices.** For NO1, NO3-NO5, SE1,
-  SE2, FI, RO, SK, GR, BG, GB and the six Italian zones other than ITN we may
-  not pass on exchange prices, only our forecast. With your own source you
+- **In 19 zones it is the only way to real prices.** For NO1, NO3-NO5, SE1,
+  SE2, FI, RO, SK, GR, BG, HR, GB and the six Italian zones other than ITN we
+  may not pass on exchange prices, only our forecast. With your own source you
   see the real prices for today and tomorrow there too.
 
 **Setting it up**, in three steps:
@@ -931,11 +940,11 @@ it writes before you save it, and never paste your API key.
 <summary>Facts for the AI assistant (copy this first)</summary>
 
 ```
-Facts about the Home Assistant integration "Energy Price Forecast EU" (version 1.21.0)
+Facts about the Home Assistant integration "Energy Price Forecast EU" (version 1.22.0)
 
-What it is: a custom integration, domain energypriceforecast, installed from the HACS default store. It shows published day-ahead electricity prices, a forecast for the hours after them, and the CO2 intensity of the grid, for 34 European price zones: AT, BE, BG, CH, CZ, DE, DK1, DK2, ES, FI, FR, GB, GR, NL, NO1-NO5, PL, PT, RO, SE1-SE4, SK, ITN, IT_CNOR, IT_CSUD, IT_SUD, IT_CALA, IT_SICI, IT_SARD.
+What it is: a custom integration, domain energypriceforecast, installed from the HACS default store. It shows published day-ahead electricity prices, a forecast for the hours after them, and the CO2 intensity of the grid, for 37 European price zones: AT, BE, BG, CH, CZ, DE, DK1, DK2, ES, FI, FR, GB, GR, HR, HU, NL, NO1-NO5, PL, PT, RO, SE1-SE4, SI, SK, ITN, IT_CNOR, IT_CSUD, IT_SUD, IT_CALA, IT_SICI, IT_SARD.
 Horizon: 48 hours free, up to 120 hours with a Private Pro API key.
-Units: market currency per kWh, usually EUR/kWh (GB: GBP/kWh; optionally CZK, PLN or SEK). CO2 in gCO2/kWh.
+Units: market currency per kWh, usually EUR/kWh (DK: DKK, NO: NOK, CH: CHF, RO: RON, GB: GBP; optionally CZK, PLN or SEK). CO2 in gCO2/kWh.
 
 Entity IDs follow the Home Assistant language and differ per installation. Never guess one. Ask me to copy mine from Settings > Devices & services > Energy Price Forecast EU, or from Developer tools > States filtered by "energypriceforecast".
 

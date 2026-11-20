@@ -9,7 +9,7 @@ NAME: Final = "Energy Price Forecast EU"
 # from. Must equal manifest.json's version - test_version.py enforces that,
 # because this drifted to 0.1.0 for ten releases and every request from
 # every user was mislabelled the whole time.
-VERSION: Final = "1.21.1"
+VERSION: Final = "1.22.0"
 DEFAULT_API_URL: Final = (
     "https://api.energypriceforecast.eu/api/v1/home-assistant/summary"
 )
@@ -135,6 +135,8 @@ MARKET_TIME_ZONES: Final[dict[str, str]] = {
     "FR": "Europe/Paris",
     "GB": "Europe/London",
     "GR": "Europe/Athens",
+    "HR": "Europe/Zagreb",
+    "HU": "Europe/Budapest",
     "ITN": "Europe/Rome",
     "IT_CNOR": "Europe/Rome",
     "IT_CSUD": "Europe/Rome",
@@ -155,6 +157,7 @@ MARKET_TIME_ZONES: Final[dict[str, str]] = {
     "SE2": "Europe/Stockholm",
     "SE3": "Europe/Stockholm",
     "SE4": "Europe/Stockholm",
+    "SI": "Europe/Ljubljana",
     "SK": "Europe/Bratislava",
 }
 # Only reached by a market added to MARKETS without a zone, which the tests
@@ -249,7 +252,7 @@ CONF_OWN_PRICE_ENTITY: Final = "own_price_entity"
 # every market, because elsewhere it is usually earlier than the API.
 FORECAST_ONLY_MARKETS: Final[frozenset[str]] = frozenset(
     {
-        "NO1", "NO3", "NO4", "NO5", "SE1", "SE2", "FI", "RO", "SK", "GR", "BG",
+        "NO1", "NO3", "NO4", "NO5", "SE1", "SE2", "FI", "RO", "SK", "GR", "BG", "HR",
         "IT_CNOR", "IT_CSUD", "IT_SUD", "IT_CALA", "IT_SICI", "IT_SARD", "GB",
     }
 )
@@ -319,6 +322,8 @@ MARKETS: Final[dict[str, str]] = {
     "FR": "France",
     "GB": "Great Britain",
     "GR": "Greece",
+    "HR": "Croatia",
+    "HU": "Hungary",
     "ITN": "Italy North (ITN)",
     "IT_CNOR": "Italy Centre-North (IT_CNOR)",
     "IT_CSUD": "Italy Centre-South (IT_CSUD)",
@@ -339,5 +344,6 @@ MARKETS: Final[dict[str, str]] = {
     "SE2": "Sweden SE2",
     "SE3": "Sweden SE3",
     "SE4": "Sweden SE4",
+    "SI": "Slovenia",
     "SK": "Slovakia",
 }

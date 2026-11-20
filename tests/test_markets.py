@@ -11,6 +11,7 @@ import pytest
 
 from custom_components.energypriceforecast.const import (
     DEFAULT_TIME_ZONE,
+    FORECAST_ONLY_MARKETS,
     MARKETS,
     MARKET_TIME_ZONES,
 )
@@ -22,6 +23,26 @@ NEW_IN_1_8 = ("BG", "ES", "GR", "PT", "RO", "SK")
 @pytest.mark.parametrize("market", NEW_IN_1_8)
 def test_the_markets_added_in_1_8_are_offered(market) -> None:
     assert market in MARKETS
+
+
+# Added in 1.22.0, after the API opened them on 20 November 2026.
+NEW_IN_1_22 = ("HR", "HU", "SI")
+
+
+@pytest.mark.parametrize("market", NEW_IN_1_22)
+def test_the_markets_added_in_1_22_are_offered(market) -> None:
+    assert market in MARKETS
+
+
+def test_croatia_gets_only_the_forecast_hungary_and_slovenia_real_prices() -> None:
+    """Hungary and Slovenia come with licensed exchange prices, Croatia not.
+
+    Only the wording of the own-price-source dialog depends on it, but that
+    wording tells a Croatian user the source is the only way to real prices.
+    """
+    assert "HR" in FORECAST_ONLY_MARKETS
+    assert "HU" not in FORECAST_ONLY_MARKETS
+    assert "SI" not in FORECAST_ONLY_MARKETS
 
 
 def test_every_market_has_its_own_clock() -> None:
@@ -60,6 +81,9 @@ def test_every_zone_is_a_real_one(zone) -> None:
         ("FI", "Europe/Helsinki"),
         ("ES", "Europe/Madrid"),
         ("SK", "Europe/Bratislava"),
+        ("HR", "Europe/Zagreb"),
+        ("HU", "Europe/Budapest"),
+        ("SI", "Europe/Ljubljana"),
     ],
 )
 def test_the_zones_that_are_easy_to_get_wrong(market, zone) -> None:

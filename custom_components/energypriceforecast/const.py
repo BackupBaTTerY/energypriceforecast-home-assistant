@@ -9,7 +9,7 @@ NAME: Final = "Energy Price Forecast EU"
 # from. Must equal manifest.json's version - test_version.py enforces that,
 # because this drifted to 0.1.0 for ten releases and every request from
 # every user was mislabelled the whole time.
-VERSION: Final = "1.21.0"
+VERSION: Final = "1.21.1"
 DEFAULT_API_URL: Final = (
     "https://api.energypriceforecast.eu/api/v1/home-assistant/summary"
 )
@@ -285,6 +285,24 @@ LOCAL_CURRENCY_BY_MARKET: Final[dict[str, str]] = {
     "SE2": "SEK",
     "SE3": "SEK",
     "SE4": "SEK",
+}
+
+# What the API answers a market in when no currency is asked for. It stores
+# euro (pounds for Great Britain) and converts these markets on the way out,
+# so their prices - and every amount a user types to go with them, such as a
+# retail surcharge or a grid charge - are in this currency. Every market not
+# listed is answered in euro.
+API_DEFAULT_CURRENCY_BY_MARKET: Final[dict[str, str]] = {
+    "CH": "CHF",
+    "DK1": "DKK",
+    "DK2": "DKK",
+    "GB": "GBP",
+    "NO1": "NOK",
+    "NO2": "NOK",
+    "NO3": "NOK",
+    "NO4": "NOK",
+    "NO5": "NOK",
+    "RO": "RON",
 }
 
 MARKETS: Final[dict[str, str]] = {

@@ -491,7 +491,8 @@ sight.
 For Czechia, Poland and Sweden the API answers in euro unless it is asked
 for something else. Tick **Show prices in local currency** when you set the
 integration up or reconfigure it, and every price arrives in CZK, PLN or
-SEK instead. [Details](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/blob/main/docs/tariffs.md#prices-in-your-own-currency-140)
+SEK instead. Denmark, Norway, Switzerland and Romania are answered in DKK,
+NOK, CHF and RON anyway. [Details](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/blob/main/docs/tariffs.md#prices-in-your-own-currency-140)
 
 ## Retail price: estimate or your own formula *(1.6.0)*
 

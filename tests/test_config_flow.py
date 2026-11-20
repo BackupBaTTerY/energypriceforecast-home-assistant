@@ -10,6 +10,7 @@ from custom_components.energypriceforecast.api import (
     EnergyPriceForecastRetailUnavailable,
 )
 from custom_components.energypriceforecast.config_flow import (
+    _price_unit,
     _schema,
     _validate_cheapest_hours_selection,
     _validate_postal_code,
@@ -1279,3 +1280,27 @@ async def test_more_expensive_hours_than_the_block_is_refused(hass) -> None:
     assert result["step_id"] == "user"
     assert result["errors"]["base"] == "expensive_hours_exceeds_window"
     mock_validate.assert_not_called()
+
+
+# The unit the retail-formula and grid-charge forms ask amounts in must be the
+# unit the API answers the market in. Switzerland and Romania were labelled
+# EUR/kWh until 1.21.1 while their prices came in CHF and RON, so a surcharge
+# typed in euro was added to lei - about five times too small.
+@pytest.mark.parametrize(
+    ("data", "unit"),
+    [
+        ({CONF_MARKET: "DE"}, "EUR/kWh"),
+        ({CONF_MARKET: "BG"}, "EUR/kWh"),
+        ({CONF_MARKET: "CH"}, "CHF/kWh"),
+        ({CONF_MARKET: "RO"}, "RON/kWh"),
+        ({CONF_MARKET: "GB"}, "GBP/kWh"),
+        ({CONF_MARKET: "DK2"}, "DKK/kWh"),
+        ({CONF_MARKET: "NO4"}, "NOK/kWh"),
+        ({CONF_MARKET: "CZ"}, "EUR/kWh"),
+        ({CONF_MARKET: "CZ", "local_currency": True}, "CZK/kWh"),
+        ({CONF_MARKET: "SE3", "local_currency": True}, "SEK/kWh"),
+        ({CONF_MARKET: "CH", "local_currency": True}, "CHF/kWh"),
+    ],
+)
+def test_form_unit_matches_the_currency_the_api_answers_in(data, unit) -> None:
+    assert _price_unit(data) == unit

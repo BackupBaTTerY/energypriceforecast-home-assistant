@@ -38,6 +38,7 @@ from .api import (
     requested_currency,
 )
 from .const import (
+    API_DEFAULT_CURRENCY_BY_MARKET,
     CONF_API_KEY,
     CONF_CHEAPEST_HOURS_COUNT,
     CONF_CHEAPEST_HOURS_START_HOUR,
@@ -486,18 +487,12 @@ def _price_unit(data: dict[str, Any]) -> str:
     currency = requested_currency(market, bool(data.get(CONF_LOCAL_CURRENCY)))
     if currency:
         return f"{currency}/kWh"
-    # Denmark and Norway are answered in their own currency without asking,
-    # converted from the euro the API stores. Great Britain is answered in
-    # pounds because that is what it stores - the N2EX day-ahead is British
-    # money to begin with - so it belongs here for the same reason and for a
-    # different one.
-    if market.startswith("DK"):
-        return "DKK/kWh"
-    if market.startswith("NO"):
-        return "NOK/kWh"
-    if market == "GB":
-        return "GBP/kWh"
-    return "EUR/kWh"
+    # Denmark, Norway, Switzerland and Romania are answered in their own
+    # currency without asking, converted from the euro the API stores. Great
+    # Britain is answered in pounds because that is what it stores. Until
+    # 1.21.1 Switzerland and Romania were labelled EUR/kWh here although the
+    # API had long answered them in CHF and RON (in git since 6 October 2026).
+    return f"{API_DEFAULT_CURRENCY_BY_MARKET.get(market.upper(), 'EUR')}/kWh"
 
 
 def _validate_windows(data: dict[str, Any]) -> str | None:

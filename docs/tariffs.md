@@ -17,7 +17,7 @@ CZK, PLN or SEK instead.
 | CZ | CZK |
 | PL | PLN |
 | SE1-SE4 | SEK |
-| DK1, DK2, NO1-NO5 | DKK or NOK - already the default, ticked or not |
+| DK1, DK2, NO1-NO5, CH, RO | DKK, NOK, CHF or RON - already the default, ticked or not |
 | all other markets | euro - the option changes nothing |
 
 **Which exchange rate.** The conversion uses the European Central Bank's
@@ -37,9 +37,12 @@ current block is picked once more in the new currency; the hours stay the
 same, because converting every price with one rate does not change their
 order.
 
-Switzerland stays in euro: the API does not offer francs. Romania is
-answered in euro too - there are no lei - and Bulgaria has been on the euro
-since January 2026.
+Switzerland and Romania are answered in francs and lei without asking, as
+Denmark and Norway are in their kroner: every price, and every amount you
+type into the retail formula or the grid charges, is in CHF or RON. Until
+1.21.1 those two forms said EUR/kWh there by mistake; if you typed euro
+amounts, convert them and save again. Bulgaria has been on the euro since
+January 2026.
 
 ## Retail price: estimate or your own formula *(1.6.0)*
 

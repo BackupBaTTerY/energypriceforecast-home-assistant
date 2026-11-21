@@ -208,10 +208,10 @@ rolling 30 days, on the
 Hungary and Slovenia show the real day-ahead prices once the auction is
 published; Croatia shows only our forecast, as Slovakia did at first - an
 [own price source](#your-own-price-source-1210) from ENTSO-e brings the real
-Croatian prices. Two things fill in over the coming days: CO2 is not
-available for the three yet, so the CO2 entities stay empty until the API
-delivers it, and forecast quality appears after seven days of forecasts.
-Neither needs an update of the integration.
+Croatian prices. Slovenia and Croatia have CO2 from the start (still marked
+beta by the API); Hungary has none yet, so its CO2 entities stay empty until
+the API delivers it. Forecast quality appears after seven days of
+forecasts. Neither needs an update of the integration.
 
 There is no retail estimate for Switzerland or the Italian zones; they
 provide spot price and CO2. The own retail formula *(1.6.0)* can be set up

@@ -595,11 +595,27 @@ sections:
               const f = (entity.attributes.unit_of_measurement ?? '').startsWith('EUR') ? 100 : 1;
               const known = [...(entity.attributes.raw_today ?? []),
                              ...(entity.attributes.raw_tomorrow ?? [])];
-              const forecast = entity.attributes.raw_forecast ?? [];
-              const join = known.length ? [known[known.length - 1]] : [];
-              return [...join, ...forecast]
-                .map(e => [new Date(e.start).getTime(), e.value * f])
-                .sort((a, b) => a[0] - b[0]);
+              // The last published slot joins the line onto the forecast that follows it.
+              const join = known.reduce((last, e) =>
+                !last || Date.parse(e.start) > Date.parse(last.start) ? e : last, null);
+              const slots = [...(join ? [join] : []), ...(entity.attributes.raw_forecast ?? [])]
+                .map(e => ({ start: Date.parse(e.start), end: Date.parse(e.end), value: e.value }))
+                .filter(e => Number.isFinite(e.start) && Number.isFinite(e.end)
+                  && e.end > e.start && typeof e.value === 'number' && Number.isFinite(e.value))
+                .sort((a, b) => a.start - b.start);
+              // A forecast can sit on both sides of the published prices - the running
+              // hour, when its price is late. Break the line there: a step line would
+              // otherwise hold the last value flat across the whole published day.
+              const points = [];
+              let previousEnd = null;
+              for (const slot of slots) {
+                if (previousEnd !== null && slot.start > previousEnd) {
+                  points.push([previousEnd, null], [slot.start - 1, null]);
+                }
+                points.push([slot.start, slot.value * f], [slot.end - 1, slot.value * f]);
+                previousEnd = Math.max(previousEnd ?? slot.end, slot.end);
+              }
+              return points;
           - entity: sensor.energy_price_forecast_eu_de_current_retail_price
             name: Forecast before publication
             yaxis_id: price
@@ -758,7 +774,7 @@ Rules for your result:
 - The same two price sensors also expose raw_forecast_reference: {start, end, value, captured_at, final_value, final_captured_at} slots. value is the first forecast received for each future slot; final_value is the last forecast before the official price arrived and is the value to draw, because the published quality figures measure that same moment. These survive restarts and official publication and are removed after the target market day ends. captured_at and final_captured_at are HA observation times, not model creation times. Offer an optional dashed reference line to compare that saved prediction against official prices; no predictions can be recovered from before the integration began saving them.
 - Use only raw_today / raw_tomorrow / raw_forecast / raw_forecast_reference. Do not invent other attributes or a different data shape.
 - Use apexcharts-card's data_generator to turn the attribute list into a chart series - do not assume the card accepts the attribute directly as a series.
-- If I asked for known prices and forecast as separate series, use two series against the same entity (one summing raw_today+raw_tomorrow, one for raw_forecast), each with its own data_generator, and set extend_to: false on both - otherwise apexcharts-card visually extends the last value to the edge of the graph, which is misleading here.
+- If I asked for known prices and forecast as separate series, use two series against the same entity (one summing raw_today+raw_tomorrow, one for raw_forecast), each with its own data_generator, and set extend_to: false on both - otherwise apexcharts-card visually extends the last value to the edge of the graph, which is misleading here. raw_forecast can also hold slots before the published prices - the running hour, when its official price is late - so wherever one slot's end is earlier than the next slot's start, insert a null point to break the line; a step line would otherwise hold the last value flat across the whole published day.
 - Draw each slot from start through end (ending one millisecond before end avoids duplicate timestamps). Preserve real gaps using null points. Do not prepend official prices to a forecast series or hide zero/negative prices. Use the sensor's unit consistently.
 - Quote any string value (title, name, tooltip format) that itself contains a colon, like "Known: forecast" or "dd.MM. HH:mm" - an unquoted colon inside a YAML value breaks parsing.
 - Produce a complete, correctly indented YAML block for a manual Lovelace card (type: custom:apexcharts-card).

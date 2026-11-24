@@ -23,6 +23,15 @@ and Slovak day-ahead results were missing from both platforms this project
 reads, for a day and a half. Installations in those markets were served a
 complete series the whole time - all of it estimated.
 
+**A notice under Settings > Repairs** *(1.23.0)* goes with the flag while
+no [own price source](own-price-source.md) is set. Nord Pool and ENTSO-e
+usually have the day-ahead prices shortly after the auction even when our
+freely licensed source is late - on 20 and 24 November 2026 the German day
+reached us hours after them - so the notice says where to set one. It is
+removed as soon as the published prices arrive or a source is set, and it
+is not raised in the zones where we only pass on the forecast, where the
+flag is on all the time and a notice would never go away.
+
 Two attributes say what the flag rests on:
 
 | Attribute | Meaning |

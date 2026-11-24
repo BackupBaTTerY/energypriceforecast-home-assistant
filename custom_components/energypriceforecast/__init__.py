@@ -7,7 +7,7 @@ from collections.abc import Awaitable, Callable
 from datetime import date, tzinfo
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
@@ -62,6 +62,7 @@ from .const import (
 )
 from .coordinator import EnergyPriceForecastCoordinator
 from .dk_datahub import DatahubError, async_load_rates
+from .late_prices import async_clear_notice, async_update_notice
 from .time_of_use import HourlyTable, TariffSource, schedule_from_config
 
 _LOGGER = logging.getLogger(__name__)
@@ -183,6 +184,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(entry.add_update_listener(_async_reload_entry))
     if (unsubscribe := coordinator.async_listen_own_source()) is not None:
         entry.async_on_unload(unsubscribe)
+
+    # While the published prices are late and no own source is set, a
+    # notice under Settings > Repairs says where to set one (1.23.0).
+    @callback
+    def _late_prices_notice() -> None:
+        async_update_notice(hass, entry, coordinator.price_series, coordinator.data)
+
+    _late_prices_notice()
+    entry.async_on_unload(coordinator.async_add_listener(_late_prices_notice))
+    entry.async_on_unload(lambda: async_clear_notice(hass, entry))
     return True
 
 
@@ -231,4 +242,5 @@ async def _async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
 async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Remove locally saved comparisons when their market is removed."""
+    async_clear_notice(hass, entry)
     await Store(hass, 1, f"{DOMAIN}_{entry.entry_id}_forecast_reference").async_remove()

@@ -739,6 +739,12 @@ class. It is on when the price for the slot running **right now** is a
 forecast rather than a published day-ahead price - which only happens when
 an exchange did not publish - so an automation can stop trusting the
 current price for that hour.
+
+Since *1.23.0* a notice under **Settings > Repairs** goes with it while no
+[own price source](#your-own-price-source-1210) is set, because Nord Pool
+and ENTSO-e usually have the prices even when our source is late. It goes
+away by itself once the prices arrive or a source is set. In the zones where
+we only pass on the forecast it is not shown: there the flag is always on.
 [Details and a dashboard badge](https://github.com/BackupBaTTerY/energypriceforecast-home-assistant/blob/main/docs/forecast-quality.md#when-the-official-prices-are-missing-1150)
 
 ## Your own price source *(1.21.0)*
@@ -957,7 +963,7 @@ Entities (English display names):
 - A plan is locked once picked. It is re-picked once when published prices replace the forecast it was built on. While the forecast does not cover a whole block, the plan entities are unavailable, not off.
 - Combined score now (sensor): 0-100, higher is better, price and CO2 together.
 - Current retail price (sensor, only if enabled): the price I pay, from the integration's estimate (DE, NL, DK, AT, NO) or my own formula, including time-of-day grid charges. Same raw_* attributes.
-- Published prices missing (binary sensor): on while the current slot is still a forecast.
+- Published prices missing (binary sensor): on while the current slot is still a forecast. While it is on and no own price source is set, Home Assistant also lists a notice under Settings > Repairs.
 - Price spike possible (binary sensor, disabled by default, AT BE CZ DE DK1 DK2 FR NL): about one mark in seven is a real spike over a year; use it only for cheap precautions.
 - Forecast quality, Forecast accuracy, Cheaper day decision (sensors): measured forecast quality for my market.
 

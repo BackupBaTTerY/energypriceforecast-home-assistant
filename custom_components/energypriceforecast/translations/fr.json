@@ -314,5 +314,11 @@
       "combined_window_active": {"name": "Fenêtre combinée active"},
       "retail_cheapest_window_active": {"name": "Fenêtre la moins chère active (détail)"}
     }
+  },
+  "issues": {
+    "late_prices": {
+      "title": "Les prix officiels pour {market} sont en retard",
+      "description": "Le prix du créneau en cours n'est que notre prévision : les prix day-ahead officiels pour {market} ne nous sont pas encore parvenus. Notre source sous licence libre a parfois plusieurs heures de retard.\n\nSi vous utilisez l'intégration Nord Pool ou ENTSO-e, elle dispose généralement de ces prix peu après l'enchère. Choisissez son capteur de prix hors TVA sous **Paramètres > Appareils et services > Energy Price Forecast EU > Configurer**, et ses prix remplacent les heures de prévision qu'ils couvrent.\n\nCet avis disparaît de lui-même dès que les prix officiels arrivent ou qu'une source est définie."
+    }
   }
 }

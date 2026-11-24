@@ -314,5 +314,11 @@
       "combined_window_active": {"name": "Kombi-Fenster aktiv"},
       "retail_cheapest_window_active": {"name": "Günstigstes Fenster aktiv (Endkundenpreis)"}
     }
+  },
+  "issues": {
+    "late_prices": {
+      "title": "Offizielle Preise für {market} kommen spät",
+      "description": "Der Preis für den laufenden Zeitabschnitt ist nur unsere Prognose: Die offiziellen Day-Ahead-Preise für {market} sind noch nicht bei uns angekommen. Unsere frei lizenzierte Quelle ist manchmal Stunden zu spät.\n\nWenn du die Integration Nord Pool oder ENTSO-e nutzt, hat sie diese Preise meist kurz nach der Auktion. Wähle ihren Preissensor ohne MwSt. unter **Einstellungen > Geräte & Dienste > Energy Price Forecast EU > Konfigurieren**, dann ersetzen ihre Preise die Prognosestunden, die sie abdecken.\n\nDieser Hinweis verschwindet von selbst, sobald die offiziellen Preise da sind oder eine Quelle eingerichtet ist."
+    }
   }
 }

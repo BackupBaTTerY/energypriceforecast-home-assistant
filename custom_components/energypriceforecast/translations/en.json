@@ -314,5 +314,11 @@
       "combined_window_active": {"name": "Combined window active"},
       "retail_cheapest_window_active": {"name": "Cheapest window active (retail)"}
     }
+  },
+  "issues": {
+    "late_prices": {
+      "title": "Official prices for {market} are late",
+      "description": "The price for the slot running now is only our forecast: the official day-ahead prices for {market} have not reached us yet. Our freely licensed source is sometimes hours late.\n\nIf you run the Nord Pool or ENTSO-e integration, it usually has these prices shortly after the auction. Pick its price sensor without VAT under **Settings > Devices & services > Energy Price Forecast EU > Configure**, and its prices replace the forecast hours they cover.\n\nThis notice disappears by itself once the official prices arrive or a source is set."
+    }
   }
 }

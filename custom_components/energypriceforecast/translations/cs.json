@@ -314,5 +314,11 @@
       "combined_window_active": {"name": "Kombinované okno aktivní"},
       "retail_cheapest_window_active": {"name": "Nejlevnější okno aktivní (maloobchodní)"}
     }
+  },
+  "issues": {
+    "late_prices": {
+      "title": "Oficiální ceny pro {market} se zpožďují",
+      "description": "Cena pro právě probíhající úsek je jen naše prognóza: oficiální ceny day-ahead pro {market} k nám zatím nedorazily. Náš volně licencovaný zdroj se někdy zpožďuje o několik hodin.\n\nPokud používáte integraci Nord Pool nebo ENTSO-e, mívá tyto ceny obvykle krátce po aukci. Vyberte její cenový senzor bez DPH v **Nastavení > Zařízení a služby > Energy Price Forecast EU > Konfigurovat** a její ceny nahradí hodiny prognózy, které pokrývají.\n\nToto upozornění samo zmizí, jakmile oficiální ceny dorazí nebo bude nastaven zdroj."
+    }
   }
 }

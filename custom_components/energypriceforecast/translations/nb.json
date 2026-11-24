@@ -314,5 +314,11 @@
       "combined_window_active": {"name": "Kombinert vindu aktivt"},
       "retail_cheapest_window_active": {"name": "Billigste tidsvindu aktivt (forbrukerpris)"}
     }
+  },
+  "issues": {
+    "late_prices": {
+      "title": "Offisielle priser for {market} er forsinket",
+      "description": "Prisen for den pågående perioden er bare vår prognose: De offisielle day-ahead-prisene for {market} har ikke kommet fram til oss ennå. Vår fritt lisensierte kilde er noen ganger flere timer forsinket.\n\nHvis du bruker integrasjonen Nord Pool eller ENTSO-e, har den som regel disse prisene kort etter auksjonen. Velg prissensoren dens uten mva. under **Innstillinger > Enheter og tjenester > Energy Price Forecast EU > Konfigurer**, så erstatter prisene dens prognosetimene de dekker.\n\nDenne meldingen forsvinner av seg selv så snart de offisielle prisene er kommet eller en kilde er valgt."
+    }
   }
 }

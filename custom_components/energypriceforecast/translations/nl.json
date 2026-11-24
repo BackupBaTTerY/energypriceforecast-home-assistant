@@ -314,5 +314,11 @@
       "combined_window_active": {"name": "Gecombineerd venster actief"},
       "retail_cheapest_window_active": {"name": "Goedkoopste tijdvak actief (consumentenprijs)"}
     }
+  },
+  "issues": {
+    "late_prices": {
+      "title": "Officiële prijzen voor {market} zijn laat",
+      "description": "De prijs voor het lopende tijdvak is alleen onze prognose: de officiële day-ahead-prijzen voor {market} zijn nog niet bij ons binnen. Onze vrij gelicentieerde bron is soms uren te laat.\n\nGebruik je de integratie Nord Pool of ENTSO-e, dan heeft die deze prijzen meestal kort na de veiling. Kies de prijssensor ervan zonder btw onder **Instellingen > Apparaten & diensten > Energy Price Forecast EU > Configureren**, dan vervangen de prijzen ervan de prognose-uren die ze dekken.\n\nDeze melding verdwijnt vanzelf zodra de officiële prijzen er zijn of een bron is ingesteld."
+    }
   }
 }

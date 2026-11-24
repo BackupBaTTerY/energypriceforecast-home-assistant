@@ -44,6 +44,8 @@ REQUIRED_SECTIONS = (
     ("config", "step", "tariff_lookup", "data"),
     ("entity", "sensor"),
     ("entity", "binary_sensor"),
+    # The Repairs notice of 1.23.0: without it the notice has no words.
+    ("issues", "late_prices"),
 )
 
 
